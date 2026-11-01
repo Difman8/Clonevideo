@@ -1,0 +1,45 @@
+# Sửa trực tiếp trên main (ví dụ bấm "Edit" một file trên github.com) cũng được ghi vào CHANGELOG.md.
+# Commit do workflow tự gộp đẩy lên bằng GITHUB_TOKEN nên không kích hoạt workflow này.
+name: Ghi CHANGELOG cho main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: changelog-main
+  cancel-in-progress: false
+
+jobs:
+  changelog:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Ghi CHANGELOG
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then RANGE="$BEFORE..$SHA"; else RANGE="-1 $SHA"; fi
+          COMMITS=$(git log --no-merges --format=%s $RANGE | grep -v '\[skip changelog\]' || true)
+          if [ -z "$COMMITS" ]; then echo "Không có thay đổi cần ghi."; exit 0; fi
+          CL_TITLE="$(head -n1 <<<"$COMMITS")" CL_AUTHOR="$ACTOR" CL_COMMITS="$COMMITS" node .github/scripts/changelog.mjs
+          git add CHANGELOG.md
+          git commit -q -m "Ghi CHANGELOG [skip ci]"
+          for i in 1 2 3; do
+            git pull -q --rebase origin main && git push -q origin HEAD:main && exit 0
+            sleep 3
+          done
+          exit 1

@@ -11,3 +11,10 @@ Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top li
 3. Điền `ANTHROPIC_API_KEY` và/hoặc `OPENAI_API_KEY` vào `remotion-remake/.env`, rồi bấm lại nút khởi động.
 
 Chi tiết: [remotion-remake/README.md](remotion-remake/README.md).
+
+## Sửa từ điện thoại, cập nhật trên máy tính
+
+1. Nhờ Claude (Claude Code trên web/điện thoại) sửa repo này. Claude làm trên một nhánh riêng và đẩy lên GitHub.
+2. GitHub Actions ([auto-merge.yml](.github/workflows/auto-merge.yml)) tự kiểm tra code, **gộp nhánh vào `main`** và ghi một dòng vào [CHANGELOG.md](CHANGELOG.md). Code lỗi TypeScript hoặc xung đột sẽ không được gộp (xem tab **Actions** trên GitHub).
+3. Sửa trực tiếp trên `main` (nút Edit trên github.com) cũng được ghi vào CHANGELOG.
+4. Về máy tính: đóng app nếu đang mở, bấm đúp **`Cập nhật Remotion Remake.bat`**. Nút này lấy mọi thay đổi từ GitHub, cài lại thư viện nếu cần và in danh sách thay đổi mới.
