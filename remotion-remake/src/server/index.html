@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Remotion Remake</title>
+<style>
+  :root {
+    --bg: #f5f6fa; --card: #ffffff; --text: #151826; --muted: #6b7085; --line: #e3e5ee;
+    --brand: #6d28d9; --brand-soft: #ede9fe; --ok: #16a34a; --warn: #d97706; --err: #dc2626; --chip: #f0f1f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1018; --card: #171a26; --text: #eceef6; --muted: #9096ad; --line: #272b3b;
+      --brand: #a78bfa; --brand-soft: #2a2347; --chip: #222636;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 18px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: var(--card); }
+  header h1 { font-size: 18px; margin: 0; }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 99px; background: var(--chip); color: var(--muted); }
+  .pill.on { background: #dcfce7; color: #166534; }
+  .pill.off { background: #fef3c7; color: #92400e; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 60px; display: grid; gap: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; }
+  form { display: grid; gap: 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input[type=url] { flex: 1 1 340px; padding: 12px 14px; font-size: 15px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  select, button { font: inherit; border-radius: 10px; padding: 10px 14px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+  button.primary { background: var(--brand); color: #fff; border-color: transparent; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg label { padding: 9px 14px; cursor: pointer; font-size: 14px; }
+  .seg input { display: none; }
+  .seg input:checked + span { color: var(--brand); font-weight: 700; }
+  .switch { display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+  .switch .sw-label { color: var(--muted); cursor: pointer; user-select: none; }
+  .switch .sw-label.active { color: var(--text); font-weight: 700; }
+  .sw { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+  .sw input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .sw .knob { position: absolute; inset: 0; border-radius: 99px; background: #d97757; cursor: pointer; transition: background .2s; }
+  .sw .knob::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .sw input:checked + .knob { background: #10a37f; }
+  .sw input:checked + .knob::before { transform: translateX(20px); }
+  .sw input:focus-visible + .knob { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .hint { color: var(--muted); font-size: 13px; }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .steps li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+  .steps .ic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--chip); color: var(--muted); }
+  .steps li.start .ic { background: var(--brand-soft); color: var(--brand); }
+  .steps li.done .ic { background: #dcfce7; color: var(--ok); }
+  .steps li.skip .ic { background: #fef3c7; color: var(--warn); }
+  .steps .msg { color: var(--muted); font-size: 13px; }
+  .bar { height: 5px; background: var(--chip); border-radius: 3px; overflow: hidden; margin-top: 5px; }
+  .bar > div { height: 100%; background: var(--brand); width: 0; transition: width .2s; }
+  #log { margin-top: 12px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: var(--muted); max-height: 120px; overflow: auto; white-space: pre-wrap; }
+  .error { color: var(--err); font-weight: 600; margin-top: 10px; }
+  .result { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .result { grid-template-columns: 1fr; } }
+  video { width: 100%; max-height: 72vh; border-radius: 12px; background: #000; }
+  .field { margin-bottom: 16px; }
+  .field-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .field-head b { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .copy { font-size: 12px; padding: 4px 10px; }
+  .value { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow: auto; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--chip); border-radius: 99px; padding: 3px 10px; font-size: 13px; }
+  .chip.tag { color: var(--brand); }
+  .empty { color: var(--muted); font-style: italic; }
+  textarea { width: 100%; min-height: 320px; font: 12px/1.5 ui-monospace, Consolas, monospace; border-radius: 10px; border: 1px solid var(--line); padding: 12px; background: var(--bg); color: var(--text); }
+  .notes { margin: 0; padding-left: 18px; }
+  .history { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .history button { text-align: left; padding: 0; overflow: hidden; display: grid; }
+  .history img { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: var(--chip); }
+  .history span { padding: 8px 10px; font-size: 13px; }
+  .links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .links a { font-size: 13px; color: var(--brand); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎬 Remotion Remake</h1>
+  <span class="pill" id="st-ai">…</span>
+  <span class="pill" id="st-ytdlp">…</span>
+</header>
+<main>
+  <section class="card">
+    <form id="form">
+      <div class="row">
+        <input type="url" id="url" required placeholder="Dán link YouTube (video thường hoặc Shorts)…" />
+        <button class="primary" id="go">Phân tích &amp; Render</button>
+      </div>
+      <div class="row">
+        <div class="seg" role="radiogroup" aria-label="Chế độ">
+          <label><input type="radio" name="mode" value="clone" checked /><span>Bản sao (y hệt)</span></label>
+          <label><input type="radio" name="mode" value="remix" /><span>Remix (cùng khuôn, nội dung mới)</span></label>
+        </div>
+        <div class="switch" title="Chọn AI dùng để phân tích video">
+          <span class="sw-label" data-side="claude">Claude</span>
+          <label class="sw"><input type="checkbox" id="provider" aria-label="Dùng OpenAI thay cho Claude" /><span class="knob"></span></label>
+          <span class="sw-label" data-side="openai">OpenAI</span>
+        </div>
+        <select id="analyzer" aria-label="Bộ phân tích">
+          <option value="auto">Phân tích: tự động</option>
+          <option value="ai" id="opt-ai">Phân tích: Claude AI</option>
+          <option value="basic">Phân tích: cơ bản (không AI)</option>
+        </select>
+      </div>
+      <div class="hint">Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline. Cảnh quay thật/ảnh/giọng đọc sẽ được thay bằng chữ và đồ hoạ.</div>
+    </form>
+  </section>
+
+  <section class="card" id="progress" hidden>
+    <h2 id="progress-title">Tiến trình</h2>
+    <ul class="steps" id="steps"></ul>
+    <div id="log"></div>
+    <div class="error" id="error" hidden></div>
+  </section>
+
+  <section id="result" hidden>
+    <div class="result">
+      <div class="card">
+        <h2>Video render</h2>
+        <video id="video" controls playsinline hidden></video>
+        <div class="empty" id="no-video" hidden>Chưa có video.</div>
+        <div class="links" id="links"></div>
+      </div>
+      <div class="card">
+        <h2>Nội dung đăng video gốc</h2>
+        <div id="post"></div>
+      </div>
+    </div>
+    <div class="card" id="remix-card" hidden style="margin-top:20px">
+      <h2>Nội dung đăng đề xuất cho bản remix</h2>
+      <div id="remix"></div>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <h2>Ghi chú phân tích</h2>
+      <div class="hint" id="analyzer-info"></div>
+      <ul class="notes" id="notes"></ul>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <h2>Kịch bản (spec.json) — sửa rồi render lại</h2>
+      <textarea id="spec" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="rerender">Lưu &amp; render lại</button>
+        <span class="hint">Đổi chữ, màu, thời lượng, thứ tự cảnh… rồi bấm render lại.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="history-card" hidden>
+    <h2>Video đã làm</h2>
+    <div class="history" id="history"></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let STEPS = [];
+let current = null;
+
+function el(tag, props = {}, ...children) {
+  const n = document.createElement(tag);
+  Object.assign(n, props);
+  for (const c of children) if (c != null) n.append(c);
+  return n;
+}
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || r.statusText);
+  return body;
+}
+
+let PROVIDERS = null;
+const provider = () => ($("provider").checked ? "openai" : "claude");
+
+function updateProvider() {
+  const id = provider();
+  const p = PROVIDERS[id];
+  document.querySelectorAll(".sw-label").forEach((l) => l.classList.toggle("active", l.dataset.side === id));
+  $("st-ai").textContent = p.ready ? `${p.label}: ${p.model}` : `${p.label}: chưa có ${p.envKey} (dùng phân tích cơ bản)`;
+  $("st-ai").className = "pill " + (p.ready ? "on" : "off");
+  $("opt-ai").textContent = `Phân tích: bắt buộc dùng ${p.label}`;
+  try {
+    localStorage.setItem("provider", id);
+  } catch {}
+}
+
+$("provider").addEventListener("change", updateProvider);
+document.querySelectorAll(".sw-label").forEach((l) =>
+  l.addEventListener("click", () => {
+    $("provider").checked = l.dataset.side === "openai";
+    updateProvider();
+  }),
+);
+
+async function loadStatus() {
+  const s = await api("/api/status");
+  STEPS = s.steps;
+  PROVIDERS = s.providers;
+  try {
+    $("provider").checked = localStorage.getItem("provider") === "openai";
+  } catch {}
+  updateProvider();
+  $("st-ytdlp").textContent = s.ytdlp ? "yt-dlp: sẵn sàng" : "yt-dlp: chưa cài — chạy npm run setup";
+  $("st-ytdlp").className = "pill " + (s.ytdlp ? "on" : "off");
+}
+
+async function loadHistory() {
+  const jobs = await api("/api/jobs");
+  $("history-card").hidden = !jobs.length;
+  $("history").replaceChildren(
+    ...jobs.map((j) => {
+      const b = el("button", { type: "button", onclick: () => showJob(j.id) }, el("img", { src: j.thumbnail, alt: "", loading: "lazy" }), el("span", { textContent: (j.hasVideo ? "🎞️ " : "📝 ") + j.title }));
+      return b;
+    }),
+  );
+}
+
+function resetSteps(only) {
+  $("progress").hidden = false;
+  $("error").hidden = true;
+  $("log").textContent = "";
+  $("steps").replaceChildren(
+    ...STEPS.filter((s) => !only || only.includes(s.id)).map((s) =>
+      el("li", { id: "step-" + s.id }, el("div", { className: "ic", textContent: "•" }), el("div", {}, el("div", { textContent: s.label }), el("div", { className: "msg" }), el("div", { className: "bar", hidden: true }, el("div")))),
+    ),
+  );
+}
+
+function onEvent(e) {
+  if (e.type === "step") {
+    const li = $("step-" + e.step);
+    if (!li) return;
+    li.className = e.status;
+    li.querySelector(".ic").textContent = { start: "…", done: "✓", skip: "–" }[e.status];
+    if (e.message) li.querySelector(".msg").textContent = e.message;
+    if (e.status !== "start") li.querySelector(".bar").hidden = true;
+  } else if (e.type === "progress") {
+    const li = $("step-" + e.step);
+    if (!li) return;
+    const bar = li.querySelector(".bar");
+    bar.hidden = false;
+    bar.firstChild.style.width = Math.round(e.progress * 100) + "%";
+    li.querySelector(".msg").textContent = Math.round(e.progress * 100) + "%";
+  } else if (e.type === "log") {
+    $("log").textContent += e.message + "\n";
+    $("log").scrollTop = 1e9;
+  } else if (e.type === "error") {
+    $("error").hidden = false;
+    $("error").textContent = "Lỗi: " + e.message;
+    busy(false);
+  } else if (e.type === "result") {
+    busy(false);
+    renderResult(e.result);
+    loadHistory();
+  }
+}
+
+function follow(id) {
+  const es = new EventSource(`/api/jobs/${encodeURIComponent(id)}/events`);
+  es.onmessage = (m) => onEvent(JSON.parse(m.data));
+  es.onerror = () => es.close();
+}
+
+function busy(on) {
+  $("go").disabled = on;
+  $("rerender").disabled = on;
+}
+
+function copyButton(text) {
+  return el("button", {
+    type: "button",
+    className: "copy",
+    textContent: "Sao chép",
+    onclick: async (ev) => {
+      await navigator.clipboard.writeText(text);
+      ev.target.textContent = "Đã chép ✓";
+      setTimeout(() => (ev.target.textContent = "Sao chép"), 1200);
+    },
+  });
+}
+
+function field(label, node, copyText) {
+  return el("div", { className: "field" }, el("div", { className: "field-head" }, el("b", { textContent: label }), copyText ? copyButton(copyText) : null), node);
+}
+
+const chips = (list, cls, empty) =>
+  list.length ? el("div", { className: "chips" }, ...list.map((t) => el("span", { className: "chip " + cls, textContent: t }))) : el("div", { className: "empty", textContent: empty });
+
+function postBlock(p) {
+  const all = [`${p.title}`, "", p.description, "", p.hashtags.join(" "), "", "Tags: " + p.keywords.join(", ")].join("\n");
+  return el(
+    "div",
+    {},
+    field("Tiêu đề", el("div", { className: "value", textContent: p.title }), p.title),
+    field(`Hashtag (${p.hashtags.length})`, chips(p.hashtags, "tag", "Video không có hashtag"), p.hashtags.join(" ")),
+    field("Mô tả", el("div", { className: "value", textContent: p.description || "(trống)" }), p.description),
+    field(`Keywords / Tags (${p.keywords.length})`, chips(p.keywords, "", "Video không khai báo keywords"), p.keywords.join(", ")),
+    p.suggestedKeywords?.length ? field("Keywords gợi ý (AI)", chips(p.suggestedKeywords, "", ""), p.suggestedKeywords.join(", ")) : null,
+    el("div", { className: "hint", textContent: `Kênh: ${p.channel} ${p.handle} · Ngày đăng: ${p.uploadDate} · ${Math.round(p.durationSec)}s · ${p.views?.toLocaleString("vi-VN") ?? "?"} lượt xem` }),
+    el("div", { className: "row", style: "margin-top:10px" }, copyButton(all)),
+  );
+}
+
+function renderResult(job) {
+  current = job;
+  $("result").hidden = false;
+  const v = $("video");
+  if (job.video) {
+    v.hidden = false;
+    v.src = `/media/${job.id}/remake.mp4?t=${Date.now()}`;
+    $("no-video").hidden = true;
+  } else {
+    v.hidden = true;
+    $("no-video").hidden = false;
+  }
+  $("links").replaceChildren(
+    ...(job.video ? [el("a", { href: `/media/${job.id}/remake.mp4?download`, textContent: "⬇ Tải video MP4" })] : []),
+    el("a", { href: `/media/${job.id}/post.txt?download`, textContent: "⬇ Nội dung đăng (.txt)" }),
+    el("a", { href: `/media/${job.id}/spec.json?download`, textContent: "⬇ Kịch bản (.json)" }),
+    el("a", { href: job.post.url, target: "_blank", rel: "noreferrer", textContent: "↗ Video gốc" }),
+  );
+  $("post").replaceChildren(postBlock(job.post));
+  $("remix-card").hidden = !job.remixPost;
+  if (job.remixPost) {
+    const r = job.remixPost;
+    $("remix").replaceChildren(
+      field("Tiêu đề", el("div", { className: "value", textContent: r.title }), r.title),
+      field("Hashtag", chips(r.hashtags, "tag", "—"), r.hashtags.join(" ")),
+      field("Mô tả", el("div", { className: "value", textContent: r.description }), r.description),
+    );
+  }
+  $("analyzer-info").textContent = `Bộ phân tích: ${job.analyzer || "?"} · Chế độ: ${job.mode === "remix" ? "Remix" : "Bản sao"} · Thể loại: ${job.spec.genre} · ${job.spec.scenes.length} cảnh · ${job.spec.meta.width}x${job.spec.meta.height}@${job.spec.meta.fps}fps`;
+  $("notes").replaceChildren(...(job.notes.length ? job.notes : ["Không có ghi chú."]).map((n) => el("li", { textContent: n })));
+  $("spec").value = JSON.stringify(job.spec, null, 2);
+}
+
+async function showJob(id) {
+  const job = await api(`/api/jobs/${encodeURIComponent(id)}`);
+  renderResult(job);
+  if (job.running) {
+    resetSteps();
+    busy(true);
+    follow(id);
+  }
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+
+$("form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  try {
+    busy(true);
+    resetSteps();
+    $("progress-title").textContent = "Tiến trình";
+    const { id } = await api("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: $("url").value.trim(),
+        mode: document.querySelector("input[name=mode]:checked").value,
+        analyzer: $("analyzer").value,
+        provider: provider(),
+      }),
+    });
+    follow(id);
+  } catch (e) {
+    onEvent({ type: "error", message: e.message });
+  }
+});
+
+$("rerender").addEventListener("click", async () => {
+  if (!current) return;
+  let spec;
+  try {
+    spec = JSON.parse($("spec").value);
+  } catch (e) {
+    resetSteps(["render"]);
+    return onEvent({ type: "error", message: "JSON không hợp lệ: " + e.message });
+  }
+  try {
+    busy(true);
+    resetSteps(["render"]);
+    $("progress-title").textContent = "Render lại";
+    await api(`/api/jobs/${encodeURIComponent(current.id)}/render`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ spec }) });
+    follow(current.id);
+  } catch (e) {
+    onEvent({ type: "error", message: e.message });
+  }
+});
+
+loadStatus().then(loadHistory);
+</script>
+</body>
+</html>
