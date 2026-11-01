@@ -1,0 +1,28 @@
+# Clone Video — hướng dẫn cho Claude
+
+App "Remotion Remake": dán link YouTube → AI (Claude hoặc OpenAI) phân tích → Remotion dựng lại video. Code nằm trong `remotion-remake/` (Node + TypeScript); xem `remotion-remake/README.md`.
+
+Chủ dự án nói tiếng Việt: trả lời, viết giao diện, thông báo lỗi và tiêu đề commit/PR bằng tiếng Việt.
+
+## Quy trình
+
+- Làm việc trên một nhánh riêng (ví dụ `claude/...`) và đẩy nhánh đó lên. Workflow `.github/workflows/auto-merge.yml` tự kiểm tra TypeScript, gộp nhánh vào `main` và ghi một mục vào `CHANGELOG.md`. Không cần tự gộp vào main.
+- Tiêu đề commit (hoặc PR) chính là dòng xuất hiện trong CHANGELOG, nên hãy viết ngắn gọn, nói rõ thay đổi gì cho người dùng (ví dụ "Thêm mẫu cảnh đếm ngược có âm thanh").
+- Không sửa tay `CHANGELOG.md`; workflow tự ghi. Thêm `[skip changelog]` vào commit nếu không muốn ghi.
+- Chủ dự án lấy thay đổi về máy tính bằng nút `Cập nhật Remotion Remake.bat`, nút này chỉ chạy `git pull` + `npm install` khi thư viện đổi. Thay đổi cần bước cài đặt khác (Python, file mới ngoài git) phải được xử lý trong `remotion-remake/scripts/setup.ts` hoặc ghi rõ trong CHANGELOG.
+
+## Kiểm tra trước khi đẩy
+
+```bash
+cd remotion-remake
+npm ci --ignore-scripts
+npx tsc -p .
+```
+
+Workflow sẽ không gộp nếu lệnh này lỗi.
+
+## Lưu ý
+
+- Không commit `.env`, khóa API, `out/`, `node_modules/`, `.venv/`.
+- `src/spec/schema.ts` là hợp đồng giữa AI và các mẫu cảnh Remotion: đổi schema thì cập nhật cả `src/remotion/scenes.tsx`, `src/spec/normalize.ts`, `src/remotion/sample.ts` và prompt trong `src/pipeline/ai-common.ts`.
+- Hai nhà cung cấp AI (`analyze-claude.ts`, `analyze-openai.ts`) dùng chung prompt và schema; sửa một bên thì kiểm tra bên kia.

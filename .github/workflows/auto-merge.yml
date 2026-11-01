@@ -1,0 +1,33 @@
+# Mọi nhánh được đẩy lên (ví dụ nhánh claude/... do Claude tạo trên điện thoại)
+# sẽ được kiểm tra code rồi tự gộp vào main, kèm một dòng trong CHANGELOG.md.
+name: Tự gộp vào main
+
+on:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: auto-merge-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Gộp nhánh, kiểm tra code, ghi CHANGELOG
+        env:
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/merge-branch.sh
