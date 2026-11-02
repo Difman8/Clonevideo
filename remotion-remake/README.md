@@ -48,6 +48,35 @@ npm run remake -- --rerender <videoId>    # render lại sau khi sửa out/<vide
 
 **Xem/chỉnh template trong Remotion Studio:** `npm run studio`
 
+## Tìm video hot
+
+Tab **🔥 Tìm video hot** dùng [YouTube Data API v3](https://developers.google.com/youtube/v3) (miễn phí) để tìm video có nhiều lượt xem, lượt thích và bình luận nhất trong một khoảng thời gian. Mỗi video trả về kèm **link, chủ đề, keywords và hashtag**, lượt xem/thích/bình luận, tỉ lệ tương tác, và nút **🎬 Dựng lại video này** để chuyển sang tab dựng lại.
+
+**Lấy khóa (một lần, miễn phí):** mở [YouTube Data API v3 trong Google Cloud Console](https://console.cloud.google.com/apis/library/youtube.googleapis.com), tạo/chọn dự án, bấm **Enable**, rồi vào **APIs & Services → Credentials → Create credentials → API key**. Dán khóa ngay trên tab (app kiểm tra rồi lưu vào `.env`), hoặc tự thêm dòng `YOUTUBE_API_KEY=...` vào `.env`.
+
+Bộ lọc:
+
+| Bộ lọc | Cách hoạt động |
+|---|---|
+| Định dạng: Shorts / Video dài / Cả hai | Kiểm tra trang `youtube.com/shorts/<id>` của từng video ≤ 3 phút; nếu không mở được thì đoán theo thời lượng (≤ 60 giây hoặc có `#shorts`). |
+| Hình ảnh: Người thật / Animation | AI (Claude hoặc OpenAI) xem thumbnail + tiêu đề để phân loại. Không có khóa AI thì chỉ đoán theo từ khoá (kém chính xác hơn, có ghi "đoán"). |
+| Quốc gia | YouTube lọc video xem được ở quốc gia đó và ưu tiên ngôn ngữ của nước đó. Tích **Chỉ kênh của quốc gia này** để chỉ giữ kênh khai báo quốc gia đó. |
+| Khoảng thời gian | 24 giờ, 3/7/30 ngày, 3/12 tháng, hoặc chọn ngày. |
+| Xếp hạng theo | Điểm tương tác tổng hợp (trung bình thứ hạng lượt xem, lượt thích, bình luận), hoặc từng chỉ số, hoặc tỉ lệ (thích + bình luận) / xem. |
+| Từ khoá, danh mục, số video, độ sâu tìm kiếm | Tuỳ chọn thêm. |
+
+**Quota:** miễn phí 10.000 đơn vị/ngày; mỗi trang tìm kiếm (50 video) tốn 100 đơn vị, nên một lần tìm "Vừa" tốn khoảng 200. Quota làm mới lúc 0h giờ Thái Bình Dương (khoảng 14–15h giờ Việt Nam).
+
+Kết quả được lưu ở `out/_discover/<thời điểm>.csv` (mở bằng Excel/Google Sheets) và `.json`; tab hiện danh sách các lần tìm trước.
+
+**Dòng lệnh:**
+
+```bash
+npm run discover -- --format shorts --style animation --country VN --period 7d --limit 20
+npm run discover -- --format long --style live --country US --strict-country --from 2026-10-01 --to 2026-10-31
+npm run discover -- --help    # xem mọi tuỳ chọn
+```
+
 ## Kết quả (`out/<videoId>/`)
 
 | File | Nội dung |
@@ -69,6 +98,7 @@ Mẫu cảnh: `title`, `text` (chữ động), `list-item` (top list), `quiz`, `
 
 ## Giới hạn
 
+- **Tìm video hot:** YouTube API không có cờ "Shorts", "quay thật/animation" hay "quốc gia của video", nên các bộ lọc này được suy ra như bảng trên và có thể sai ở vài video. Danh sách ứng viên là các video nhiều lượt xem nhất mà YouTube Search trả về (không phải toàn bộ YouTube), sau đó mới xếp lại theo tiêu chí bạn chọn.
 - Video có cảnh quay thật, ảnh, khuôn mặt, giọng đọc hoặc nhạc sẽ chỉ được **mô phỏng** bằng chữ + đồ hoạ; phần ghi chú phân tích liệt kê những chỗ này.
 - Đăng lại nguyên nội dung kênh khác có thể vi phạm bản quyền và chính sách "nội dung dùng lại" của YouTube; chế độ **Remix** tạo nội dung mới trên cùng khuôn.
 - Remotion miễn phí cho cá nhân và công ty ≤3 người; công ty lớn hơn cần mua license (remotion.dev/license).

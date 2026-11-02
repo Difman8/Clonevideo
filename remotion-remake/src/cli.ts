@@ -1,9 +1,7 @@
-import fs from "node:fs";
+import "./env";
 import path from "node:path";
 import { rerenderJob, runJob, STEPS, type JobEvent } from "./pipeline/job";
 import { ROOT } from "./pipeline/tools";
-
-if (fs.existsSync(path.join(ROOT, ".env"))) process.loadEnvFile(path.join(ROOT, ".env"));
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(name);
