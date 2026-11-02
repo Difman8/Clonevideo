@@ -1,36 +1,50 @@
+import { setEnvValue } from "../env";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DISCOVER_STEPS, listDiscoveries, loadDiscovery, runDiscover } from "../discover/discover";
+import { COUNTRIES, CATEGORIES, DEFAULT_OPTIONS, estimateQuota, PERIODS, SORTS } from "../discover/options";
+import { hasYoutubeKey, KEY_HELP_URL, YoutubeApi } from "../discover/youtube-api";
 import { parseProvider, providerStatus } from "../pipeline/ai";
-import { listJobs, loadJob, rerenderJob, runJob, STEPS, type JobEvent, type JobOptions } from "../pipeline/job";
-import { OUT_DIR, ROOT, ytDlp } from "../pipeline/tools";
+import { listJobs, loadJob, rerenderJob, runJob, STEPS, type JobOptions } from "../pipeline/job";
+import { OUT_DIR, ytDlp } from "../pipeline/tools";
 import { parseVideoId } from "../pipeline/youtube";
-
-if (fs.existsSync(path.join(ROOT, ".env"))) process.loadEnvFile(path.join(ROOT, ".env"));
 
 const PORT = Number(process.env.PORT) || 3210;
 const HTML = path.join(path.dirname(fileURLToPath(import.meta.url)), "index.html");
 
-type Running = { events: JobEvent[]; listeners: Set<http.ServerResponse>; done: boolean };
+/** Events streamed to the page: JobEvent, DiscoverEvent, plus the final result or error. */
+type TaskEvent = { type: string };
+type Running = { events: TaskEvent[]; listeners: Set<http.ServerResponse>; done: boolean };
 const running = new Map<string, Running>();
 
-function startTask(id: string, task: (emit: (e: JobEvent) => void) => Promise<unknown>) {
+function startTask<E extends TaskEvent>(id: string, task: (emit: (e: E) => void) => Promise<unknown>) {
   const state: Running = { events: [], listeners: new Set(), done: false };
   running.set(id, state);
-  const emit = (e: JobEvent) => {
+  const emit = (e: TaskEvent) => {
     state.events.push(e);
     for (const res of state.listeners) res.write(`data: ${JSON.stringify(e)}\n\n`);
   };
   task(emit)
-    .then((result) => emit({ type: "result", result: result as never }))
-    .catch((err: Error) => emit({ type: "error", message: err.message }))
+    .then((result) => emit({ type: "result", result } as TaskEvent))
+    .catch((err: Error) => emit({ type: "error", message: err.message } as TaskEvent))
     .finally(() => {
       state.done = true;
       for (const res of state.listeners) res.end();
       state.listeners.clear();
     });
+}
+
+/** Replays a task's past events, then streams new ones until it ends (Server-Sent Events). */
+function streamEvents(req: http.IncomingMessage, res: http.ServerResponse, id: string) {
+  const state = running.get(id);
+  res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+  for (const e of state?.events ?? []) res.write(`data: ${JSON.stringify(e)}\n\n`);
+  if (!state || state.done) return res.end();
+  state.listeners.add(res);
+  req.on("close", () => state.listeners.delete(res));
 }
 
 const json = (res: http.ServerResponse, status: number, body: unknown) => {
@@ -51,7 +65,13 @@ const readBody = (req: http.IncomingMessage) =>
     });
   });
 
-const TYPES: Record<string, string> = { ".mp4": "video/mp4", ".txt": "text/plain; charset=utf-8", ".json": "application/json; charset=utf-8", ".jpg": "image/jpeg" };
+const TYPES: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".txt": "text/plain; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".csv": "text/csv; charset=utf-8",
+  ".jpg": "image/jpeg",
+};
 
 /** Serves a file from out/<id>/ with Range support so the video can be scrubbed. */
 function serveMedia(req: http.IncomingMessage, res: http.ServerResponse, id: string, file: string) {
@@ -91,8 +111,10 @@ const server = http.createServer(async (req, res) => {
       } catch {
         ytdlp = false;
       }
-      return json(res, 200, { providers: providerStatus(), ytdlp, steps: STEPS });
+      return json(res, 200, { providers: providerStatus(), ytdlp, steps: STEPS, youtubeApi: hasYoutubeKey() });
     }
+    if (parts[1] === "discover") return await discoverRoutes(req, res, parts.slice(2));
+    if (parts[1] === "settings" && parts[2] === "youtube-key" && req.method === "POST") return await saveYoutubeKey(req, res);
     if (parts[1] !== "jobs") return json(res, 404, { error: "Not found" });
 
     if (req.method === "GET" && parts.length === 2) return json(res, 200, listJobs());
@@ -126,20 +148,55 @@ const server = http.createServer(async (req, res) => {
       return json(res, 202, { id });
     }
 
-    if (req.method === "GET" && parts[3] === "events") {
-      const state = running.get(id);
-      res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
-      for (const e of state?.events ?? []) res.write(`data: ${JSON.stringify(e)}\n\n`);
-      if (!state || state.done) return res.end();
-      state.listeners.add(res);
-      req.on("close", () => state.listeners.delete(res));
-      return;
-    }
+    if (req.method === "GET" && parts[3] === "events") return streamEvents(req, res, id);
     return json(res, 404, { error: "Not found" });
   } catch (e) {
     return json(res, 500, { error: (e as Error).message });
   }
 });
+
+/** /api/discover/… — the "Tìm video hot" tab. */
+async function discoverRoutes(req: http.IncomingMessage, res: http.ServerResponse, rest: string[]) {
+  if (req.method === "GET" && rest[0] === "options")
+    return json(res, 200, {
+      countries: COUNTRIES,
+      categories: CATEGORIES,
+      periods: PERIODS,
+      sorts: SORTS,
+      defaults: DEFAULT_OPTIONS,
+      steps: DISCOVER_STEPS,
+      quotaPerPage: estimateQuota(1),
+      youtubeApi: hasYoutubeKey(),
+      keyHelpUrl: KEY_HELP_URL,
+      providers: providerStatus(),
+    });
+  if (req.method === "GET" && rest.length === 0) return json(res, 200, listDiscoveries());
+  if (req.method === "POST" && rest.length === 0) {
+    if (!hasYoutubeKey()) return json(res, 400, { error: "Chưa có YOUTUBE_API_KEY. Dán khóa YouTube Data API v3 ở phần cài đặt phía trên." });
+    const body = await readBody(req);
+    const task = `discover-${Date.now()}`;
+    startTask(task, (emit) => runDiscover(body, emit));
+    return json(res, 202, { task });
+  }
+  if (req.method === "GET" && rest.length === 2 && rest[1] === "events") return streamEvents(req, res, rest[0]);
+  if (req.method === "GET" && rest.length === 1) {
+    const result = loadDiscovery(rest[0]);
+    return result ? json(res, 200, result) : json(res, 404, { error: "Không có kết quả tìm kiếm này" });
+  }
+  return json(res, 404, { error: "Not found" });
+}
+
+/** Checks a YouTube Data API key with a 1-unit call, then saves it to .env. */
+async function saveYoutubeKey(req: http.IncomingMessage, res: http.ServerResponse) {
+  // Only the app's own page (JSON fetch) may change settings, not a form on another website.
+  if (!req.headers["content-type"]?.startsWith("application/json")) return json(res, 415, { error: "Cần gửi JSON" });
+  const { key } = (await readBody(req)) as { key?: unknown };
+  const value = typeof key === "string" ? key.trim() : "";
+  if (!/^[\w-]{20,100}$/.test(value)) return json(res, 400, { error: "Khóa không đúng định dạng (khóa YouTube API thường bắt đầu bằng AIza…)." });
+  await new YoutubeApi(value).ping();
+  setEnvValue("YOUTUBE_API_KEY", value);
+  return json(res, 200, { ok: true });
+}
 
 const APP_URL = `http://localhost:${PORT}`;
 

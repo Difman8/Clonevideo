@@ -55,7 +55,7 @@
   .steps .msg { color: var(--muted); font-size: 13px; }
   .bar { height: 5px; background: var(--chip); border-radius: 3px; overflow: hidden; margin-top: 5px; }
   .bar > div { height: 100%; background: var(--brand); width: 0; transition: width .2s; }
-  #log { margin-top: 12px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: var(--muted); max-height: 120px; overflow: auto; white-space: pre-wrap; }
+  #log, .log { margin-top: 12px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: var(--muted); max-height: 120px; overflow: auto; white-space: pre-wrap; }
   .error { color: var(--err); font-weight: 600; margin-top: 10px; }
   .result { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
   @media (max-width: 860px) { .result { grid-template-columns: 1fr; } }
@@ -77,16 +77,58 @@
   .history span { padding: 8px 10px; font-size: 13px; }
   .links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .links a { font-size: 13px; color: var(--brand); }
+  .tabs { display: inline-flex; gap: 4px; background: var(--chip); padding: 4px; border-radius: 12px; }
+  .tabs button { border: 0; background: transparent; padding: 7px 14px; border-radius: 9px; font-weight: 600; color: var(--muted); }
+  .tabs button.active { background: var(--card); color: var(--brand); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  main > * { min-width: 0; }
+  select { max-width: 100%; text-overflow: ellipsis; }
+  .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 14px 18px; }
+  .f { display: grid; gap: 6px; align-content: start; min-width: 0; }
+  .f > label:first-child { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .f select, .f input[type=search], .f input[type=date] { width: 100%; }
+  input[type=search], input[type=date], input[type=password] { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 0; }
+  .f .seg { display: flex; }
+  .f .seg label { flex: 1; text-align: center; padding: 9px 8px; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); cursor: pointer; }
+  code { background: var(--chip); padding: 1px 6px; border-radius: 6px; font-size: 13px; }
+  a { color: var(--brand); }
+  .vlist { display: grid; gap: 14px; margin-top: 14px; }
+  .vcard { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  @media (max-width: 720px) { .vcard { grid-template-columns: 1fr; } }
+  .thumb { position: relative; display: block; border-radius: 10px; overflow: hidden; background: var(--chip); align-self: start; }
+  .thumb img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+  .thumb .rank { position: absolute; top: 8px; left: 8px; background: var(--brand); color: #fff; font-weight: 800; padding: 2px 9px; border-radius: 8px; font-size: 14px; }
+  .thumb .dur { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,.75); color: #fff; padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+  .vtitle { font-weight: 700; font-size: 16px; color: var(--text); text-decoration: none; display: block; margin-bottom: 6px; word-break: break-word; }
+  .vtitle:hover { color: var(--brand); }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .badge { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 99px; background: var(--chip); color: var(--muted); }
+  .badge.shorts { background: #fee2e2; color: #b91c1c; }
+  .badge.long { background: #dbeafe; color: #1d4ed8; }
+  .badge.live { background: #dcfce7; color: #166534; }
+  .badge.animation { background: #fae8ff; color: #a21caf; }
+  .stats { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 14px; font-size: 14px; }
+  .stats span { white-space: nowrap; }
+  .vcard .field { margin-bottom: 10px; }
+  .vcard .value { padding: 7px 10px; max-height: none; }
+  .result-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
+  .history-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .history-chips button { font-size: 13px; padding: 7px 12px; text-align: left; }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <header>
   <h1>🎬 Remotion Remake</h1>
+  <nav class="tabs" aria-label="Công cụ">
+    <button type="button" data-tab="remake" class="active">🎬 Dựng lại video</button>
+    <button type="button" data-tab="discover">🔥 Tìm video hot</button>
+  </nav>
   <span class="pill" id="st-ai">…</span>
   <span class="pill" id="st-ytdlp">…</span>
+  <span class="pill" id="st-yt">…</span>
 </header>
-<main>
+<main id="tab-remake">
   <section class="card">
     <form id="form">
       <div class="row">
@@ -158,6 +200,124 @@
   </section>
 </main>
 
+<main id="tab-discover" hidden>
+  <section class="card" id="yt-key-card" hidden>
+    <h2>🔑 Cần khóa YouTube Data API v3 (miễn phí)</h2>
+    <ol class="notes">
+      <li>Mở <a id="key-help" href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noreferrer">Google Cloud Console → YouTube Data API v3</a>, đăng nhập Google, tạo hoặc chọn một dự án rồi bấm <b>Enable</b> (Bật).</li>
+      <li>Vào <b>APIs &amp; Services → Credentials → Create credentials → API key</b>, sao chép khóa (dạng <code>AIza…</code>).</li>
+      <li>Dán vào ô dưới rồi bấm <b>Lưu khóa</b>. App kiểm tra khóa rồi lưu vào <code>remotion-remake/.env</code> (dòng <code>YOUTUBE_API_KEY</code>).</li>
+    </ol>
+    <div class="row" style="margin-top:12px">
+      <input type="password" id="yt-key" placeholder="Dán khóa AIza…" autocomplete="off" style="flex:1 1 320px" />
+      <button class="primary" type="button" id="yt-key-save">Lưu khóa</button>
+    </div>
+    <div class="hint" style="margin-top:8px">Miễn phí 10.000 đơn vị quota mỗi ngày, không cần thẻ thanh toán. Mỗi lần tìm tốn khoảng 100–500 đơn vị tuỳ độ sâu.</div>
+    <div class="error" id="yt-key-error" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>🔥 Tìm video có nhiều lượt xem, lượt thích và bình luận nhất</h2>
+    <form id="d-form">
+      <div class="filters">
+        <div class="f">
+          <label>Định dạng</label>
+          <div class="seg" role="radiogroup" aria-label="Định dạng">
+            <label><input type="radio" name="d-format" value="shorts" checked /><span>Shorts</span></label>
+            <label><input type="radio" name="d-format" value="long" /><span>Video dài</span></label>
+            <label><input type="radio" name="d-format" value="all" /><span>Cả hai</span></label>
+          </div>
+        </div>
+        <div class="f">
+          <label>Hình ảnh</label>
+          <div class="seg" role="radiogroup" aria-label="Hình ảnh">
+            <label><input type="radio" name="d-style" value="all" checked /><span>Tất cả</span></label>
+            <label title="Quay bằng máy quay: người thật, cảnh thật"><input type="radio" name="d-style" value="live" /><span>Người thật</span></label>
+            <label title="Hoạt hình 2D/3D, anime, motion graphics, chữ động"><input type="radio" name="d-style" value="animation" /><span>Animation</span></label>
+          </div>
+        </div>
+        <div class="f">
+          <label for="d-country">Quốc gia</label>
+          <select id="d-country"></select>
+          <label class="check"><input type="checkbox" id="d-strict" /> Chỉ kênh của quốc gia này</label>
+        </div>
+        <div class="f">
+          <label for="d-period">Khoảng thời gian đăng</label>
+          <select id="d-period"></select>
+          <div class="row" id="d-custom" hidden>
+            <input type="date" id="d-from" aria-label="Từ ngày" style="flex:1" /> → <input type="date" id="d-to" aria-label="Đến ngày" style="flex:1" />
+          </div>
+        </div>
+        <div class="f">
+          <label for="d-sort">Xếp hạng theo</label>
+          <select id="d-sort"></select>
+        </div>
+        <div class="f">
+          <label for="d-query">Từ khoá (tuỳ chọn)</label>
+          <input type="search" id="d-query" placeholder="vd: mèo, nấu ăn, review điện thoại…" />
+        </div>
+        <div class="f">
+          <label for="d-category">Danh mục YouTube</label>
+          <select id="d-category"></select>
+        </div>
+        <div class="f">
+          <label for="d-limit">Số video trả về</label>
+          <select id="d-limit">
+            <option value="10">10 video</option>
+            <option value="20" selected>20 video</option>
+            <option value="30">30 video</option>
+            <option value="50">50 video</option>
+          </select>
+        </div>
+        <div class="f">
+          <label for="d-pages">Độ sâu tìm kiếm</label>
+          <select id="d-pages">
+            <option value="1">Nhanh: quét 50 video</option>
+            <option value="2" selected>Vừa: quét 100 video</option>
+            <option value="3">Sâu: quét 150 video</option>
+            <option value="5">Rất sâu: quét 250 video</option>
+          </select>
+        </div>
+        <div class="f">
+          <label for="d-ai">AI phân tích chủ đề, keyword &amp; hình ảnh</label>
+          <select id="d-ai"></select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="primary" id="d-go">🔍 Tìm video</button>
+        <span class="hint" id="d-quota"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" id="d-progress" hidden>
+    <h2>Tiến trình</h2>
+    <ul class="steps" id="d-steps"></ul>
+    <div class="log" id="d-log"></div>
+    <div class="error" id="d-error" hidden></div>
+  </section>
+
+  <section id="d-result" hidden>
+    <div class="card">
+      <div class="result-head">
+        <div>
+          <h2 id="d-title" style="margin-bottom:4px"></h2>
+          <div class="hint" id="d-summary"></div>
+        </div>
+        <select id="d-resort" aria-label="Sắp xếp lại kết quả"></select>
+      </div>
+      <div class="links" id="d-links"></div>
+      <ul class="notes hint" id="d-notes" style="margin-top:10px"></ul>
+    </div>
+    <div class="vlist" id="d-list"></div>
+  </section>
+
+  <section class="card" id="d-history-card" hidden>
+    <h2>Lần tìm trước</h2>
+    <div class="history-chips" id="d-history"></div>
+  </section>
+</main>
+
 <script>
 const $ = (id) => document.getElementById(id);
 let STEPS = [];
@@ -210,6 +370,15 @@ async function loadStatus() {
   updateProvider();
   $("st-ytdlp").textContent = s.ytdlp ? "yt-dlp: sẵn sàng" : "yt-dlp: chưa cài — chạy npm run setup";
   $("st-ytdlp").className = "pill " + (s.ytdlp ? "on" : "off");
+  setYoutubeReady(s.youtubeApi);
+}
+
+function setYoutubeReady(ready) {
+  $("st-yt").textContent = ready ? "YouTube API: sẵn sàng" : "YouTube API: chưa có khóa";
+  $("st-yt").className = "pill " + (ready ? "on" : "off");
+  $("yt-key-card").hidden = ready;
+  $("d-go").disabled = !ready;
+  $("d-go").title = ready ? "" : "Cần khóa YouTube Data API (xem phía trên)";
 }
 
 async function loadHistory() {
@@ -223,33 +392,40 @@ async function loadHistory() {
   );
 }
 
-function resetSteps(only) {
-  $("progress").hidden = false;
-  $("error").hidden = true;
-  $("log").textContent = "";
-  $("steps").replaceChildren(
-    ...STEPS.filter((s) => !only || only.includes(s.id)).map((s) =>
-      el("li", { id: "step-" + s.id }, el("div", { className: "ic", textContent: "•" }), el("div", {}, el("div", { textContent: s.label }), el("div", { className: "msg" }), el("div", { className: "bar", hidden: true }, el("div")))),
-    ),
+const stepItems = (steps, prefix) =>
+  steps.map((s) =>
+    el("li", { id: prefix + s.id }, el("div", { className: "ic", textContent: "•" }), el("div", {}, el("div", { textContent: s.label }), el("div", { className: "msg" }), el("div", { className: "bar", hidden: true }, el("div")))),
   );
-}
 
-function onEvent(e) {
+/** Updates a progress row for "step" / "progress" events; returns false for any other event. */
+function stepEvent(prefix, e) {
+  if (e.type !== "step" && e.type !== "progress") return false;
+  const li = $(prefix + e.step);
+  if (!li) return true;
   if (e.type === "step") {
-    const li = $("step-" + e.step);
-    if (!li) return;
     li.className = e.status;
     li.querySelector(".ic").textContent = { start: "…", done: "✓", skip: "–" }[e.status];
     if (e.message) li.querySelector(".msg").textContent = e.message;
     if (e.status !== "start") li.querySelector(".bar").hidden = true;
-  } else if (e.type === "progress") {
-    const li = $("step-" + e.step);
-    if (!li) return;
+  } else {
     const bar = li.querySelector(".bar");
     bar.hidden = false;
     bar.firstChild.style.width = Math.round(e.progress * 100) + "%";
     li.querySelector(".msg").textContent = Math.round(e.progress * 100) + "%";
-  } else if (e.type === "log") {
+  }
+  return true;
+}
+
+function resetSteps(only) {
+  $("progress").hidden = false;
+  $("error").hidden = true;
+  $("log").textContent = "";
+  $("steps").replaceChildren(...stepItems(STEPS.filter((s) => !only || only.includes(s.id)), "step-"));
+}
+
+function onEvent(e) {
+  if (stepEvent("step-", e)) return;
+  if (e.type === "log") {
     $("log").textContent += e.message + "\n";
     $("log").scrollTop = 1e9;
   } else if (e.type === "error") {
@@ -274,15 +450,15 @@ function busy(on) {
   $("rerender").disabled = on;
 }
 
-function copyButton(text) {
+function copyButton(text, label = "Sao chép") {
   return el("button", {
     type: "button",
     className: "copy",
-    textContent: "Sao chép",
+    textContent: label,
     onclick: async (ev) => {
       await navigator.clipboard.writeText(text);
       ev.target.textContent = "Đã chép ✓";
-      setTimeout(() => (ev.target.textContent = "Sao chép"), 1200);
+      setTimeout(() => (ev.target.textContent = label), 1200);
     },
   });
 }
@@ -395,7 +571,282 @@ $("rerender").addEventListener("click", async () => {
   }
 });
 
+// ---------- Tabs ----------
+function showTab(name) {
+  document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  $("tab-remake").hidden = name !== "remake";
+  $("tab-discover").hidden = name !== "discover";
+  history.replaceState(null, "", name === "discover" ? "#discover" : location.pathname);
+  try {
+    localStorage.setItem("tab", name);
+  } catch {}
+  if (name === "discover") initDiscover().catch((e) => dOnEvent({ type: "error", message: e.message }));
+}
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+addEventListener("hashchange", () => showTab(location.hash === "#discover" ? "discover" : "remake"));
+
+// ---------- Tìm video hot ----------
+let DOPT = null;
+let dResult = null;
+const nf = new Intl.NumberFormat("vi-VN");
+const compact = new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 1 });
+const STYLE_TEXT = { live: "Người thật cảnh thật", animation: "Animation / đồ hoạ", other: "Khác (game, màn hình, ảnh tĩnh…)" };
+const SORT_FN = { engagement: (v) => v.score, views: (v) => v.views, likes: (v) => v.likes ?? 0, comments: (v) => v.comments ?? 0, rate: (v) => v.engagementRate };
+const radio = (name) => document.querySelector(`input[name=${name}]:checked`).value;
+const option = (value, text, extra = {}) => el("option", { value, textContent: text, ...extra });
+
+function readForm() {
+  return {
+    format: radio("d-format"),
+    style: radio("d-style"),
+    country: $("d-country").value,
+    strictCountry: $("d-strict").checked,
+    period: $("d-period").value,
+    from: $("d-from").value,
+    to: $("d-to").value,
+    sort: $("d-sort").value,
+    query: $("d-query").value.trim(),
+    category: $("d-category").value,
+    limit: Number($("d-limit").value),
+    pages: Number($("d-pages").value),
+    ai: $("d-ai").value,
+  };
+}
+
+function writeForm(o) {
+  const setRadio = (name, v) => {
+    const r = document.querySelector(`input[name=${name}][value="${v}"]`);
+    if (r) r.checked = true;
+  };
+  const setSelect = (id, v) => {
+    if (v != null && [...$(id).options].some((x) => x.value === String(v) && !x.disabled)) $(id).value = String(v);
+  };
+  setRadio("d-format", o.format);
+  setRadio("d-style", o.style);
+  setSelect("d-country", o.country);
+  setSelect("d-period", o.period);
+  setSelect("d-sort", o.sort);
+  setSelect("d-category", o.category);
+  setSelect("d-limit", o.limit);
+  setSelect("d-pages", o.pages);
+  setSelect("d-ai", o.ai);
+  $("d-strict").checked = !!o.strictCountry;
+  $("d-from").value = o.from || "";
+  $("d-to").value = o.to || "";
+  $("d-query").value = o.query || "";
+}
+
+function syncForm() {
+  $("d-custom").hidden = $("d-period").value !== "custom";
+  $("d-strict").disabled = !$("d-country").value;
+  $("d-quota").textContent = `Mỗi lần tìm tốn khoảng ${nf.format(Number($("d-pages").value) * DOPT.quotaPerPage)} / 10.000 đơn vị quota miễn phí mỗi ngày.`;
+}
+
+async function initDiscover() {
+  if (DOPT) return;
+  DOPT = await api("/api/discover/options");
+  $("key-help").href = DOPT.keyHelpUrl;
+  $("d-country").replaceChildren(...DOPT.countries.map((c) => option(c.code, c.name)));
+  $("d-period").replaceChildren(...DOPT.periods.map((p) => option(p.id, p.label)), option("custom", "Tuỳ chọn ngày…"));
+  $("d-sort").replaceChildren(...DOPT.sorts.map((s) => option(s.id, s.label)));
+  $("d-resort").replaceChildren(...DOPT.sorts.map((s) => option(s.id, "Sắp xếp: " + s.label)));
+  $("d-category").replaceChildren(option("", "Tất cả danh mục"), ...Object.entries(DOPT.categories).map(([id, name]) => option(id, name)));
+  const ready = Object.entries(DOPT.providers).filter(([, p]) => p.ready);
+  $("d-ai").replaceChildren(
+    ...Object.entries(DOPT.providers).map(([id, p]) => option(id, p.ready ? `${p.label} (${p.model})` : `${p.label}: chưa có ${p.envKey}`, { disabled: !p.ready })),
+    option("none", "Không dùng AI (đoán theo từ khoá)"),
+  );
+  $("d-ai").value = ready.length ? ready[0][0] : "none";
+  writeForm(DOPT.defaults);
+  try {
+    const saved = JSON.parse(localStorage.getItem("discover-form") || "null");
+    if (saved) writeForm(saved);
+  } catch {}
+  syncForm();
+  setYoutubeReady(DOPT.youtubeApi);
+  loadDiscoverHistory();
+}
+
+["d-period", "d-country", "d-pages"].forEach((id) => $(id).addEventListener("change", syncForm));
+$("d-resort").addEventListener("change", renderVideos);
+
+$("yt-key-save").addEventListener("click", async () => {
+  $("yt-key-error").hidden = true;
+  $("yt-key-save").disabled = true;
+  try {
+    await api("/api/settings/youtube-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: $("yt-key").value.trim() }) });
+    $("yt-key").value = "";
+    if (DOPT) DOPT.youtubeApi = true;
+    setYoutubeReady(true);
+  } catch (e) {
+    $("yt-key-error").hidden = false;
+    $("yt-key-error").textContent = e.message;
+  } finally {
+    $("yt-key-save").disabled = false;
+  }
+});
+
+function dOnEvent(e) {
+  if (stepEvent("dstep-", e)) return;
+  if (e.type === "log") {
+    $("d-log").textContent += e.message + "\n";
+    $("d-log").scrollTop = 1e9;
+  } else if (e.type === "error") {
+    $("d-progress").hidden = false;
+    $("d-error").hidden = false;
+    $("d-error").textContent = "Lỗi: " + e.message;
+    $("d-go").disabled = false;
+  } else if (e.type === "result") {
+    $("d-go").disabled = false;
+    showDiscovery(e.result);
+    loadDiscoverHistory();
+  }
+}
+
+$("d-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const opts = readForm();
+  try {
+    localStorage.setItem("discover-form", JSON.stringify(opts));
+  } catch {}
+  $("d-go").disabled = true;
+  $("d-progress").hidden = false;
+  $("d-error").hidden = true;
+  $("d-log").textContent = "";
+  $("d-steps").replaceChildren(...stepItems(DOPT.steps, "dstep-"));
+  try {
+    const { task } = await api("/api/discover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts) });
+    const es = new EventSource(`/api/discover/${encodeURIComponent(task)}/events`);
+    es.onmessage = (m) => dOnEvent(JSON.parse(m.data));
+    es.onerror = () => es.close();
+  } catch (e) {
+    dOnEvent({ type: "error", message: e.message });
+  }
+});
+
+const fmtDate = (iso) => new Date(iso).toLocaleDateString("vi-VN");
+const fmtDuration = (sec) => {
+  const s = Math.round(sec);
+  const hms = [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60];
+  return (hms[0] ? [hms[0], String(hms[1]).padStart(2, "0")] : [hms[1]]).concat(String(hms[2]).padStart(2, "0")).join(":");
+};
+function fmtAgo(iso) {
+  const h = (Date.now() - new Date(iso).getTime()) / 3_600_000;
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))} phút trước`;
+  if (h < 24) return `${Math.round(h)} giờ trước`;
+  if (h < 24 * 31) return `${Math.round(h / 24)} ngày trước`;
+  return fmtDate(iso);
+}
+const countryLabel = (code) => DOPT?.countries.find((c) => c.code === code)?.name || code;
+const stat = (icon, n, label) =>
+  el("span", { title: n == null ? `${label}: bị ẩn` : `${nf.format(n)} ${label}`, textContent: `${icon} ${n == null ? "ẩn" : compact.format(n)}` });
+
+function videoCard(v, pos) {
+  const keywords = [...v.keywords, ...v.suggestedKeywords];
+  const all = [v.title, v.url, `Chủ đề: ${v.topic}`, `Keywords: ${keywords.join(", ")}`, `Hashtag: ${v.hashtags.join(" ")}`].join("\n");
+  const link = (href, text, cls) => el("a", { href, target: "_blank", rel: "noreferrer", textContent: text, className: cls || "" });
+  return el(
+    "article",
+    { className: "vcard" },
+    el(
+      "a",
+      { className: "thumb", href: v.url, target: "_blank", rel: "noreferrer" },
+      el("img", { src: v.thumbnail, alt: "", loading: "lazy" }),
+      el("span", { className: "rank", textContent: "#" + pos }),
+      el("span", { className: "dur", textContent: fmtDuration(v.durationSec) }),
+    ),
+    el(
+      "div",
+      {},
+      link(v.url, v.title, "vtitle"),
+      el(
+        "div",
+        { className: "badges" },
+        el("span", { className: "badge " + v.format, textContent: v.format === "shorts" ? "Shorts" : "Video dài" }),
+        el("span", {
+          className: "badge " + v.style,
+          textContent: STYLE_TEXT[v.style] + (v.styleSource === "ai" ? " · AI" : " · đoán"),
+          title: v.styleSource === "ai" ? "AI phân loại từ ảnh thumbnail và tiêu đề" : "Đoán theo từ khoá trong tiêu đề/tags, có thể sai",
+        }),
+        v.category ? el("span", { className: "badge", textContent: v.category }) : null,
+      ),
+      el("div", { className: "hint" }, link(v.channelUrl, v.channel), `${v.channelCountry ? " · " + countryLabel(v.channelCountry) : ""} · đăng ${fmtAgo(v.publishedAt)} (${fmtDate(v.publishedAt)})`),
+      el(
+        "div",
+        { className: "stats" },
+        stat("👁", v.views, "lượt xem"),
+        stat("👍", v.likes, "lượt thích"),
+        stat("💬", v.comments, "bình luận"),
+        el("span", { title: "(Lượt thích + bình luận) / lượt xem", textContent: `⚡ ${v.engagementRate.toLocaleString("vi-VN")}%` }),
+        el("span", { title: "Điểm tương tác 0–100: trung bình thứ hạng về lượt xem, lượt thích và bình luận so với các video tìm được", textContent: `🏆 ${v.score}/100` }),
+      ),
+      field("Link", el("div", { className: "value" }, link(v.url, v.url)), v.url),
+      field("Chủ đề", el("div", { className: "value", textContent: v.topic || "(không rõ)" }), v.topic),
+      field(`Keywords (${v.keywords.length})`, chips(v.keywords, "", "Video không khai báo keywords"), v.keywords.join(", ")),
+      v.suggestedKeywords.length ? field(`Keywords gợi ý (AI)`, chips(v.suggestedKeywords, "", ""), v.suggestedKeywords.join(", ")) : null,
+      field(`Hashtag (${v.hashtags.length})`, chips(v.hashtags, "tag", "Video không có hashtag"), v.hashtags.join(" ")),
+      el(
+        "div",
+        { className: "row" },
+        el("button", { type: "button", className: "primary", textContent: "🎬 Dựng lại video này", onclick: () => remakeFromDiscover(v.url) }),
+        copyButton(all, "Sao chép tất cả thông tin"),
+      ),
+    ),
+  );
+}
+
+function renderVideos() {
+  if (!dResult) return;
+  const fn = SORT_FN[$("d-resort").value] || SORT_FN.engagement;
+  const list = [...dResult.videos].sort((a, b) => fn(b) - fn(a) || a.rank - b.rank);
+  $("d-list").replaceChildren(...(list.length ? list.map((v, i) => videoCard(v, i + 1)) : [el("div", { className: "card empty", textContent: "Không có video nào khớp bộ lọc." })]));
+}
+
+function showDiscovery(r) {
+  dResult = r;
+  $("d-result").hidden = false;
+  $("d-title").textContent = `Top ${r.videos.length} video · ${r.label}`;
+  $("d-summary").textContent = `Đăng từ ${fmtDate(r.range.from)} đến ${fmtDate(r.range.to)} · YouTube trả về ${r.stats.scanned} video, ${r.stats.matchedFormat} đúng định dạng · AI: ${r.ai} · quota đã dùng: ${r.stats.quotaUsed}`;
+  $("d-links").replaceChildren(
+    el("a", { href: `/media/_discover/${r.id}.csv?download`, textContent: "⬇ Bảng tính (.csv)" }),
+    el("a", { href: `/media/_discover/${r.id}.json?download`, textContent: "⬇ Dữ liệu (.json)" }),
+    copyButton(r.videos.map((v) => v.url).join("\n"), "Sao chép tất cả link"),
+  );
+  $("d-notes").replaceChildren(...r.notes.map((n) => el("li", { textContent: n })));
+  $("d-resort").value = r.options.sort;
+  renderVideos();
+}
+
+async function loadDiscoverHistory() {
+  const list = await api("/api/discover");
+  $("d-history-card").hidden = !list.length;
+  $("d-history").replaceChildren(
+    ...list.map((h) =>
+      el("button", {
+        type: "button",
+        textContent: `${new Date(h.createdAt).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })} · ${h.label} · ${h.count} video`,
+        onclick: async () => {
+          showDiscovery(await api(`/api/discover/${encodeURIComponent(h.id)}`));
+          $("d-result").scrollIntoView({ behavior: "smooth" });
+        },
+      }),
+    ),
+  );
+}
+
+function remakeFromDiscover(url) {
+  showTab("remake");
+  $("url").value = url;
+  $("url").focus();
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+
 loadStatus().then(loadHistory);
+let startTab = "remake";
+try {
+  startTab = location.hash === "#discover" ? "discover" : localStorage.getItem("tab") || "remake";
+} catch {}
+showTab(startTab === "discover" ? "discover" : "remake");
 </script>
 </body>
 </html>
