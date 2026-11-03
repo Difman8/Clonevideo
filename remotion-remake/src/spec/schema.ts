@@ -42,6 +42,10 @@ const sceneBase = {
   background: z
     .array(Color)
     .describe("Per-scene background colors (1-3). Empty array = use the theme background."),
+  narration: z
+    .string()
+    .catch("")
+    .describe("Voice-over spoken while this scene is on screen, in the video's language. Empty string = silent scene."),
 };
 
 export const TitleSceneSchema = z.object({
@@ -193,13 +197,22 @@ export const MetaSchema = z.object({
   language: z.string().describe("BCP-47 language code of the on-screen text, e.g. vi or en."),
 });
 
-export const VideoSpecSchema = AnalyzedSpecSchema.extend({ meta: MetaSchema });
+/** A generated voice-over clip (ElevenLabs), played from the start of its scene. */
+export const VoiceClipSchema = z.object({
+  scene: z.number().int(),
+  /** Path inside the render bundle's public folder, e.g. voice/<videoId>/3-ab12cd34.mp3. */
+  src: z.string(),
+  durationSec: z.number(),
+});
+
+export const VideoSpecSchema = AnalyzedSpecSchema.extend({ meta: MetaSchema, voiceover: z.array(VoiceClipSchema).catch([]) });
 
 export type Scene = z.infer<typeof SceneSchema>;
 export type SceneType = Scene["type"];
 export type Theme = z.infer<typeof ThemeSchema>;
 export type AnalyzedSpec = z.infer<typeof AnalyzedSpecSchema>;
 export type VideoSpec = z.infer<typeof VideoSpecSchema>;
+export type VoiceClip = z.infer<typeof VoiceClipSchema>;
 export type FontName = (typeof FONTS)[number];
 export type TransitionName = (typeof TRANSITIONS)[number];
 export type TextAnimation = (typeof TEXT_ANIMATIONS)[number];

@@ -1,12 +1,29 @@
 import type { AiInput, AiOutput } from "./ai-common";
-import { analyzeWithClaude, CLAUDE_MODEL, hasClaudeCredentials } from "./analyze-claude";
-import { analyzeWithOpenAI, hasOpenAICredentials, OPENAI_MODEL } from "./analyze-openai";
+import { analyzeWithClaude, claudeModel, hasClaudeCredentials } from "./analyze-claude";
+import { analyzeWithOpenAI, hasOpenAICredentials, openaiModel } from "./analyze-openai";
 
 export type Provider = "claude" | "openai";
 
-export const PROVIDERS: Record<Provider, { label: string; model: string; envKey: string; ready: () => boolean; analyze: (input: AiInput) => Promise<AiOutput> }> = {
-  claude: { label: "Claude", model: CLAUDE_MODEL, envKey: "ANTHROPIC_API_KEY", ready: hasClaudeCredentials, analyze: analyzeWithClaude },
-  openai: { label: "OpenAI", model: OPENAI_MODEL, envKey: "OPENAI_API_KEY", ready: hasOpenAICredentials, analyze: analyzeWithOpenAI },
+// `model` is a getter: it follows the setting saved from the "⚙️ Cài đặt" tab.
+export const PROVIDERS: Record<Provider, { label: string; readonly model: string; envKey: string; ready: () => boolean; analyze: (input: AiInput) => Promise<AiOutput> }> = {
+  claude: {
+    label: "Claude",
+    get model() {
+      return claudeModel();
+    },
+    envKey: "ANTHROPIC_API_KEY",
+    ready: hasClaudeCredentials,
+    analyze: analyzeWithClaude,
+  },
+  openai: {
+    label: "OpenAI",
+    get model() {
+      return openaiModel();
+    },
+    envKey: "OPENAI_API_KEY",
+    ready: hasOpenAICredentials,
+    analyze: analyzeWithOpenAI,
+  },
 };
 
 export const parseProvider = (value: unknown): Provider => (value === "openai" ? "openai" : "claude");

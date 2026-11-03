@@ -9,7 +9,7 @@ const colors = (values: string[], fallback: string[]) => {
 };
 
 function fixScene(scene: Scene): Scene {
-  const s = { ...scene, durationSec: Math.max(0.5, Number(scene.durationSec) || 3) } as Scene;
+  const s = { ...scene, durationSec: Math.max(0.5, Number(scene.durationSec) || 3), narration: (scene.narration ?? "").trim() } as Scene;
   s.background = s.background.length ? colors(s.background, []) : [];
   switch (s.type) {
     case "quiz": {
@@ -55,7 +55,7 @@ export function finalizeSpec(
   let scenes = analyzed.scenes.map(fixScene);
   if (!scenes.length) {
     scenes = [
-      { type: "title", durationSec: targetDurationSec || 5, transition: "none", background: [], heading: " ", subheading: "", emoji: "" },
+      { type: "title", durationSec: targetDurationSec || 5, transition: "none", background: [], narration: "", heading: " ", subheading: "", emoji: "" },
     ];
   }
   const sum = scenes.reduce((a, s) => a + s.durationSec, 0);
@@ -63,7 +63,7 @@ export function finalizeSpec(
     const k = targetDurationSec / sum;
     scenes = scenes.map((s) => ({ ...s, durationSec: Math.max(0.5, +(s.durationSec * k).toFixed(2)) }));
   }
-  return VideoSpecSchema.parse({ ...analyzed, theme, scenes, meta: normalizeMeta(meta) });
+  return VideoSpecSchema.parse({ ...analyzed, theme, scenes, meta: normalizeMeta(meta), voiceover: [] });
 }
 
 export function normalizeMeta(meta: VideoSpec["meta"]): VideoSpec["meta"] {

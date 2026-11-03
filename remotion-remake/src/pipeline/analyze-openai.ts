@@ -1,9 +1,11 @@
 import fs from "node:fs";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
+import { numberSetting, setting } from "../settings";
 import { AiOutputSchema, buildContext, finalInstruction, progressReporter, SYSTEM_PROMPT, type AiInput, type AiOutput } from "./ai-common";
 
-export const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.5";
+export const openaiModel = () => setting("OPENAI_MODEL");
+export const openaiEffort = (key: "OPENAI_REASONING_EFFORT" | "OPENAI_POST_REASONING_EFFORT") => setting(key) as OpenAI.ReasoningEffort;
 
 export const hasOpenAICredentials = () => !!process.env.OPENAI_API_KEY;
 
@@ -29,12 +31,12 @@ export async function analyzeWithOpenAI(input: AiInput): Promise<AiOutput> {
 
   const client = new OpenAI();
   const stream = client.responses.stream({
-    model: OPENAI_MODEL,
+    model: openaiModel(),
     instructions: SYSTEM_PROMPT,
     input: [{ role: "user", content }],
     text: { format },
-    reasoning: { effort: "high" },
-    max_output_tokens: 64000,
+    reasoning: { effort: openaiEffort("OPENAI_REASONING_EFFORT") },
+    max_output_tokens: numberSetting("OPENAI_MAX_OUTPUT_TOKENS"),
   });
   const report = progressReporter("OpenAI", input.onProgress);
   stream.on("response.output_text.delta", (e) => report(e.delta));

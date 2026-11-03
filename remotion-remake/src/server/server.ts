@@ -4,17 +4,19 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DISCOVER_STEPS, listDiscoveries, loadDiscovery, runDiscover } from "../discover/discover";
+import { dismissDiscovery, DISCOVER_STEPS, listDiscoveries, loadDiscovery, newDiscoverId, runDiscover, unfinishedDiscoveries } from "../discover/discover";
 import { LANGUAGE_NAMES } from "../discover/language";
 import { COUNTRIES, CATEGORIES, DEFAULT_OPTIONS, estimateQuota, PERIODS, SORTS } from "../discover/options";
 import { hasYoutubeKey, KEY_HELP_URL, YoutubeApi } from "../discover/youtube-api";
 import { parseProvider, providerStatus } from "../pipeline/ai";
-import { listJobs, loadJob, rerenderJob, runJob, STEPS, type JobOptions } from "../pipeline/job";
-import { composePost, DEFAULT_CHANNEL, LIMITS, loadComposedPost, loadPostSource, parseWriterOptions, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
+import { catalog, hasElevenLabsKey, previewVoice } from "../pipeline/elevenlabs";
+import { dismissJob, listJobs, loadJob, loadState, rerenderJob, runJob, STEPS, unfinishedJobs, type JobOptions } from "../pipeline/job";
+import { composePost, defaultChannel, LIMITS, loadComposedPost, loadPostSource, parseWriterOptions, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
 import { OUT_DIR, ytDlp } from "../pipeline/tools";
 import { parseVideoId } from "../pipeline/youtube";
+import { numberSetting, publicSettings, saveSettings } from "../settings";
 
-const PORT = Number(process.env.PORT) || 3210;
+const PORT = numberSetting("PORT") || 3210;
 const HTML = path.join(path.dirname(fileURLToPath(import.meta.url)), "index.html");
 
 /** Events streamed to the page: JobEvent, DiscoverEvent, plus the final result or error. */
@@ -113,10 +115,13 @@ const server = http.createServer(async (req, res) => {
       } catch {
         ytdlp = false;
       }
-      return json(res, 200, { providers: providerStatus(), ytdlp, steps: STEPS, youtubeApi: hasYoutubeKey() });
+      return json(res, 200, { providers: providerStatus(), ytdlp, steps: STEPS, youtubeApi: hasYoutubeKey(), elevenlabs: hasElevenLabsKey() });
     }
+    if (parts[1] === "settings" && parts.length === 2) return await settingsRoutes(req, res);
+    if (parts[1] === "elevenlabs") return await elevenLabsRoutes(req, res, parts[2]);
     if (parts[1] === "discover") return await discoverRoutes(req, res, parts.slice(2));
     if (parts[1] === "post" && req.method === "POST") return await postRoutes(req, res, parts[2]);
+    if (parts[1] === "unfinished") return await unfinishedRoutes(req, res, parts[2]);
     if (parts[1] === "settings" && parts[2] === "youtube-key" && req.method === "POST") return await saveYoutubeKey(req, res);
     if (parts[1] !== "jobs") return json(res, 404, { error: "Not found" });
 
@@ -133,6 +138,7 @@ const server = http.createServer(async (req, res) => {
         analyzer: body.analyzer === "ai" || body.analyzer === "basic" ? body.analyzer : "auto",
         provider: parseProvider(body.provider),
         render: body.render !== false,
+        voice: body.voice === true,
       };
       startTask(id, (emit) => runJob(opts, emit));
       return json(res, 202, { id });
@@ -142,6 +148,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && parts.length === 3) {
       const job = loadJob(id);
       return job ? json(res, 200, { ...job, running: running.get(id)?.done === false }) : json(res, 404, { error: "Không có job này" });
+    }
+
+    if (req.method === "POST" && parts[3] === "resume") {
+      if (running.get(id)?.done === false) return json(res, 409, { error: "Video này đang được xử lý." });
+      const state = loadState(id);
+      if (!state) return json(res, 404, { error: "Không còn tiến trình đã lưu của video này." });
+      startTask(id, (emit) => runJob(state.options, emit, { resume: true }));
+      return json(res, 202, { id });
     }
 
     if (req.method === "POST" && parts[3] === "render") {
@@ -177,11 +191,19 @@ async function discoverRoutes(req: http.IncomingMessage, res: http.ServerRespons
   if (req.method === "POST" && rest.length === 0) {
     if (!hasYoutubeKey()) return json(res, 400, { error: "Chưa có YOUTUBE_API_KEY. Dán khóa YouTube Data API v3 ở phần cài đặt phía trên." });
     const body = await readBody(req);
-    const task = `discover-${Date.now()}`;
-    startTask(task, (emit) => runDiscover(body, emit));
+    const id = newDiscoverId();
+    const task = `discover-${id}`;
+    startTask(task, (emit) => runDiscover(body, emit, { id }));
     return json(res, 202, { task });
   }
   if (req.method === "GET" && rest.length === 2 && rest[1] === "events") return streamEvents(req, res, rest[0]);
+  if (req.method === "POST" && rest.length === 2 && rest[1] === "resume") {
+    const task = `discover-${rest[0]}`;
+    if (running.get(task)?.done === false) return json(res, 409, { error: "Lần tìm này đang chạy." });
+    if (!hasYoutubeKey()) return json(res, 400, { error: "Chưa có YOUTUBE_API_KEY." });
+    startTask(task, (emit) => runDiscover(null, emit, { id: rest[0], resume: true }));
+    return json(res, 202, { task });
+  }
   if (req.method === "GET" && rest.length === 1) {
     const result = loadDiscovery(rest[0]);
     return result ? json(res, 200, result) : json(res, 404, { error: "Không có kết quả tìm kiếm này" });
@@ -197,12 +219,55 @@ async function postRoutes(req: http.IncomingMessage, res: http.ServerResponse, a
   // source: the source video's title/description/keywords; from the page, or loaded by URL.
   if (action === "source") {
     const source = body.source ? sanitizeSource(body.source) : await loadPostSource(typeof body.url === "string" ? body.url : "");
-    return json(res, 200, { source, saved: loadComposedPost(source.videoId), target: TARGET, limits: LIMITS, defaultChannel: DEFAULT_CHANNEL });
+    return json(res, 200, { source, saved: loadComposedPost(source.videoId), target: TARGET, limits: LIMITS, defaultChannel: defaultChannel() });
   }
   if (action === "compose") {
     const post = await composePost(sanitizeSource(body.source), parseProvider(body.provider), parseWriterOptions(body));
     saveComposedPost(post);
     return json(res, 200, post);
+  }
+  return json(res, 404, { error: "Not found" });
+}
+
+/** /api/unfinished — work interrupted by a power cut / closed app (or failed), offered for continuing. */
+async function unfinishedRoutes(req: http.IncomingMessage, res: http.ServerResponse, action: string | undefined) {
+  if (req.method === "GET" && !action)
+    return json(res, 200, {
+      jobs: unfinishedJobs((id) => running.get(id)?.done === false),
+      discover: unfinishedDiscoveries((id) => running.get(`discover-${id}`)?.done === false),
+    });
+  if (req.method === "POST" && action === "dismiss") {
+    if (!isJson(req)) return json(res, 415, { error: "Cần gửi JSON" });
+    const { kind, id } = (await readBody(req)) as { kind?: unknown; id?: unknown };
+    if (typeof id !== "string") return json(res, 400, { error: "Thiếu id" });
+    if (kind === "discover") dismissDiscovery(id);
+    else if (parseVideoId(id) === id) dismissJob(id);
+    return json(res, 200, { ok: true });
+  }
+  return json(res, 404, { error: "Not found" });
+}
+
+/** Writes need a JSON body: a form on another website cannot send one to this local app. */
+const isJson = (req: http.IncomingMessage) => !!req.headers["content-type"]?.startsWith("application/json");
+
+/** /api/settings — every API parameter (⚙️ Cài đặt tab). Secrets are never sent back. */
+async function settingsRoutes(req: http.IncomingMessage, res: http.ServerResponse) {
+  if (req.method === "GET") return json(res, 200, publicSettings());
+  if (req.method !== "POST") return json(res, 404, { error: "Not found" });
+  if (!isJson(req)) return json(res, 415, { error: "Cần gửi JSON" });
+  const changed = saveSettings(await readBody(req));
+  return json(res, 200, { changed, ...publicSettings() });
+}
+
+/** /api/elevenlabs/… — voice list and voice preview for the settings tab. */
+async function elevenLabsRoutes(req: http.IncomingMessage, res: http.ServerResponse, action: string | undefined) {
+  if (req.method === "GET" && action === "catalog") return json(res, 200, await catalog());
+  if (req.method === "POST" && action === "preview") {
+    if (!isJson(req)) return json(res, 415, { error: "Cần gửi JSON" });
+    const { text } = (await readBody(req)) as { text?: unknown };
+    const speech = await previewVoice(typeof text === "string" && text.trim() ? text : "Xin chào, đây là giọng đọc thử cho video của bạn.");
+    res.writeHead(200, { "Content-Type": speech.ext === "wav" ? "audio/wav" : speech.ext === "opus" ? "audio/ogg" : "audio/mpeg", "Cache-Control": "no-store" });
+    return res.end(speech.audio);
   }
   return json(res, 404, { error: "Not found" });
 }

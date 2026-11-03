@@ -1,6 +1,6 @@
 import "./env";
 import path from "node:path";
-import { rerenderJob, runJob, STEPS, type JobEvent } from "./pipeline/job";
+import { loadState, rerenderJob, runJob, STEPS, type JobEvent } from "./pipeline/job";
 import { ROOT } from "./pipeline/tools";
 
 const args = process.argv.slice(2);
@@ -9,8 +9,11 @@ const target = args.find((a) => !a.startsWith("--"));
 
 if (!target) {
   console.log(`Cách dùng:
-  npm run remake -- <link YouTube> [--openai] [--remix] [--basic] [--no-render]
-  npm run remake -- --rerender <videoId>     (render lại từ out/<videoId>/spec.json)`);
+  npm run remake -- <link YouTube> [--openai] [--remix] [--basic] [--voice] [--no-render]
+  npm run remake -- --resume <videoId>       (làm tiếp việc đang dở, ví dụ sau khi máy tắt đột ngột)
+  npm run remake -- --rerender <videoId>     (render lại từ out/<videoId>/spec.json)
+
+  --voice   Lồng tiếng bằng ElevenLabs (cần ELEVENLABS_API_KEY và ELEVENLABS_VOICE_ID)`);
   process.exit(1);
 }
 
@@ -31,12 +34,23 @@ const print = (e: JobEvent) => {
 };
 
 try {
+  const saved = flag("--resume") ? loadState(target) : null;
+  if (flag("--resume") && !saved) throw new Error(`Không có tiến trình đã lưu cho ${target} (out/${target}/state.json).`);
   const result = flag("--rerender")
     ? await rerenderJob(target, null, print)
-    : await runJob(
-        { url: target, mode: flag("--remix") ? "remix" : "clone", analyzer: flag("--basic") ? "basic" : "auto", provider: flag("--openai") ? "openai" : "claude", render: !flag("--no-render") },
-        print,
-      );
+    : saved
+      ? await runJob(saved.options, print, { resume: true })
+      : await runJob(
+          {
+            url: target,
+            mode: flag("--remix") ? "remix" : "clone",
+            analyzer: flag("--basic") ? "basic" : "auto",
+            provider: flag("--openai") ? "openai" : "claude",
+            render: !flag("--no-render"),
+            voice: flag("--voice"),
+          },
+          print,
+        );
   const dir = path.join(ROOT, "out", result.id);
   console.log(`\nXong! Thư mục: ${dir}`);
   console.log(`  • Nội dung đăng: ${path.join(dir, "post.txt")}`);

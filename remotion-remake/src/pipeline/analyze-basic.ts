@@ -5,7 +5,7 @@ import type { PostContent } from "./metadata";
 import type { Cue } from "./transcript";
 import type { YtInfo } from "./youtube";
 
-const base = { transition: "fade" as const, background: [] as string[] };
+const base = { transition: "fade" as const, background: [] as string[], narration: "" };
 
 /** Groups caption lines into on-screen chunks of roughly 2.5–5 seconds. */
 function chunkCues(cues: Cue[]) {
@@ -32,9 +32,8 @@ export async function analyzeBasic(input: { info: YtInfo; post: PostContent; fra
   const introSec = Math.min(3, duration * 0.15);
   const outroSec = duration > 20 ? 3 : 0;
   const body = Math.max(1, duration - introSec - outroSec);
-  const scenes: Scene[] = [
-    { type: "title", ...base, transition: "none", durationSec: introSec, heading: post.title.replace(/#[\p{L}\p{N}_]+/gu, "").trim(), subheading: post.channel, emoji: "" },
-  ];
+  const heading = post.title.replace(/#[\p{L}\p{N}_]+/gu, "").trim();
+  const scenes: Scene[] = [{ type: "title", ...base, transition: "none", durationSec: introSec, narration: heading, heading, subheading: post.channel, emoji: "" }];
 
   const chapters = (info.chapters ?? []).filter((c) => c.end_time > introSec);
   if (chapters.length >= 2) {
@@ -44,6 +43,7 @@ export async function analyzeBasic(input: { info: YtInfo; post: PostContent; fra
         ...base,
         transition: "slide-left",
         durationSec: c.end_time - Math.max(c.start_time, introSec),
+        narration: c.title,
         rank: String(i + 1),
         heading: c.title,
         body: "",
@@ -60,6 +60,7 @@ export async function analyzeBasic(input: { info: YtInfo; post: PostContent; fra
         ...base,
         transition: i % 3 === 0 ? "slide-up" : "fade",
         durationSec: end - cursor,
+        narration: ch.lines.join(" "),
         lines: ch.lines,
         highlight: [],
         animation: "word-by-word",
@@ -77,7 +78,7 @@ export async function analyzeBasic(input: { info: YtInfo; post: PostContent; fra
       .slice(0, 8);
     const per = body / Math.max(sentences.length, 1);
     sentences.forEach((s) =>
-      scenes.push({ type: "text", ...base, durationSec: per, lines: [s], highlight: [], animation: "pop", align: "center", size: "md", emoji: "" }),
+      scenes.push({ type: "text", ...base, durationSec: per, narration: s, lines: [s], highlight: [], animation: "pop", align: "center", size: "md", emoji: "" }),
     );
   }
 

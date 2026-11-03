@@ -3,7 +3,7 @@
 // No AI is involved: every step uses YouTube data or local code.
 import fs from "node:fs";
 import path from "node:path";
-import { OUT_DIR } from "../pipeline/tools";
+import { OUT_DIR, readJsonSafe, writeFileAtomic, writeJsonAtomic } from "../pipeline/tools";
 import { extractHashtags, guessShorts, isShortsPage, mapLimit, SHORTS_MAX_SEC, topicLabels } from "./classify";
 import { languageName, videoLanguage } from "./language";
 import {
@@ -22,6 +22,32 @@ import {
 import { parseDuration, YoutubeApi, type ApiVideo } from "./youtube-api";
 
 export const DISCOVER_DIR = path.join(OUT_DIR, "_discover");
+/** Checkpoints of searches that have not finished (power cut, app closed, quota ran out). */
+const PENDING_DIR = path.join(DISCOVER_DIR, "pending");
+
+/**
+ * Everything a search has already paid for, saved after each page, after the
+ * details call and every few Shorts checks. A continued search starts from here.
+ */
+type Checkpoint = {
+  id: string;
+  options: DiscoverOptions;
+  /** Kept as first computed: "7 ngày qua" must not move when the search is continued later. */
+  range: { after: string; before: string };
+  label: string;
+  status: "running" | "error";
+  error: string;
+  createdAt: string;
+  updatedAt: string;
+  search: { ids: string[]; pagesDone: number; nextPageToken: string | null; finished: boolean };
+  details: ApiVideo[] | null;
+  shorts: Record<string, boolean | null>;
+  quotaUsed: number;
+};
+
+const pendingFile = (id: string) => path.join(PENDING_DIR, `${id}.json`);
+const saveCheckpoint = (cp: Checkpoint) => writeJsonAtomic(pendingFile(cp.id), { ...cp, updatedAt: new Date().toISOString() });
+export const newDiscoverId = () => `d${Date.now()}`;
 
 export const DISCOVER_STEPS = [
   { id: "search", label: "Tìm video nhiều lượt xem trên YouTube" },
@@ -149,18 +175,63 @@ function toVideo(v: ApiVideo): DiscoveredVideo {
   };
 }
 
-export async function runDiscover(raw: unknown, emit: Emit): Promise<DiscoverResult> {
-  const opts = parseDiscoverOptions(raw);
-  const range = timeRange(opts);
+/**
+ * Runs a new search (`raw` = form options) or, with `resume`, continues the
+ * saved checkpoint `id` without paying again for the pages already fetched.
+ */
+export async function runDiscover(raw: unknown, emit: Emit, { id = newDiscoverId(), resume = false } = {}): Promise<DiscoverResult> {
+  let cp: Checkpoint;
+  if (resume) {
+    const saved = readJsonSafe<Checkpoint>(pendingFile(id));
+    if (!saved) throw new Error("Không còn tiến trình đã lưu của lần tìm này.");
+    cp = { ...saved, status: "running", error: "" };
+  } else {
+    const options = parseDiscoverOptions(raw);
+    const r = timeRange(options);
+    const now = new Date().toISOString();
+    cp = {
+      id,
+      options,
+      range: { after: r.after.toISOString(), before: r.before.toISOString() },
+      label: describeOptions(options),
+      status: "running",
+      error: "",
+      createdAt: now,
+      updatedAt: now,
+      search: { ids: [], pagesDone: 0, nextPageToken: null, finished: false },
+      details: null,
+      shorts: {},
+      quotaUsed: 0,
+    };
+  }
+  saveCheckpoint(cp);
   const api = new YoutubeApi();
+  const quotaBefore = cp.quotaUsed;
+  const checkpoint = () => saveCheckpoint({ ...cp, quotaUsed: quotaBefore + api.quotaUsed });
+  try {
+    const result = await discoverFrom(cp, api, emit, checkpoint);
+    fs.rmSync(pendingFile(cp.id), { force: true });
+    return result;
+  } catch (e) {
+    cp.status = "error";
+    cp.error = (e as Error).message.split("\n")[0];
+    checkpoint();
+    throw e;
+  }
+}
+
+async function discoverFrom(cp: Checkpoint, api: YoutubeApi, emit: Emit, checkpoint: () => void): Promise<DiscoverResult> {
+  const opts = cp.options;
+  const range = { after: new Date(cp.range.after), before: new Date(cp.range.before) };
   const notes: string[] = [];
   const country = COUNTRIES.find((c) => c.code === opts.country);
+  const resumedPages = cp.search.pagesDone;
 
   // 1. search.list ordered by view count (100 quota units per page of 50).
   emit({ type: "step", step: "search", status: "start" });
-  const found = new Set<string>();
-  let pageToken: string | undefined;
-  for (let page = 0; page < opts.pages; page++) {
+  const found = new Set<string>(cp.search.ids);
+  let pageToken: string | undefined = cp.search.nextPageToken ?? undefined;
+  for (let page = cp.search.pagesDone; page < opts.pages && !cp.search.finished; page++) {
     const r = await api.search({
       publishedAfter: range.after,
       publishedBefore: range.before,
@@ -175,17 +246,24 @@ export async function runDiscover(raw: unknown, emit: Emit): Promise<DiscoverRes
     r.ids.forEach((id) => found.add(id));
     emit({ type: "progress", step: "search", progress: (page + 1) / opts.pages });
     pageToken = r.nextPageToken;
-    if (!pageToken) break;
+    cp.search = { ids: [...found], pagesDone: page + 1, nextPageToken: pageToken ?? null, finished: !pageToken };
+    checkpoint();
   }
+  cp.search.finished = true;
   const ids = [...found];
-  emit({ type: "step", step: "search", status: "done", message: `${ids.length} video` });
+  emit({ type: "step", step: "search", status: "done", message: `${ids.length} video${resumedPages ? ` (${resumedPages} trang đã có từ lần trước)` : ""}` });
   if (!ids.length) throw new Error("YouTube không trả về video nào cho bộ lọc này. Thử khoảng thời gian dài hơn, bỏ từ khoá hoặc đổi quốc gia.");
 
   // 2. Statistics, tags, duration, title and description (1 quota unit per 50 videos).
   emit({ type: "step", step: "details", status: "start" });
-  const details = (await api.videos(ids)).filter((v) => v.snippet.liveBroadcastContent === "none");
+  const reusedDetails = !!cp.details;
+  if (!cp.details) {
+    cp.details = (await api.videos(ids)).filter((v) => v.snippet.liveBroadcastContent === "none");
+    checkpoint();
+  }
+  const details = cp.details;
   let candidates = details.map(toVideo);
-  emit({ type: "step", step: "details", status: "done", message: `${details.length} video` });
+  emit({ type: "step", step: "details", status: "done", message: `${details.length} video${reusedDetails ? " (đã có từ lần trước)" : ""}` });
 
   // 3. Country = language of the title, else the description, else the language the creator declared.
   emit({ type: "step", step: "language", status: "start" });
@@ -212,13 +290,17 @@ export async function runDiscover(raw: unknown, emit: Emit): Promise<DiscoverRes
   let checked = 0;
   let unknownFormat = 0;
   await mapLimit(toCheck, 8, async (v) => {
-    const page = await isShortsPage(v.id);
+    if (!(v.id in cp.shorts)) {
+      cp.shorts[v.id] = await isShortsPage(v.id);
+      if (++checked % 10 === 0) checkpoint();
+    } else checked++;
+    const page = cp.shorts[v.id];
     if (page === null) unknownFormat++;
     if (page ?? guessShorts(v.durationSec, `${v.title} ${descriptions.get(v.id) ?? ""} ${v.keywords.join(" ")}`)) {
       v.format = "shorts";
       v.url = `https://www.youtube.com/shorts/${v.id}`;
     }
-    emit({ type: "progress", step: "format", progress: ++checked / toCheck.length });
+    emit({ type: "progress", step: "format", progress: checked / toCheck.length });
   });
   if (unknownFormat) notes.push(`Không mở được trang /shorts/ của ${unknownFormat} video nên đoán Shorts theo thời lượng (≤ 60 giây hoặc có #shorts).`);
   const shortsCount = candidates.filter((v) => v.format === "shorts").length;
@@ -248,13 +330,13 @@ export async function runDiscover(raw: unknown, emit: Emit): Promise<DiscoverRes
     options: opts,
     range: { from: range.after.toISOString(), to: range.before.toISOString() },
     videos,
-    stats: { scanned: ids.length, matchedLanguage, matchedFormat, quotaUsed: api.quotaUsed },
+    stats: { scanned: ids.length, matchedLanguage, matchedFormat, quotaUsed: cp.quotaUsed + api.quotaUsed },
     notes,
   };
   fs.mkdirSync(DISCOVER_DIR, { recursive: true });
-  fs.writeFileSync(path.join(DISCOVER_DIR, `${id}.json`), JSON.stringify(result, null, 2));
-  fs.writeFileSync(path.join(DISCOVER_DIR, `${id}.csv`), toCsv(result));
-  emit({ type: "step", step: "save", status: "done", message: `${videos.length} video · đã dùng ${api.quotaUsed} đơn vị quota` });
+  writeJsonAtomic(path.join(DISCOVER_DIR, `${id}.json`), result);
+  writeFileAtomic(path.join(DISCOVER_DIR, `${id}.csv`), toCsv(result));
+  emit({ type: "step", step: "save", status: "done", message: `${videos.length} video · đã dùng ${result.stats.quotaUsed} đơn vị quota` });
   return result;
 }
 
@@ -306,4 +388,28 @@ export function listDiscoveries(limit = 20) {
     .map((f) => loadDiscovery(f.slice(0, -5)))
     .filter((r): r is DiscoverResult => !!r)
     .map((r) => ({ id: r.id, createdAt: r.createdAt, label: r.label, count: r.videos.length }));
+}
+
+/** Searches that stopped before the end, oldest first. */
+export function unfinishedDiscoveries(isRunningNow: (id: string) => boolean) {
+  if (!fs.existsSync(PENDING_DIR)) return [];
+  return fs
+    .readdirSync(PENDING_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => readJsonSafe<Checkpoint>(path.join(PENDING_DIR, f)))
+    .filter((cp): cp is Checkpoint => !!cp && !isRunningNow(cp.id))
+    .map((cp) => ({
+      id: cp.id,
+      label: cp.label,
+      interrupted: cp.status === "running",
+      progress: cp.details ? "đã lấy xong số liệu, đang phân loại Shorts" : `đã tìm ${cp.search.pagesDone}/${cp.options.pages} trang`,
+      error: cp.error,
+      quotaUsed: cp.quotaUsed,
+      updatedAt: cp.updatedAt,
+    }));
+}
+
+/** "Bỏ qua": forget the checkpoint (the quota already spent is not refunded). */
+export function dismissDiscovery(id: string) {
+  if (/^[\w-]+$/.test(id)) fs.rmSync(pendingFile(id), { force: true });
 }

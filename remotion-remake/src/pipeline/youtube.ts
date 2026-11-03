@@ -59,15 +59,24 @@ export async function fetchInfo(url: string): Promise<YtInfo> {
   return info;
 }
 
-/** Downloads a ≤720p video-only stream: enough to look at, small to fetch. */
-export async function downloadVideo(info: YtInfo, dir: string, onLine: (l: string) => void): Promise<string> {
-  for (const f of fs.readdirSync(dir)) if (f.startsWith("source.")) fs.rmSync(path.join(dir, f));
-  await ytdlp(["-f", "bv*/b", "-S", "res:720,vcodec:h264", "--newline", "-o", path.join(dir, "source.%(ext)s"), ...commonArgs(), sourceUrl(info)], {
+/** The fully downloaded source video (not a .part / fragment file), if any. */
+export function downloadedSource(dir: string): string | null {
+  const file = fs.existsSync(dir) ? fs.readdirSync(dir).find((f) => /^source\.[a-z0-9]+$/i.test(f)) : undefined;
+  return file ? path.join(dir, file) : null;
+}
+
+/**
+ * Downloads a ≤720p video-only stream: enough to look at, small to fetch.
+ * With `resume`, a half-downloaded file is kept and yt-dlp continues it.
+ */
+export async function downloadVideo(info: YtInfo, dir: string, onLine: (l: string) => void, resume = false): Promise<string> {
+  if (!resume) for (const f of fs.readdirSync(dir)) if (f.startsWith("source.")) fs.rmSync(path.join(dir, f));
+  await ytdlp(["-f", "bv*/b", "-S", "res:720,vcodec:h264", "--newline", "--continue", "-o", path.join(dir, "source.%(ext)s"), ...commonArgs(), sourceUrl(info)], {
     onLine,
   });
-  const file = fs.readdirSync(dir).find((f) => f.startsWith("source.") && !f.endsWith(".part"));
+  const file = downloadedSource(dir);
   if (!file) throw new Error("Tải video thất bại: không thấy file source.*");
-  return path.join(dir, file);
+  return file;
 }
 
 function pickSubtitleTrack(info: YtInfo): { key: string; auto: boolean } | null {

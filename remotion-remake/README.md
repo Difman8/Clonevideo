@@ -13,12 +13,15 @@ npm run setup
 
 `npm run setup` cài `yt-dlp` vào `.venv/`, tạo hiệu ứng âm thanh, tải trình duyệt render của Remotion và tạo file `.env`.
 
-Mở `.env`, điền khóa AI muốn dùng (một hoặc cả hai):
+Mở app, vào tab **⚙️ Cài đặt** (hoặc sửa file `.env`) để điền khóa và thông số:
 
-- `ANTHROPIC_API_KEY=...` — phân tích bằng Claude (`claude-opus-5-5`)
-- `OPENAI_API_KEY=...` — phân tích bằng OpenAI (`gpt-5.5`)
+- **Claude** (`ANTHROPIC_API_KEY`) hoặc **OpenAI** (`OPENAI_API_KEY`): phân tích video, soạn thông tin đăng.
+- **ElevenLabs** (`ELEVENLABS_API_KEY` + chọn giọng): lồng tiếng cho video.
+- **YouTube Data API** (`YOUTUBE_API_KEY`): tab Tìm video hot.
 
-Để trống cả hai thì app vẫn chạy với **phân tích cơ bản** (dựng từ chapters/phụ đề, màu lấy từ khung hình). Đổi model bằng `CLAUDE_MODEL` / `OPENAI_MODEL`.
+Mọi thông số ngoài khóa đều xem và sửa được trên tab Cài đặt, có hiệu lực ngay, không cần khởi động lại: model, mức suy nghĩ (effort), số token tối đa của Claude/OpenAI; voice ID, model, ngôn ngữ, stability, similarity_boost, style, speaker boost, tốc độ, định dạng âm thanh, chuẩn hoá số, seed của ElevenLabs; tên kênh. Danh sách đầy đủ kèm giải thích nằm trong [.env.example](.env.example). Trên tab Cài đặt, nút **Tải giọng & model từ tài khoản** liệt kê giọng và model của tài khoản ElevenLabs (model nào có tiếng Việt, còn bao nhiêu ký tự); nút **Nghe thử** đọc một câu bằng cài đặt đang lưu.
+
+Không có khóa Claude/OpenAI thì app vẫn chạy với **phân tích cơ bản** (dựng từ chapters/phụ đề, màu lấy từ khung hình).
 
 ## Dùng
 
@@ -33,7 +36,11 @@ Mở http://localhost:3210, dán link, gạt công tắc **Claude ⟷ OpenAI** �
 - **Bản sao** — dựng lại giống bản gốc nhất có thể (chữ, thứ tự, thời lượng, màu, chuyển cảnh).
 - **Remix** — giữ khuôn, nhịp và phong cách nhưng AI viết nội dung mới, kèm tiêu đề/mô tả/hashtag mới.
 
-Sau khi render, có thể sửa `spec.json` ngay trên trang (chữ, màu, thời lượng, thêm/bớt cảnh) rồi bấm **Lưu & render lại**.
+Tích **🎙️ Lồng tiếng (ElevenLabs)** để AI viết lời thoại (`narration`) cho từng cảnh và ElevenLabs đọc lời đó. Cảnh nào lời đọc dài hơn cảnh sẽ được kéo dài cho vừa. Giọng đã tạo được lưu lại: render lại hay tiếp tục sau khi tắt máy không phải trả tiền lại cho câu đã đọc.
+
+Sau khi render, có thể sửa `spec.json` ngay trên trang (chữ, màu, thời lượng, lời thoại, thêm/bớt cảnh) rồi bấm **Lưu & render lại**; chỉ câu thoại đã sửa mới được tạo giọng lại.
+
+**Tắt máy giữa chừng:** app lưu tiến trình sau mỗi bước. Lần mở app sau sẽ hiện thẻ **⏸ Việc đang dở từ lần trước**; bấm **Tiếp tục** để làm nốt. Các bước đã xong không phải làm lại: video đang tải dở được tải tiếp, phân tích AI và giọng đọc đã trả tiền được dùng lại, các trang tìm kiếm YouTube đã tốn quota không bị tìm lại. Việc bị lỗi (ví dụ hết quota, khóa sai) cũng hiện ở đây để thử lại sau khi sửa.
 
 **Dòng lệnh:**
 
@@ -42,7 +49,9 @@ npm run remake -- "https://www.youtube.com/shorts/XXXXXXXXXXX"
 npm run remake -- "<link>" --openai       # phân tích bằng OpenAI thay vì Claude
 npm run remake -- "<link>" --remix        # chế độ remix
 npm run remake -- "<link>" --basic        # không dùng AI
+npm run remake -- "<link>" --voice        # lồng tiếng bằng ElevenLabs
 npm run remake -- "<link>" --no-render    # chỉ phân tích + lấy nội dung đăng
+npm run remake -- --resume <videoId>      # làm tiếp việc đang dở (sau khi máy tắt đột ngột)
 npm run remake -- --rerender <videoId>    # render lại sau khi sửa out/<videoId>/spec.json
 ```
 
@@ -105,6 +114,8 @@ npm run discover -- --help    # xem mọi tuỳ chọn
 | `new-post.txt` / `new-post.json` | Thông tin đăng mới do AI soạn (giống video gốc 80–90%, giữ đủ hashtag/keywords) |
 | `spec.json` | Kịch bản cảnh-theo-cảnh mà Remotion render |
 | `analysis.json` | Kết quả thô của bộ phân tích |
+| `voice/` | Các đoạn giọng ElevenLabs (mỗi cảnh một file, kèm mốc thời gian từng ký tự) |
+| `state.json` | Tiến trình các bước, dùng để tiếp tục khi máy tắt giữa chừng |
 | `transcript.txt`, `frames/` | Phụ đề và khung hình đã trích để phân tích |
 
 ## Cách hoạt động
@@ -112,13 +123,15 @@ npm run discover -- --help    # xem mọi tuỳ chọn
 1. `yt-dlp` lấy metadata, video ≤720p (chỉ hình) và phụ đề.
 2. `ffmpeg` cắt khung hình ở mỗi lần chuyển cảnh + mỗi vài giây (tối đa 60 khung).
 3. Claude (`claude-opus-5-5`) hoặc OpenAI (`gpt-5.5`) xem khung hình + phụ đề, trả về `spec.json` theo schema cố định ([src/spec/schema.ts](src/spec/schema.ts)). Hai bên dùng chung prompt trong [src/pipeline/ai-common.ts](src/pipeline/ai-common.ts).
-4. Remotion render spec bằng 11 mẫu cảnh trong [src/remotion/scenes.tsx](src/remotion/scenes.tsx).
+4. Nếu bật lồng tiếng, ElevenLabs đọc lời thoại từng cảnh ([src/pipeline/voiceover.ts](src/pipeline/voiceover.ts)).
+5. Remotion render spec bằng 11 mẫu cảnh trong [src/remotion/scenes.tsx](src/remotion/scenes.tsx), kèm giọng đọc.
 
 Mẫu cảnh: `title`, `text` (chữ động), `list-item` (top list), `quiz`, `bar-chart`, `big-number`, `quote`, `timeline`, `countdown`, `comparison`, `outro`. Tất cả vẽ bằng code: không cần ảnh, video, nhạc hay font tự cung cấp (font lấy từ Google Fonts, âm thanh tổng hợp bằng code).
 
 ## Giới hạn
 
 - **Tìm video hot:** YouTube API không có cờ "Shorts" hay "quốc gia của video", nên hai bộ lọc này được suy ra như bảng trên và có thể sai ở vài video. Lọc quốc gia theo ngôn ngữ không tách được các nước dùng chung một ngôn ngữ (vd. Hoa Kỳ / Anh / Úc đều là tiếng Anh). Chủ đề lấy từ danh mục và chủ đề mà YouTube gán cho video (khá chung, vd. "Giải trí, Thú cưng"). Danh sách ứng viên là các video nhiều lượt xem nhất mà YouTube Search trả về (không phải toàn bộ YouTube), sau đó mới xếp lại theo tiêu chí bạn chọn.
-- Video có cảnh quay thật, ảnh, khuôn mặt, giọng đọc hoặc nhạc sẽ chỉ được **mô phỏng** bằng chữ + đồ hoạ; phần ghi chú phân tích liệt kê những chỗ này.
+- Video có cảnh quay thật, ảnh, nhân vật hoạt hình, khuôn mặt hoặc nhạc sẽ chỉ được **mô phỏng** bằng chữ + đồ hoạ; phần ghi chú phân tích liệt kê những chỗ này. Kế hoạch dựng video hoạt hình thật (nhân vật, bối cảnh, chuyển động) và các công cụ còn thiếu: [docs/ke-hoach-dung-video-hoat-hinh.md](../docs/ke-hoach-dung-video-hoat-hinh.md).
+- Render không tiếp tục được giữa chừng: nếu máy tắt lúc đang render, bước render chạy lại từ đầu (các bước trước vẫn được giữ).
 - Đăng lại nguyên nội dung kênh khác có thể vi phạm bản quyền và chính sách "nội dung dùng lại" của YouTube; chế độ **Remix** tạo nội dung mới trên cùng khuôn.
 - Remotion miễn phí cho cá nhân và công ty ≤3 người; công ty lớn hơn cần mua license (remotion.dev/license).

@@ -47,7 +47,8 @@ Rules:
 3. Style: take theme colors from the frames as hex codes, choose the closest font, background style and motion feel; enable sfx unless the source is calm; enable progressBar only if the source shows one; watermark = the channel handle if one is shown on screen, else empty.
 4. Things the templates cannot draw (camera footage, photos, faces, illustrations, voice-over, music): approximate them with the closest template (for example the key sentence of a talking-head segment as a text scene) and list each approximation in notes. Write notes in Vietnamese.
 5. Transitions should resemble the source's cuts; use "none" for hard cuts.
-6. Every field is required: use "" or [] when something does not apply.`;
+6. Every field is required: use "" or [] when something does not apply.
+7. narration (per scene) is the voice-over read aloud by a text-to-speech voice while the scene is on screen, in the video's language. When the source has a voice-over, follow what is said during that scene's time span (from the transcript) in your own wording rather than word for word. When it has none, write a short, natural line that tells the viewer what the scene shows. Leave it "" for scenes that should stay silent (countdowns, pauses). A narration must fit the scene: about 2.5 words per second of durationSec at most.`;
 
 export const MODE_TEXT: Record<RemakeMode, string> = {
   clone:
