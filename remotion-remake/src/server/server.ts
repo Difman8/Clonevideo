@@ -10,7 +10,7 @@ import { COUNTRIES, CATEGORIES, DEFAULT_OPTIONS, estimateQuota, PERIODS, SORTS }
 import { hasYoutubeKey, KEY_HELP_URL, YoutubeApi } from "../discover/youtube-api";
 import { parseProvider, providerStatus } from "../pipeline/ai";
 import { listJobs, loadJob, rerenderJob, runJob, STEPS, type JobOptions } from "../pipeline/job";
-import { composePost, LIMITS, loadComposedPost, loadPostSource, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
+import { composePost, DEFAULT_CHANNEL, LIMITS, loadComposedPost, loadPostSource, parseWriterOptions, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
 import { OUT_DIR, ytDlp } from "../pipeline/tools";
 import { parseVideoId } from "../pipeline/youtube";
 
@@ -193,14 +193,14 @@ async function discoverRoutes(req: http.IncomingMessage, res: http.ServerRespons
 async function postRoutes(req: http.IncomingMessage, res: http.ServerResponse, action: string | undefined) {
   // These calls can spend AI credit: only the app's own page (JSON fetch) may make them, not a form on another website.
   if (!req.headers["content-type"]?.startsWith("application/json")) return json(res, 415, { error: "Cần gửi JSON" });
-  const body = (await readBody(req)) as { url?: unknown; source?: unknown; provider?: unknown };
+  const body = (await readBody(req)) as { url?: unknown; source?: unknown; provider?: unknown; channel?: unknown; brandTags?: unknown };
   // source: the source video's title/description/keywords; from the page, or loaded by URL.
   if (action === "source") {
     const source = body.source ? sanitizeSource(body.source) : await loadPostSource(typeof body.url === "string" ? body.url : "");
-    return json(res, 200, { source, saved: loadComposedPost(source.videoId), target: TARGET, limits: LIMITS });
+    return json(res, 200, { source, saved: loadComposedPost(source.videoId), target: TARGET, limits: LIMITS, defaultChannel: DEFAULT_CHANNEL });
   }
   if (action === "compose") {
-    const post = await composePost(sanitizeSource(body.source), parseProvider(body.provider));
+    const post = await composePost(sanitizeSource(body.source), parseProvider(body.provider), parseWriterOptions(body));
     saveComposedPost(post);
     return json(res, 200, post);
   }

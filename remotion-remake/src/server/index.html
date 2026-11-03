@@ -161,7 +161,12 @@
 
   <section class="card" id="compose-card">
     <h2>✍️ Soạn thông tin đăng YouTube bằng AI</h2>
-    <div class="hint">AI viết lại tiêu đề và mô tả của video gốc, giống khoảng 80–90% để tránh bị quét trùng lặp; hashtag và keywords được giữ đủ 100%. Mỗi lần viết gọi AI 1 lần (2 lần nếu phải chỉnh độ giống), AI chọn bằng công tắc Claude / OpenAI ở trên.</div>
+    <div class="hint">AI viết lại tiêu đề và mô tả của video gốc, giống khoảng 80–90% để tránh bị quét trùng lặp: chỉ làm khác đi bằng cách thêm tên kênh của bạn và dùng thông tin có sẵn trong mô tả. Hashtag và keywords được giữ đủ 100%. Mỗi lần viết gọi AI 1 lần (2 lần nếu phải chỉnh độ giống), AI chọn bằng công tắc Claude / OpenAI ở trên.</div>
+    <div class="row" style="margin-top:12px">
+      <label class="check" for="cp-channel" style="color:var(--text)">Tên kênh của bạn</label>
+      <input type="search" id="cp-channel" placeholder="Fedtoon" maxlength="60" style="width:200px" />
+      <label class="check"><input type="checkbox" id="cp-brand" checked /> <span id="cp-brand-label">Thêm #Fedtoon vào hashtag và keywords</span></label>
+    </div>
     <div class="row" style="margin-top:12px">
       <button type="button" id="cp-load">📥 Lấy thông tin video từ link ở trên</button>
       <span class="hint">hoặc bấm "🎬 Dựng lại video này" ở tab Tìm video hot.</span>
@@ -869,6 +874,26 @@ let cpComposed = null;
 let cpTarget = { min: 0.8, max: 0.9 };
 let cpLimits = { title: 100, description: 5000 };
 
+const channelName = () => $("cp-channel").value.trim() || $("cp-channel").placeholder;
+const channelTag = (name) => "#" + name.replace(/[^\p{L}\p{N}_]/gu, "");
+
+function syncChannel() {
+  $("cp-brand-label").textContent = `Thêm ${channelTag(channelName())} vào hashtag và keywords`;
+  try {
+    localStorage.setItem("compose-channel", JSON.stringify({ channel: $("cp-channel").value.trim(), brandTags: $("cp-brand").checked }));
+  } catch {}
+}
+try {
+  const saved = JSON.parse(localStorage.getItem("compose-channel") || "null");
+  if (saved) {
+    $("cp-channel").value = saved.channel || "";
+    $("cp-brand").checked = saved.brandTags !== false;
+  }
+} catch {}
+syncChannel();
+$("cp-channel").addEventListener("input", syncChannel);
+$("cp-brand").addEventListener("change", syncChannel);
+
 function cpError(message) {
   $("cp-error").hidden = !message;
   $("cp-error").textContent = message ? "Lỗi: " + message : "";
@@ -889,6 +914,8 @@ async function setComposeSource(input) {
   cpSource = r.source;
   cpTarget = r.target;
   cpLimits = r.limits;
+  $("cp-channel").placeholder = r.defaultChannel;
+  syncChannel();
   const s = r.source;
   $("cp-body").hidden = false;
   $("cp-source").replaceChildren(
@@ -920,12 +947,20 @@ function renderComposed(c) {
       c.keywordsFromAi
         ? badge(true, `Keywords: AI gợi ý ${c.keywords.length}`, "Video gốc không khai báo keywords")
         : badge(c.checks.keywordsKept === c.checks.keywordsTotal, `Keywords giữ ${c.checks.keywordsKept}/${c.checks.keywordsTotal}`),
+      c.brandTags ? badge(c.checks.brandHashtag, `Có ${channelTag(c.channel)}`, c.checks.brandHashtag ? "" : "Không thêm vì video gốc đã có 60 hashtag (giới hạn của YouTube)") : null,
+      c.brandTags ? badge(c.checks.brandKeyword, `Keyword ${c.channel}`, c.checks.brandKeyword ? "" : "Không thêm vì keywords sẽ vượt 500 ký tự (giới hạn của YouTube)") : null,
     ),
     field(`Tiêu đề (${c.checks.titleLength}/${cpLimits.title} ký tự)`, el("div", { className: "value", textContent: c.title }), c.title),
     c.checks.titleLength > cpLimits.title ? el("div", { className: "error", textContent: `Tiêu đề dài hơn ${cpLimits.title} ký tự, YouTube sẽ không nhận: hãy bấm viết lại hoặc tự sửa bớt.` }) : null,
     field(`Mô tả (${c.checks.descriptionLength}/${cpLimits.description} ký tự)`, el("div", { className: "value", textContent: c.description || "(trống)" }), c.description),
     field(`Hashtag (${c.hashtags.length})`, chips(c.hashtags, "tag", "—"), c.hashtags.join(" ")),
     field(`Keywords / Tags (${c.keywords.length})`, chips(c.keywords, "", "—"), c.keywords.join(", ")),
+    c.newWords
+      ? field(
+          `Từ AI thêm vào (không có trong video gốc): ${c.newWords.length}`,
+          c.newWords.length ? chips(c.newWords, "", "") : el("div", { className: "hint", textContent: "Không có: AI chỉ dùng chữ của video gốc và tên kênh." }),
+        )
+      : null,
     el("div", { className: "row" }, copyButton(all, "Sao chép tất cả"), el("a", { href: `/media/${c.videoId}/new-post.txt?download`, textContent: "⬇ Tải .txt" })),
     el("div", { className: "hint", style: "margin-top:6px", textContent: `${c.model} · ${c.attempts} lần gọi AI · ${new Date(c.createdAt).toLocaleString("vi-VN")}` }),
   ];
@@ -951,7 +986,7 @@ $("cp-go").addEventListener("click", async () => {
   $("cp-go").disabled = true;
   $("cp-status").textContent = "AI đang viết… (thường 10–40 giây)";
   try {
-    renderComposed(await api("/api/post/compose", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: cpSource, provider: provider() }) }));
+    renderComposed(await api("/api/post/compose", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: cpSource, provider: provider(), channel: channelName(), brandTags: $("cp-brand").checked }) }));
   } catch (e) {
     cpError(e.message);
     updateComposeButton();

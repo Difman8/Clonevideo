@@ -52,15 +52,17 @@ npm run remake -- --rerender <videoId>    # render lại sau khi sửa out/<vide
 
 Thẻ **✍️ Soạn thông tin đăng YouTube bằng AI** trong tab Dựng lại video viết tiêu đề, mô tả, hashtag và keywords cho bản dựng lại, dựa trên video gốc:
 
-- **Tiêu đề và mô tả** được AI viết lại, giữ khoảng **80–90%** số từ của video gốc (cùng ngôn ngữ, ý, bố cục, emoji) để tránh bị quét trùng lặp. App tự đo độ giống sau khi AI viết; nếu lệch khỏi 80–90% hoặc tiêu đề quá 100 ký tự, app nhờ AI viết lại một lần nữa và giữ bản gần mục tiêu hơn. Link, @tên kênh, tên kênh gốc, thông tin tài trợ/liên hệ của video gốc được bỏ đi.
-- **Hashtag** giữ **100%**, đúng chính tả của video gốc: code tự kiểm tra và thêm lại hashtag nào AI làm rơi.
-- **Keywords (tags)** giữ **100%**: dùng nguyên danh sách của video gốc. Chỉ khi video gốc không khai báo keywords thì AI mới gợi ý.
+- **Tiêu đề và mô tả** được AI viết lại, giữ khoảng **80–90%** số từ của video gốc (cùng ngôn ngữ, ý, bố cục, emoji) để tránh bị quét trùng lặp. AI chỉ được làm khác đi bằng hai cách: **thêm tên kênh của bạn** (mặc định **Fedtoon**, đổi được ngay trên thẻ hoặc bằng `CHANNEL_NAME` trong `.env`) và **dùng thông tin có sẵn trong mô tả** của video gốc. AI bị cấm đảo chữ, viết sai chính tả hay bịa từ; thẻ kết quả liệt kê mọi từ AI thêm vào mà video gốc không có để bạn soát.
+- App tự đo độ giống sau khi AI viết; nếu lệch khỏi 80–90% hoặc tiêu đề quá 100 ký tự, app nhờ AI viết lại một lần nữa và giữ bản gần mục tiêu hơn. Link, @tên kênh, tên kênh gốc, thông tin tài trợ/liên hệ của video gốc được bỏ đi (tên kênh gốc được thay bằng tên kênh của bạn).
+- **Hashtag** giữ **100%**, đúng cách viết của video gốc: code tự kiểm tra và thêm lại hashtag nào AI làm rơi. Có thêm **#Fedtoon** (tắt được bằng ô tích trên thẻ).
+- **Keywords (tags)** giữ **100%**: dùng nguyên danh sách của video gốc, thêm **Fedtoon** ở cuối nếu chưa vượt 500 ký tự. Chỉ khi video gốc không khai báo keywords thì AI mới gợi ý.
 
 Cách dùng: ở tab **🔥 Tìm video hot**, bấm **🎬 Dựng lại video này** trên video ưng ý (thông tin video gốc được điền sẵn), hoặc dán link rồi bấm **📥 Lấy thông tin video từ link ở trên**. Sau đó bấm **✍️ Viết bằng Claude/OpenAI** (theo công tắc AI). Mỗi lần viết gọi AI 1 lần (2 lần nếu phải chỉnh độ giống); bấm **↻ Viết lại** để có phiên bản khác. Kết quả lưu ở `out/<videoId>/new-post.txt` và `.json`.
 
 ```bash
 npm run post -- "https://www.youtube.com/shorts/XXXXXXXXXXX"            # viết bằng Claude
 npm run post -- "https://www.youtube.com/shorts/XXXXXXXXXXX" --openai   # viết bằng OpenAI
+npm run post -- "<link>" --channel "Fedtoon" --no-brand-tags            # đổi tên kênh, không thêm #Fedtoon
 ```
 
 ## Tìm video hot
