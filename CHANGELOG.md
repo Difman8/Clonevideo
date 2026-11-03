@@ -2,6 +2,10 @@
 
 GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào `main` (mới nhất ở trên).
 
+## 2026-11-03
+
+- **Tìm video hot không còn dùng AI: lọc quốc gia theo ngôn ngữ tiêu đề/mô tả, bỏ lọc người thật/animation** — @Difman8 · 07:32 · nhánh `claude/youtube-video-discovery-29q6gg`
+
 ## 2026-11-02
 
 - **Thêm tab Tìm video hot: lọc video YouTube nhiều tương tác theo quốc gia, thời gian, Shorts/dài, người thật/animation** — @Difman8 · 07:39 · nhánh `claude/youtube-video-discovery-29q6gg`

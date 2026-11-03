@@ -5,6 +5,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DISCOVER_STEPS, listDiscoveries, loadDiscovery, runDiscover } from "../discover/discover";
+import { LANGUAGE_NAMES } from "../discover/language";
 import { COUNTRIES, CATEGORIES, DEFAULT_OPTIONS, estimateQuota, PERIODS, SORTS } from "../discover/options";
 import { hasYoutubeKey, KEY_HELP_URL, YoutubeApi } from "../discover/youtube-api";
 import { parseProvider, providerStatus } from "../pipeline/ai";
@@ -168,7 +169,7 @@ async function discoverRoutes(req: http.IncomingMessage, res: http.ServerRespons
       quotaPerPage: estimateQuota(1),
       youtubeApi: hasYoutubeKey(),
       keyHelpUrl: KEY_HELP_URL,
-      providers: providerStatus(),
+      languages: LANGUAGE_NAMES,
     });
   if (req.method === "GET" && rest.length === 0) return json(res, 200, listDiscoveries());
   if (req.method === "POST" && rest.length === 0) {

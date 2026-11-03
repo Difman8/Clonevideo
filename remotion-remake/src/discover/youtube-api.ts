@@ -27,8 +27,6 @@ export type ApiVideo = {
   topicDetails?: { topicCategories?: string[] };
 };
 
-export type ApiChannel = { id: string; snippet: { title: string; customUrl?: string; country?: string } };
-
 export type SearchParams = {
   publishedAfter: Date;
   publishedBefore: Date;
@@ -115,17 +113,6 @@ export class YoutubeApi {
         1,
       );
       out.push(...(body.items ?? []));
-    }
-    return out;
-  }
-
-  /** Channel name, handle and declared country, 50 channels per call (1 unit each). */
-  async channels(ids: string[]): Promise<Map<string, ApiChannel>> {
-    const out = new Map<string, ApiChannel>();
-    const unique = [...new Set(ids)];
-    for (let i = 0; i < unique.length; i += 50) {
-      const body = await this.get<{ items?: ApiChannel[] }>("channels", { part: "snippet", id: unique.slice(i, i + 50).join(","), maxResults: "50" }, 1);
-      for (const c of body.items ?? []) out.set(c.id, c);
     }
     return out;
   }

@@ -4,7 +4,7 @@ Dán link YouTube → AI (Claude hoặc OpenAI) phân tích video → dựng l�
 
 Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline.
 
-Tab **🔥 Tìm video hot** tìm video YouTube có nhiều lượt xem, lượt thích và bình luận nhất trong một khoảng thời gian (lọc theo quốc gia, Shorts/video dài, người thật/animation), trả về link, chủ đề, keywords và hashtag. Cần khóa YouTube Data API v3 miễn phí — xem hướng dẫn ngay trên tab.
+Tab **🔥 Tìm video hot** tìm video YouTube có nhiều lượt xem, lượt thích và bình luận nhất trong một khoảng thời gian (lọc theo quốc gia/ngôn ngữ, Shorts/video dài), trả về link, chủ đề, keywords và hashtag. Không dùng AI; chỉ cần khóa YouTube Data API v3 miễn phí — xem hướng dẫn ngay trên tab.
 
 ## Chạy nhanh (Windows)
 

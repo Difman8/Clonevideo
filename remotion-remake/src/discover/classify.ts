@@ -1,5 +1,4 @@
-// Shorts detection, keyword-based visual style guess and topic labels (no AI needed).
-import type { VisualStyle } from "./options";
+// Shorts detection, topic labels and hashtags (no AI).
 
 /** Shorts can be up to 3 minutes long; anything longer is a regular video. */
 export const SHORTS_MAX_SEC = 180;
@@ -42,64 +41,6 @@ export async function isShortsPage(id: string): Promise<boolean | null> {
 
 /** Fallback when the Shorts page could not be checked. */
 export const guessShorts = (durationSec: number, text: string) => durationSec <= 60 || /#shorts?(?![\p{L}\p{N}_])/iu.test(text);
-
-const words = (list: string[]) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${list.join("|")})(?![\\p{L}\\p{N}])`, "iu");
-
-const ANIMATION_WORDS = words([
-  "animation",
-  "animations",
-  "animated",
-  "animator",
-  "animatic",
-  "anime",
-  "cartoons?",
-  "toons?",
-  "stickman",
-  "claymation",
-  "stop[ -]?motion",
-  "motion graphics?",
-  "2d animation",
-  "3d animation",
-  "cgi",
-  "hoạt hình",
-  "hoạt họa",
-  "phim hoạt hình",
-  "アニメ",
-  "애니메이션",
-  "动画",
-  "動畫",
-  "animación",
-  "animação",
-  "animasi",
-  "การ์ตูน",
-]);
-
-const OTHER_WORDS = words([
-  "gameplay",
-  "gaming",
-  "minecraft",
-  "roblox",
-  "fortnite",
-  "free fire",
-  "pubg",
-  "liên quân",
-  "genshin",
-  "gta",
-  "lyrics?",
-  "lyric video",
-  "official audio",
-  "visualizer",
-  "karaoke",
-  "nightcore",
-  "slideshow",
-]);
-
-/** Keyword guess used when no AI is available. Animation wins over gaming ("Minecraft animation"). */
-export function guessStyle(text: string, categoryId: string): VisualStyle {
-  if (ANIMATION_WORDS.test(text)) return "animation";
-  if (categoryId === "20" || OTHER_WORDS.test(text)) return "other";
-  return "live";
-}
 
 const TOPICS: Record<string, string> = {
   Music: "Âm nhạc",

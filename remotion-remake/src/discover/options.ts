@@ -1,23 +1,18 @@
 // Filters of the "Tìm video hot" tool and the fixed lists shown in the UI.
+// Nothing here uses AI: every filter runs on YouTube API data or local code.
 
 export type VideoFormat = "shorts" | "long" | "all";
-export type VisualStyle = "live" | "animation" | "other";
-export type StyleFilter = "all" | "live" | "animation";
 export type SortKey = "engagement" | "views" | "likes" | "comments" | "rate";
-export type AiChoice = "claude" | "openai" | "none";
 
 export type DiscoverOptions = {
-  /** ISO 3166-1 alpha-2, or "" for every country. */
+  /** ISO 3166-1 alpha-2, or "" for every country. Filters by the language of title/description. */
   country: string;
-  /** Keep only channels whose declared country is `country`. */
-  strictCountry: boolean;
   /** Key of PERIODS, or "custom" with `from`/`to`. */
   period: string;
   /** YYYY-MM-DD, used when period is "custom". */
   from: string;
   to: string;
   format: VideoFormat;
-  style: StyleFilter;
   query: string;
   /** YouTube category id, or "" for every category. */
   category: string;
@@ -25,42 +20,51 @@ export type DiscoverOptions = {
   limit: number;
   /** search.list pages (50 videos, 100 quota units each). */
   pages: number;
-  ai: AiChoice;
 };
 
-/** Countries offered in the UI, with the language search results are biased to. */
-export const COUNTRIES: { code: string; name: string; lang: string }[] = [
-  { code: "", name: "Toàn cầu (mọi quốc gia)", lang: "" },
-  { code: "VN", name: "Việt Nam", lang: "vi" },
-  { code: "US", name: "Hoa Kỳ", lang: "en" },
-  { code: "GB", name: "Anh", lang: "en" },
-  { code: "CA", name: "Canada", lang: "en" },
-  { code: "AU", name: "Úc", lang: "en" },
-  { code: "IN", name: "Ấn Độ", lang: "hi" },
-  { code: "ID", name: "Indonesia", lang: "id" },
-  { code: "TH", name: "Thái Lan", lang: "th" },
-  { code: "PH", name: "Philippines", lang: "" },
-  { code: "MY", name: "Malaysia", lang: "ms" },
-  { code: "SG", name: "Singapore", lang: "en" },
-  { code: "JP", name: "Nhật Bản", lang: "ja" },
-  { code: "KR", name: "Hàn Quốc", lang: "ko" },
-  { code: "TW", name: "Đài Loan", lang: "zh-Hant" },
-  { code: "HK", name: "Hồng Kông", lang: "zh-Hant" },
-  { code: "BR", name: "Brazil", lang: "pt" },
-  { code: "MX", name: "Mexico", lang: "es" },
-  { code: "AR", name: "Argentina", lang: "es" },
-  { code: "ES", name: "Tây Ban Nha", lang: "es" },
-  { code: "FR", name: "Pháp", lang: "fr" },
-  { code: "DE", name: "Đức", lang: "de" },
-  { code: "IT", name: "Ý", lang: "it" },
-  { code: "RU", name: "Nga", lang: "ru" },
-  { code: "TR", name: "Thổ Nhĩ Kỳ", lang: "tr" },
-  { code: "SA", name: "Ả Rập Xê Út", lang: "ar" },
-  { code: "EG", name: "Ai Cập", lang: "ar" },
-  { code: "PK", name: "Pakistan", lang: "ur" },
-  { code: "BD", name: "Bangladesh", lang: "bn" },
-  { code: "NG", name: "Nigeria", lang: "en" },
+/**
+ * Countries offered in the UI. `langs`: a video is kept when its title (or
+ * description, or declared language) is in one of these languages.
+ * `searchLang`: the relevanceLanguage hint sent to YouTube Search.
+ */
+export const COUNTRIES: { code: string; name: string; langs: string[]; searchLang: string }[] = [
+  { code: "", name: "Toàn cầu (mọi quốc gia)", langs: [], searchLang: "" },
+  { code: "VN", name: "Việt Nam", langs: ["vi"], searchLang: "vi" },
+  { code: "US", name: "Hoa Kỳ", langs: ["en"], searchLang: "en" },
+  { code: "GB", name: "Anh", langs: ["en"], searchLang: "en" },
+  { code: "CA", name: "Canada", langs: ["en", "fr"], searchLang: "en" },
+  { code: "AU", name: "Úc", langs: ["en"], searchLang: "en" },
+  { code: "IN", name: "Ấn Độ", langs: ["hi", "bn", "ta", "te", "gu", "kn", "ml", "pa"], searchLang: "hi" },
+  { code: "ID", name: "Indonesia", langs: ["id"], searchLang: "id" },
+  { code: "TH", name: "Thái Lan", langs: ["th"], searchLang: "th" },
+  { code: "PH", name: "Philippines", langs: ["tl"], searchLang: "" },
+  { code: "MY", name: "Malaysia", langs: ["ms"], searchLang: "ms" },
+  { code: "SG", name: "Singapore", langs: ["en", "zh"], searchLang: "en" },
+  { code: "JP", name: "Nhật Bản", langs: ["ja"], searchLang: "ja" },
+  { code: "KR", name: "Hàn Quốc", langs: ["ko"], searchLang: "ko" },
+  { code: "TW", name: "Đài Loan", langs: ["zh"], searchLang: "zh-Hant" },
+  { code: "HK", name: "Hồng Kông", langs: ["zh"], searchLang: "zh-Hant" },
+  { code: "BR", name: "Brazil", langs: ["pt"], searchLang: "pt" },
+  { code: "MX", name: "Mexico", langs: ["es"], searchLang: "es" },
+  { code: "AR", name: "Argentina", langs: ["es"], searchLang: "es" },
+  { code: "ES", name: "Tây Ban Nha", langs: ["es"], searchLang: "es" },
+  { code: "FR", name: "Pháp", langs: ["fr"], searchLang: "fr" },
+  { code: "DE", name: "Đức", langs: ["de"], searchLang: "de" },
+  { code: "IT", name: "Ý", langs: ["it"], searchLang: "it" },
+  { code: "RU", name: "Nga", langs: ["ru"], searchLang: "ru" },
+  { code: "TR", name: "Thổ Nhĩ Kỳ", langs: ["tr"], searchLang: "tr" },
+  { code: "SA", name: "Ả Rập Xê Út", langs: ["ar"], searchLang: "ar" },
+  { code: "EG", name: "Ai Cập", langs: ["ar"], searchLang: "ar" },
+  { code: "PK", name: "Pakistan", langs: ["ur"], searchLang: "ur" },
+  { code: "BD", name: "Bangladesh", langs: ["bn"], searchLang: "bn" },
+  { code: "NG", name: "Nigeria", langs: ["en"], searchLang: "en" },
 ];
+
+/** Languages several listed countries share: the country filter cannot tell them apart. */
+export const sharedLangs = (code: string) => {
+  const langs = COUNTRIES.find((c) => c.code === code)?.langs ?? [];
+  return langs.filter((l) => COUNTRIES.some((c) => c.code !== code && c.langs.includes(l)));
+};
 
 export const countryName = (code: string) => COUNTRIES.find((c) => c.code === code)?.name ?? code;
 
@@ -103,22 +107,18 @@ export const SORTS: { id: SortKey; label: string }[] = [
 ];
 
 export const FORMAT_LABEL: Record<VideoFormat, string> = { shorts: "Shorts", long: "Video dài", all: "Shorts + video dài" };
-export const STYLE_LABEL: Record<VisualStyle, string> = { live: "Người thật cảnh thật", animation: "Animation / đồ hoạ", other: "Khác (game, màn hình, ảnh tĩnh…)" };
 
 export const DEFAULT_OPTIONS: DiscoverOptions = {
   country: "VN",
-  strictCountry: false,
   period: "7d",
   from: "",
   to: "",
   format: "shorts",
-  style: "all",
   query: "",
   category: "",
   sort: "engagement",
   limit: 20,
   pages: 2,
-  ai: "claude",
 };
 
 const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T => (allowed.includes(value as T) ? (value as T) : fallback);
@@ -134,19 +134,16 @@ export function parseDiscoverOptions(raw: unknown): DiscoverOptions {
   const d = DEFAULT_OPTIONS;
   const country = typeof o.country === "string" ? o.country.toUpperCase() : d.country;
   return {
-    country: COUNTRIES.some((c) => c.code === country) || /^[A-Z]{2}$/.test(country) ? country : d.country,
-    strictCountry: o.strictCountry === true || o.strictCountry === "true",
+    country: COUNTRIES.some((c) => c.code === country) ? country : d.country,
     period: pick(o.period, [...PERIODS.map((p) => p.id), "custom"], d.period),
     from: isDate(o.from) ? o.from : "",
     to: isDate(o.to) ? o.to : "",
     format: pick(o.format, ["shorts", "long", "all"] as const, d.format),
-    style: pick(o.style, ["all", "live", "animation"] as const, d.style),
     query: typeof o.query === "string" ? o.query.trim().slice(0, 200) : "",
     category: pick(o.category, ["", ...Object.keys(CATEGORIES)], ""),
     sort: pick(o.sort, SORTS.map((s) => s.id), d.sort),
     limit: clamp(o.limit, 1, 50, d.limit),
     pages: clamp(o.pages, 1, 5, d.pages),
-    ai: pick(o.ai, ["claude", "openai", "none"] as const, d.ai),
   };
 }
 
@@ -164,4 +161,4 @@ export function timeRange(o: DiscoverOptions, now = new Date()): { after: Date; 
 }
 
 /** YouTube Data API v3 quota units one search costs (search.list = 100 per page). */
-export const estimateQuota = (pages: number) => pages * 100 + 2 * pages;
+export const estimateQuota = (pages: number) => pages * 101;
