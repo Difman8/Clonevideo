@@ -48,6 +48,21 @@ npm run remake -- --rerender <videoId>    # render lại sau khi sửa out/<vide
 
 **Xem/chỉnh template trong Remotion Studio:** `npm run studio`
 
+## Soạn thông tin đăng YouTube (AI)
+
+Thẻ **✍️ Soạn thông tin đăng YouTube bằng AI** trong tab Dựng lại video viết tiêu đề, mô tả, hashtag và keywords cho bản dựng lại, dựa trên video gốc:
+
+- **Tiêu đề và mô tả** được AI viết lại, giữ khoảng **80–90%** số từ của video gốc (cùng ngôn ngữ, ý, bố cục, emoji) để tránh bị quét trùng lặp. App tự đo độ giống sau khi AI viết; nếu lệch khỏi 80–90% hoặc tiêu đề quá 100 ký tự, app nhờ AI viết lại một lần nữa và giữ bản gần mục tiêu hơn. Link, @tên kênh, tên kênh gốc, thông tin tài trợ/liên hệ của video gốc được bỏ đi.
+- **Hashtag** giữ **100%**, đúng chính tả của video gốc: code tự kiểm tra và thêm lại hashtag nào AI làm rơi.
+- **Keywords (tags)** giữ **100%**: dùng nguyên danh sách của video gốc. Chỉ khi video gốc không khai báo keywords thì AI mới gợi ý.
+
+Cách dùng: ở tab **🔥 Tìm video hot**, bấm **🎬 Dựng lại video này** trên video ưng ý (thông tin video gốc được điền sẵn), hoặc dán link rồi bấm **📥 Lấy thông tin video từ link ở trên**. Sau đó bấm **✍️ Viết bằng Claude/OpenAI** (theo công tắc AI). Mỗi lần viết gọi AI 1 lần (2 lần nếu phải chỉnh độ giống); bấm **↻ Viết lại** để có phiên bản khác. Kết quả lưu ở `out/<videoId>/new-post.txt` và `.json`.
+
+```bash
+npm run post -- "https://www.youtube.com/shorts/XXXXXXXXXXX"            # viết bằng Claude
+npm run post -- "https://www.youtube.com/shorts/XXXXXXXXXXX" --openai   # viết bằng OpenAI
+```
+
 ## Tìm video hot
 
 Tab **🔥 Tìm video hot** dùng [YouTube Data API v3](https://developers.google.com/youtube/v3) (miễn phí) để tìm video có nhiều lượt xem, lượt thích và bình luận nhất trong một khoảng thời gian. Mỗi video trả về kèm **link, chủ đề, keywords và hashtag**, ngôn ngữ, lượt xem/thích/bình luận, tỉ lệ tương tác, và nút **🎬 Dựng lại video này** để chuyển sang tab dựng lại.
@@ -85,6 +100,7 @@ npm run discover -- --help    # xem mọi tuỳ chọn
 |---|---|
 | `remake.mp4` | Video đã dựng lại |
 | `post.txt` / `post.json` | Tiêu đề, hashtag, mô tả, keywords (+ keywords gợi ý của AI) |
+| `new-post.txt` / `new-post.json` | Thông tin đăng mới do AI soạn (giống video gốc 80–90%, giữ đủ hashtag/keywords) |
 | `spec.json` | Kịch bản cảnh-theo-cảnh mà Remotion render |
 | `analysis.json` | Kết quả thô của bộ phân tích |
 | `transcript.txt`, `frames/` | Phụ đề và khung hình đã trích để phân tích |

@@ -43,6 +43,8 @@ export type DiscoveredVideo = {
   id: string;
   url: string;
   title: string;
+  /** Full description, used by "Soạn thông tin đăng YouTube". */
+  description: string;
   channel: string;
   channelUrl: string;
   thumbnail: string;
@@ -125,6 +127,7 @@ function toVideo(v: ApiVideo): DiscoveredVideo {
     id: v.id,
     url: `https://www.youtube.com/watch?v=${v.id}`,
     title: s.title,
+    description: s.description,
     channel: s.channelTitle,
     channelUrl: `https://www.youtube.com/channel/${s.channelId}`,
     thumbnail: (s.thumbnails.medium ?? s.thumbnails.high ?? s.thumbnails.default)?.url ?? `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`,

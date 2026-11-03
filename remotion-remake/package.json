@@ -7,6 +7,7 @@
     "start": "tsx src/server/server.ts",
     "remake": "tsx src/cli.ts",
     "discover": "tsx src/discover-cli.ts",
+    "post": "tsx src/post-cli.ts",
     "studio": "remotion studio",
     "stills": "tsx scripts/stills.ts",
     "typecheck": "tsc -p ."

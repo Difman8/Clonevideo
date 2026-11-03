@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-03
 
+- **Thêm Soạn thông tin đăng YouTube bằng AI: viết lại tiêu đề/mô tả giống 80–90%, giữ 100% hashtag và keywords** — @Difman8 · 07:54 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Tìm video hot không còn dùng AI: lọc quốc gia theo ngôn ngữ tiêu đề/mô tả, bỏ lọc người thật/animation** — @Difman8 · 07:32 · nhánh `claude/youtube-video-discovery-29q6gg`
 
 ## 2026-11-02
