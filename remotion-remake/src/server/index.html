@@ -113,6 +113,11 @@
   .result-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
   .history-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .history-chips button { font-size: 13px; padding: 7px 12px; text-align: left; }
+  .compose { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 16px; }
+  @media (max-width: 860px) { .compose { grid-template-columns: 1fr; } }
+  .compose h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
+  .badge.ok { background: #dcfce7; color: #166534; }
+  .badge.warn { background: #fef3c7; color: #92400e; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -152,6 +157,30 @@
       </div>
       <div class="hint">Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline. Cảnh quay thật/ảnh/giọng đọc sẽ được thay bằng chữ và đồ hoạ.</div>
     </form>
+  </section>
+
+  <section class="card" id="compose-card">
+    <h2>✍️ Soạn thông tin đăng YouTube bằng AI</h2>
+    <div class="hint">AI viết lại tiêu đề và mô tả của video gốc, giống khoảng 80–90% để tránh bị quét trùng lặp; hashtag và keywords được giữ đủ 100%. Mỗi lần viết gọi AI 1 lần (2 lần nếu phải chỉnh độ giống), AI chọn bằng công tắc Claude / OpenAI ở trên.</div>
+    <div class="row" style="margin-top:12px">
+      <button type="button" id="cp-load">📥 Lấy thông tin video từ link ở trên</button>
+      <span class="hint">hoặc bấm "🎬 Dựng lại video này" ở tab Tìm video hot.</span>
+    </div>
+    <div class="error" id="cp-error" hidden></div>
+    <div class="compose" id="cp-body" hidden>
+      <div>
+        <h3>Video gốc</h3>
+        <div id="cp-source"></div>
+      </div>
+      <div>
+        <h3>Bản đăng mới</h3>
+        <div id="cp-result"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" type="button" id="cp-go">✍️ Viết bằng Claude</button>
+          <span class="hint" id="cp-status"></span>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="card" id="progress" hidden>
@@ -335,6 +364,7 @@ function updateProvider() {
   $("st-ai").textContent = p.ready ? `${p.label}: ${p.model}` : `${p.label}: chưa có ${p.envKey} (dùng phân tích cơ bản)`;
   $("st-ai").className = "pill " + (p.ready ? "on" : "off");
   $("opt-ai").textContent = `Phân tích: bắt buộc dùng ${p.label}`;
+  updateComposeButton();
   try {
     localStorage.setItem("provider", id);
   } catch {}
@@ -458,7 +488,7 @@ function field(label, node, copyText) {
 const chips = (list, cls, empty) =>
   list.length ? el("div", { className: "chips" }, ...list.map((t) => el("span", { className: "chip " + cls, textContent: t }))) : el("div", { className: "empty", textContent: empty });
 
-function postBlock(p) {
+function postBlock(p, extra) {
   const all = [`${p.title}`, "", p.description, "", p.hashtags.join(" "), "", "Tags: " + p.keywords.join(", ")].join("\n");
   return el(
     "div",
@@ -469,7 +499,7 @@ function postBlock(p) {
     field(`Keywords / Tags (${p.keywords.length})`, chips(p.keywords, "", "Video không khai báo keywords"), p.keywords.join(", ")),
     p.suggestedKeywords?.length ? field("Keywords gợi ý (AI)", chips(p.suggestedKeywords, "", ""), p.suggestedKeywords.join(", ")) : null,
     el("div", { className: "hint", textContent: `Kênh: ${p.channel} ${p.handle} · Ngày đăng: ${p.uploadDate} · ${Math.round(p.durationSec)}s · ${p.views?.toLocaleString("vi-VN") ?? "?"} lượt xem` }),
-    el("div", { className: "row", style: "margin-top:10px" }, copyButton(all)),
+    el("div", { className: "row", style: "margin-top:10px" }, copyButton(all), extra ?? null),
   );
 }
 
@@ -491,7 +521,19 @@ function renderResult(job) {
     el("a", { href: `/media/${job.id}/spec.json?download`, textContent: "⬇ Kịch bản (.json)" }),
     el("a", { href: job.post.url, target: "_blank", rel: "noreferrer", textContent: "↗ Video gốc" }),
   );
-  $("post").replaceChildren(postBlock(job.post));
+  const jobSource = { source: { url: job.post.url, title: job.post.title, description: job.post.description, keywords: job.post.keywords, channel: job.post.channel } };
+  $("post").replaceChildren(
+    postBlock(
+      job.post,
+      el("button", {
+        type: "button",
+        className: "copy",
+        textContent: "✍️ Soạn bản đăng mới bằng AI",
+        onclick: () => setComposeSource(jobSource).then(() => $("compose-card").scrollIntoView({ behavior: "smooth" }), (e) => cpError(e.message)),
+      }),
+    ),
+  );
+  if (!cpSource || cpSource.videoId === job.id) setComposeSource(jobSource).catch((e) => cpError(e.message));
   $("remix-card").hidden = !job.remixPost;
   if (job.remixPost) {
     const r = job.remixPost;
@@ -764,7 +806,7 @@ function videoCard(v, pos) {
       el(
         "div",
         { className: "row" },
-        el("button", { type: "button", className: "primary", textContent: "🎬 Dựng lại video này", onclick: () => remakeFromDiscover(v.url) }),
+        el("button", { type: "button", className: "primary", textContent: "🎬 Dựng lại video này", onclick: () => remakeFromDiscover(v) }),
         copyButton(all, "Sao chép tất cả thông tin"),
       ),
     ),
@@ -811,12 +853,110 @@ async function loadDiscoverHistory() {
   );
 }
 
-function remakeFromDiscover(url) {
+function remakeFromDiscover(v) {
   showTab("remake");
-  $("url").value = url;
+  $("url").value = v.url;
   $("url").focus();
   scrollTo({ top: 0, behavior: "smooth" });
+  // Results saved before descriptions were kept are loaded again by URL.
+  const input = typeof v.description === "string" ? { source: { url: v.url, title: v.title, description: v.description, keywords: v.keywords, channel: v.channel } } : { url: v.url };
+  setComposeSource(input).catch((e) => cpError(e.message));
 }
+
+// ---------- Soạn thông tin đăng YouTube ----------
+let cpSource = null;
+let cpComposed = null;
+let cpTarget = { min: 0.8, max: 0.9 };
+let cpLimits = { title: 100, description: 5000 };
+
+function cpError(message) {
+  $("cp-error").hidden = !message;
+  $("cp-error").textContent = message ? "Lỗi: " + message : "";
+}
+
+function updateComposeButton() {
+  if (!PROVIDERS) return;
+  const p = PROVIDERS[provider()];
+  $("cp-go").textContent = `${cpComposed ? "↻ Viết lại" : "✍️ Viết"} bằng ${p.label}`;
+  $("cp-go").disabled = !p.ready || !cpSource;
+  $("cp-status").textContent = p.ready ? p.model : `Chưa có ${p.envKey} trong .env`;
+}
+
+/** input: { url } to load the source video, or { source } with its title/description/keywords. */
+async function setComposeSource(input) {
+  cpError("");
+  const r = await api("/api/post/source", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+  cpSource = r.source;
+  cpTarget = r.target;
+  cpLimits = r.limits;
+  const s = r.source;
+  $("cp-body").hidden = false;
+  $("cp-source").replaceChildren(
+    field("Tiêu đề", el("div", { className: "value", textContent: s.title }), s.title),
+    field("Mô tả", el("div", { className: "value", textContent: s.description || "(trống)" }), s.description),
+    field(`Hashtag (${s.hashtags.length})`, chips(s.hashtags, "tag", "Video không có hashtag"), s.hashtags.join(" ")),
+    field(`Keywords (${s.keywords.length})`, chips(s.keywords, "", "Video không khai báo keywords: AI sẽ gợi ý"), s.keywords.join(", ")),
+    el("div", { className: "hint" }, s.channel ? `Kênh: ${s.channel} · ` : "", el("a", { href: s.url, target: "_blank", rel: "noreferrer", textContent: "↗ Mở video gốc" })),
+  );
+  renderComposed(r.saved);
+}
+
+function renderComposed(c) {
+  cpComposed = c;
+  updateComposeButton();
+  if (!c) return $("cp-result").replaceChildren(el("div", { className: "empty", textContent: "Chưa viết. Bấm nút bên dưới." }));
+  const pct = (x) => Math.round(x * 100) + "%";
+  const fits = (x) => Math.round(x * 100) >= cpTarget.min * 100 && Math.round(x * 100) <= cpTarget.max * 100;
+  const badge = (ok, text, title) => el("span", { className: "badge " + (ok ? "ok" : "warn"), textContent: (ok ? "✓ " : "⚠ ") + text, title: title || "" });
+  const all = [c.title, "", c.description, "", "Tags: " + c.keywords.join(", ")].join("\n");
+  const target = `Tỉ lệ từ giữ nguyên so với video gốc, mục tiêu ${pct(cpTarget.min)}–${pct(cpTarget.max)}`;
+  const nodes = [
+    el(
+      "div",
+      { className: "badges", style: "margin-bottom:12px" },
+      badge(fits(c.similarity.title), `Tiêu đề giống ${pct(c.similarity.title)}`, target),
+      c.source.description ? badge(fits(c.similarity.description), `Mô tả giống ${pct(c.similarity.description)}`, target) : null,
+      badge(c.checks.hashtagsKept === c.checks.hashtagsTotal, `Hashtag giữ ${c.checks.hashtagsKept}/${c.checks.hashtagsTotal}`),
+      c.keywordsFromAi
+        ? badge(true, `Keywords: AI gợi ý ${c.keywords.length}`, "Video gốc không khai báo keywords")
+        : badge(c.checks.keywordsKept === c.checks.keywordsTotal, `Keywords giữ ${c.checks.keywordsKept}/${c.checks.keywordsTotal}`),
+    ),
+    field(`Tiêu đề (${c.checks.titleLength}/${cpLimits.title} ký tự)`, el("div", { className: "value", textContent: c.title }), c.title),
+    c.checks.titleLength > cpLimits.title ? el("div", { className: "error", textContent: `Tiêu đề dài hơn ${cpLimits.title} ký tự, YouTube sẽ không nhận: hãy bấm viết lại hoặc tự sửa bớt.` }) : null,
+    field(`Mô tả (${c.checks.descriptionLength}/${cpLimits.description} ký tự)`, el("div", { className: "value", textContent: c.description || "(trống)" }), c.description),
+    field(`Hashtag (${c.hashtags.length})`, chips(c.hashtags, "tag", "—"), c.hashtags.join(" ")),
+    field(`Keywords / Tags (${c.keywords.length})`, chips(c.keywords, "", "—"), c.keywords.join(", ")),
+    el("div", { className: "row" }, copyButton(all, "Sao chép tất cả"), el("a", { href: `/media/${c.videoId}/new-post.txt?download`, textContent: "⬇ Tải .txt" })),
+    el("div", { className: "hint", style: "margin-top:6px", textContent: `${c.model} · ${c.attempts} lần gọi AI · ${new Date(c.createdAt).toLocaleString("vi-VN")}` }),
+  ];
+  $("cp-result").replaceChildren(...nodes.filter(Boolean));
+}
+
+$("cp-load").addEventListener("click", async () => {
+  const url = $("url").value.trim();
+  if (!url) return cpError("Dán link YouTube vào ô ở trên trước.");
+  $("cp-load").disabled = true;
+  try {
+    await setComposeSource({ url });
+  } catch (e) {
+    cpError(e.message);
+  } finally {
+    $("cp-load").disabled = false;
+  }
+});
+
+$("cp-go").addEventListener("click", async () => {
+  if (!cpSource) return;
+  cpError("");
+  $("cp-go").disabled = true;
+  $("cp-status").textContent = "AI đang viết… (thường 10–40 giây)";
+  try {
+    renderComposed(await api("/api/post/compose", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: cpSource, provider: provider() }) }));
+  } catch (e) {
+    cpError(e.message);
+    updateComposeButton();
+  }
+});
 
 loadStatus().then(loadHistory);
 let startTab = "remake";
