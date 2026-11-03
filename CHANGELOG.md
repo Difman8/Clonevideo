@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-03
 
+- **Thêm lồng tiếng ElevenLabs, tab Cài đặt API và tiếp tục việc dở sau khi máy tắt đột ngột** — @Difman8 · 22:09 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Soạn thông tin đăng: làm khác đi bằng tên kênh Fedtoon và thông tin trong mô tả, cấm chữ vô nghĩa, thêm #Fedtoon** — @Difman8 · 17:32 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Thêm Soạn thông tin đăng YouTube bằng AI: viết lại tiêu đề/mô tả giống 80–90%, giữ 100% hashtag và keywords** — @Difman8 · 07:54 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Tìm video hot không còn dùng AI: lọc quốc gia theo ngôn ngữ tiêu đề/mô tả, bỏ lọc người thật/animation** — @Difman8 · 07:32 · nhánh `claude/youtube-video-discovery-29q6gg`

@@ -6,13 +6,17 @@ Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top li
 
 Thẻ **✍️ Soạn thông tin đăng YouTube bằng AI** viết lại tiêu đề và mô tả của video gốc (giống khoảng 80–90% để tránh trùng lặp, khác đi nhờ thêm tên kênh Fedtoon và thông tin trong mô tả), giữ đủ 100% hashtag và keywords, thêm #Fedtoon.
 
+Có thể **lồng tiếng bằng ElevenLabs**, xem và sửa mọi thông số API (model, voice ID, effort…) trên tab **⚙️ Cài đặt**, và **tiếp tục việc đang dở** sau khi máy tắt đột ngột.
+
+Kế hoạch nâng cấp bộ dựng thành video hoạt hình thật: [docs/ke-hoach-dung-video-hoat-hinh.md](docs/ke-hoach-dung-video-hoat-hinh.md).
+
 Tab **🔥 Tìm video hot** tìm video YouTube có nhiều lượt xem, lượt thích và bình luận nhất trong một khoảng thời gian (lọc theo quốc gia/ngôn ngữ, Shorts/video dài), trả về link, chủ đề, keywords và hashtag. Không dùng AI; chỉ cần khóa YouTube Data API v3 miễn phí — xem hướng dẫn ngay trên tab.
 
 ## Chạy nhanh (Windows)
 
 1. Cài [Node.js](https://nodejs.org) 20+ và [Python](https://www.python.org) 3.10+.
 2. Bấm đúp **`Khởi động Remotion Remake.bat`** — lần đầu sẽ tự cài thư viện, yt-dlp và trình duyệt render.
-3. Điền `ANTHROPIC_API_KEY` và/hoặc `OPENAI_API_KEY` vào `remotion-remake/.env`, rồi bấm lại nút khởi động.
+3. Mở tab **⚙️ Cài đặt** trên app, điền khóa Claude và/hoặc OpenAI (thêm ElevenLabs nếu muốn lồng tiếng, YouTube nếu dùng Tìm video hot) rồi bấm **Lưu cài đặt**.
 
 Chi tiết: [remotion-remake/README.md](remotion-remake/README.md).
 

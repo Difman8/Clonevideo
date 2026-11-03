@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
@@ -19,8 +20,26 @@ function getBundle(): Promise<string> {
   return bundled;
 }
 
-export async function renderSpec(spec: VideoSpec, outputLocation: string, onProgress: (p: number) => void): Promise<void> {
+/**
+ * Renders the spec to `outputLocation`. `publicFiles` (e.g. voice clips made
+ * after the bundle was built) are copied into the bundle's public folder, which
+ * is where staticFile() points. The video is written to a temporary file and
+ * renamed at the end, so an interrupted render never leaves a broken MP4.
+ */
+export async function renderSpec(
+  spec: VideoSpec,
+  outputLocation: string,
+  onProgress: (p: number) => void,
+  publicFiles: { from: string; to: string }[] = [],
+): Promise<void> {
   const serveUrl = await getBundle();
+  for (const f of publicFiles) {
+    if (!fs.existsSync(f.from)) continue;
+    const dest = path.join(serveUrl, "public", f.to);
+    fs.rmSync(dest, { recursive: true, force: true });
+    fs.cpSync(f.from, dest, { recursive: true });
+  }
+  const partial = `${outputLocation}.part.mp4`;
   const browser = await browserExecutable();
   const inputProps = spec as unknown as Record<string, unknown>;
   const composition = await selectComposition({ serveUrl, id: "Remake", inputProps, browserExecutable: browser });
@@ -32,7 +51,7 @@ export async function renderSpec(spec: VideoSpec, outputLocation: string, onProg
     crf: 18,
     imageFormat: "jpeg",
     jpegQuality: 90,
-    outputLocation,
+    outputLocation: partial,
     inputProps,
     browserExecutable: browser,
     onProgress: ({ progress }) => {
@@ -43,4 +62,5 @@ export async function renderSpec(spec: VideoSpec, outputLocation: string, onProg
       }
     },
   });
+  fs.renameSync(partial, outputLocation);
 }

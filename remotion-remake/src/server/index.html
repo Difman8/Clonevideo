@@ -118,6 +118,11 @@
   .compose h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
   .badge.ok { background: #dcfce7; color: #166534; }
   .badge.warn { background: #fef3c7; color: #92400e; }
+  .unfinished { max-width: 1180px; margin: 20px auto 0; padding: 0 16px; }
+  .unfinished .card { border-color: var(--warn); }
+  .unfinished-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
+  .unfinished-row:first-of-type { border-top: 0; }
+  .unfinished-row .what { flex: 1 1 320px; min-width: 0; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -127,11 +132,20 @@
   <nav class="tabs" aria-label="Công cụ">
     <button type="button" data-tab="remake" class="active">🎬 Dựng lại video</button>
     <button type="button" data-tab="discover">🔥 Tìm video hot</button>
+    <button type="button" data-tab="settings">⚙️ Cài đặt</button>
   </nav>
   <span class="pill" id="st-ai">…</span>
   <span class="pill" id="st-ytdlp">…</span>
   <span class="pill" id="st-yt">…</span>
 </header>
+<div class="unfinished" id="unfinished" hidden>
+  <section class="card">
+    <h2>⏸ Việc đang dở từ lần trước</h2>
+    <div class="hint" style="margin:-6px 0 6px">App đã lưu tiến trình: bấm Tiếp tục để làm nốt từ bước còn dang dở, các bước đã xong (tải video, phân tích AI, giọng đọc, trang tìm kiếm đã trả quota) không phải làm lại.</div>
+    <div id="unfinished-list"></div>
+  </section>
+</div>
+
 <main id="tab-remake">
   <section class="card">
     <form id="form">
@@ -154,6 +168,7 @@
           <option value="ai" id="opt-ai">Phân tích: Claude AI</option>
           <option value="basic">Phân tích: cơ bản (không AI)</option>
         </select>
+        <label class="check" style="color:var(--text)" title="Đọc lời thoại (narration) của từng cảnh bằng ElevenLabs"><input type="checkbox" id="voice" /> 🎙️ Lồng tiếng (ElevenLabs) <span class="hint" id="voice-hint"></span></label>
       </div>
       <div class="hint">Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline. Cảnh quay thật/ảnh/giọng đọc sẽ được thay bằng chữ và đồ hoạ.</div>
     </form>
@@ -222,7 +237,7 @@
       <textarea id="spec" spellcheck="false"></textarea>
       <div class="row" style="margin-top:10px">
         <button class="primary" id="rerender">Lưu &amp; render lại</button>
-        <span class="hint">Đổi chữ, màu, thời lượng, thứ tự cảnh… rồi bấm render lại.</span>
+        <span class="hint">Đổi chữ, màu, thời lượng, thứ tự cảnh, lời thoại (narration)… rồi bấm render lại. Nếu video có lồng tiếng, chỉ những câu thoại đã sửa mới được tạo giọng lại.</span>
       </div>
     </div>
   </section>
@@ -230,6 +245,21 @@
   <section class="card" id="history-card" hidden>
     <h2>Video đã làm</h2>
     <div class="history" id="history"></div>
+  </section>
+</main>
+
+<main id="tab-settings" hidden>
+  <section class="card">
+    <h2>⚙️ Cài đặt API</h2>
+    <div class="hint">Mọi thông số được lưu vào <code>remotion-remake/.env</code> và có hiệu lực ngay (trừ mục ghi "cần khởi động lại"). Khóa API không hiện lại sau khi lưu; để trống ô khóa nghĩa là giữ khóa cũ. Để trống một thông số khác nghĩa là dùng giá trị mặc định.</div>
+  </section>
+  <div id="set-groups" style="display:grid;gap:20px"></div>
+  <section class="card">
+    <div class="row">
+      <button class="primary" type="button" id="set-save">💾 Lưu cài đặt</button>
+      <span class="hint" id="set-status"></span>
+    </div>
+    <div class="error" id="set-error" hidden></div>
   </section>
 </main>
 
@@ -394,6 +424,9 @@ async function loadStatus() {
   $("st-ytdlp").textContent = s.ytdlp ? "yt-dlp: sẵn sàng" : "yt-dlp: chưa cài — chạy npm run setup";
   $("st-ytdlp").className = "pill " + (s.ytdlp ? "on" : "off");
   setYoutubeReady(s.youtubeApi);
+  $("voice").disabled = !s.elevenlabs;
+  if (!s.elevenlabs) $("voice").checked = false;
+  $("voice-hint").textContent = s.elevenlabs ? "" : "(chưa có khóa — xem tab ⚙️ Cài đặt)";
 }
 
 function setYoutubeReady(ready) {
@@ -455,10 +488,12 @@ function onEvent(e) {
     $("error").hidden = false;
     $("error").textContent = "Lỗi: " + e.message;
     busy(false);
+    loadUnfinished();
   } else if (e.type === "result") {
     busy(false);
     renderResult(e.result);
     loadHistory();
+    loadUnfinished();
   }
 }
 
@@ -578,6 +613,7 @@ $("form").addEventListener("submit", async (ev) => {
         mode: document.querySelector("input[name=mode]:checked").value,
         analyzer: $("analyzer").value,
         provider: provider(),
+        voice: $("voice").checked,
       }),
     });
     follow(id);
@@ -611,17 +647,21 @@ function showTab(name) {
   document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   $("tab-remake").hidden = name !== "remake";
   $("tab-discover").hidden = name !== "discover";
+  $("tab-settings").hidden = name !== "settings";
   // Status pills of the other tab would suggest it uses AI / yt-dlp.
   $("st-ai").hidden = $("st-ytdlp").hidden = name !== "remake";
   $("st-yt").hidden = name !== "discover";
-  history.replaceState(null, "", name === "discover" ? "#discover" : location.pathname);
+  history.replaceState(null, "", name === "remake" ? location.pathname : "#" + name);
   try {
     localStorage.setItem("tab", name);
   } catch {}
   if (name === "discover") initDiscover().catch((e) => dOnEvent({ type: "error", message: e.message }));
+  if (name === "settings") loadSettings().catch((e) => setError(e.message));
 }
+const TAB_NAMES = ["remake", "discover", "settings"];
+const tabFromHash = () => (TAB_NAMES.includes(location.hash.slice(1)) ? location.hash.slice(1) : "remake");
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
-addEventListener("hashchange", () => showTab(location.hash === "#discover" ? "discover" : "remake"));
+addEventListener("hashchange", () => showTab(tabFromHash()));
 
 // ---------- Tìm video hot ----------
 let DOPT = null;
@@ -724,10 +764,12 @@ function dOnEvent(e) {
     $("d-error").hidden = false;
     $("d-error").textContent = "Lỗi: " + e.message;
     $("d-go").disabled = false;
+    loadUnfinished();
   } else if (e.type === "result") {
     $("d-go").disabled = false;
     showDiscovery(e.result);
     loadDiscoverHistory();
+    loadUnfinished();
   }
 }
 
@@ -737,20 +779,28 @@ $("d-form").addEventListener("submit", async (ev) => {
   try {
     localStorage.setItem("discover-form", JSON.stringify(opts));
   } catch {}
+  dResetProgress();
+  try {
+    const { task } = await api("/api/discover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts) });
+    dFollow(task);
+  } catch (e) {
+    dOnEvent({ type: "error", message: e.message });
+  }
+});
+
+function dResetProgress() {
   $("d-go").disabled = true;
   $("d-progress").hidden = false;
   $("d-error").hidden = true;
   $("d-log").textContent = "";
   $("d-steps").replaceChildren(...stepItems(DOPT.steps, "dstep-"));
-  try {
-    const { task } = await api("/api/discover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts) });
-    const es = new EventSource(`/api/discover/${encodeURIComponent(task)}/events`);
-    es.onmessage = (m) => dOnEvent(JSON.parse(m.data));
-    es.onerror = () => es.close();
-  } catch (e) {
-    dOnEvent({ type: "error", message: e.message });
-  }
-});
+}
+
+function dFollow(task) {
+  const es = new EventSource(`/api/discover/${encodeURIComponent(task)}/events`);
+  es.onmessage = (m) => dOnEvent(JSON.parse(m.data));
+  es.onerror = () => es.close();
+}
 
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("vi-VN");
 const fmtDuration = (sec) => {
@@ -993,12 +1043,215 @@ $("cp-go").addEventListener("click", async () => {
   }
 });
 
-loadStatus().then(loadHistory);
+
+// ---------- ⚙️ Cài đặt ----------
+let SETTINGS = null;
+
+function setError(message) {
+  $("set-error").hidden = !message;
+  $("set-error").textContent = message ? "Lỗi: " + message : "";
+}
+
+function settingInput(s) {
+  const common = { id: "set-" + s.key };
+  if (s.type === "boolean") {
+    const box = el("input", { ...common, type: "checkbox", checked: s.value === "true" });
+    box.dataset.key = s.key;
+    return el("label", { className: "check", style: "color:var(--text)" }, box, " Bật");
+  }
+  let input;
+  if (s.type === "select") {
+    input = el("select", common, ...s.options.map((o) => option(o.value, o.label)));
+    input.value = s.value;
+  } else if (s.type === "secret") {
+    input = el("input", { ...common, type: "password", autocomplete: "off", placeholder: s.isSet ? `Đã có khóa ${s.hint} — dán khóa mới để thay` : "Chưa có khóa" });
+  } else {
+    input = el("input", { ...common, type: s.type === "number" ? "number" : "text", value: s.isSet ? s.value : "", placeholder: s.default ? `Mặc định: ${s.default}` : "" });
+    if (s.type === "number") Object.assign(input, { min: s.min ?? "", max: s.max ?? "", step: s.step ?? "any" });
+    if (s.options?.length) {
+      input.setAttribute("list", "list-" + s.key);
+      return el("div", {}, input, el("datalist", { id: "list-" + s.key }, ...s.options.map((o) => option(o.value, o.label))));
+    }
+  }
+  input.dataset.key = s.key;
+  return input;
+}
+
+function elevenLabsTools() {
+  const status = el("span", { className: "hint", id: "el-status" });
+  const voices = el("select", { id: "el-voices", hidden: true });
+  const models = el("select", { id: "el-models", hidden: true });
+  const sample = el("audio", { id: "el-audio", controls: true, hidden: true, style: "width:100%;margin-top:8px" });
+  const text = el("input", { type: "text", id: "el-text", value: "Xin chào, đây là giọng đọc thử cho video của bạn.", style: "flex:1 1 280px" });
+  voices.onchange = () => {
+    const v = JSON.parse(voices.value);
+    $("set-ELEVENLABS_VOICE_ID").value = v.id;
+    if (v.previewUrl) Object.assign(sample, { src: v.previewUrl, hidden: false });
+  };
+  models.onchange = () => ($("set-ELEVENLABS_MODEL_ID").value = models.value);
+  const load = el("button", {
+    type: "button",
+    textContent: "🔄 Tải giọng & model từ tài khoản",
+    onclick: async () => {
+      status.textContent = "Đang tải…";
+      try {
+        const c = await api("/api/elevenlabs/catalog");
+        const current = $("set-ELEVENLABS_VOICE_ID").value || SETTINGS.settings.find((s) => s.key === "ELEVENLABS_VOICE_ID").value;
+        voices.replaceChildren(
+          option("", `— Chọn giọng (${c.voices.length}) —`),
+          ...c.voices.map((v) => {
+            const tags = Object.values(v.labels).filter(Boolean).join(", ");
+            return option(JSON.stringify(v), `${v.name}${tags ? " · " + tags : ""}${v.category ? " · " + v.category : ""}`, { selected: v.id === current });
+          }),
+        );
+        const model = $("set-ELEVENLABS_MODEL_ID").value || SETTINGS.settings.find((s) => s.key === "ELEVENLABS_MODEL_ID").value;
+        models.replaceChildren(
+          ...c.models.map((m) => option(m.id, `${m.id} — ${m.name}${m.languages.includes("vi") ? " · có tiếng Việt" : ""}${m.maxChars ? ` · tối đa ${m.maxChars} ký tự/lần` : ""}`, { selected: m.id === model })),
+        );
+        voices.hidden = models.hidden = false;
+        const ch = c.characters;
+        status.textContent = ch ? `Gói ${ch.tier}: đã dùng ${nf.format(ch.used)}/${nf.format(ch.limit)} ký tự${ch.resetsAt ? ` · làm mới ${new Date(ch.resetsAt).toLocaleDateString("vi-VN")}` : ""}` : "Đã tải.";
+      } catch (e) {
+        status.textContent = "Lỗi: " + e.message;
+      }
+    },
+  });
+  const listen = el("button", {
+    type: "button",
+    textContent: "▶ Nghe thử (theo cài đặt đã lưu)",
+    onclick: async (ev) => {
+      ev.target.disabled = true;
+      status.textContent = "Đang tạo giọng thử…";
+      try {
+        const r = await fetch("/api/elevenlabs/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: text.value }) });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+        Object.assign(sample, { src: URL.createObjectURL(await r.blob()), hidden: false });
+        sample.play().catch(() => {});
+        status.textContent = `Đã tạo (${text.value.length} ký tự).`;
+      } catch (e) {
+        status.textContent = "Lỗi: " + e.message;
+      } finally {
+        ev.target.disabled = false;
+      }
+    },
+  });
+  return el(
+    "div",
+    { style: "margin-top:16px;display:grid;gap:10px" },
+    el("div", { className: "row" }, load, status),
+    el("div", { className: "filters" }, el("div", { className: "f" }, el("label", { textContent: "Giọng trong tài khoản" }), voices), el("div", { className: "f" }, el("label", { textContent: "Model trong tài khoản" }), models)),
+    el("div", { className: "row" }, text, listen),
+    sample,
+  );
+}
+
+async function loadSettings() {
+  SETTINGS = await api("/api/settings");
+  $("set-groups").replaceChildren(
+    ...SETTINGS.groups.map((g) => {
+      const items = SETTINGS.settings.filter((s) => s.group === g.id);
+      return el(
+        "section",
+        { className: "card" },
+        el("h2", {}, g.title, g.link ? el("a", { href: g.link, target: "_blank", rel: "noreferrer", textContent: " ↗", title: "Trang lấy khóa / quản lý" }) : null),
+        g.help ? el("div", { className: "hint", style: "margin:-6px 0 12px", textContent: g.help }) : null,
+        el(
+          "div",
+          { className: "filters" },
+          ...items.map((s) =>
+            el(
+              "div",
+              { className: "f" },
+              el("label", { htmlFor: "set-" + s.key, textContent: s.label }),
+              settingInput(s),
+              el("div", { className: "hint", textContent: [s.help, `(${s.key})`, s.restart ? "Cần khởi động lại." : ""].filter(Boolean).join(" ") }),
+            ),
+          ),
+        ),
+        g.id === "elevenlabs" ? elevenLabsTools() : null,
+      );
+    }),
+  );
+}
+
+$("set-save").addEventListener("click", async () => {
+  setError("");
+  const values = {};
+  document.querySelectorAll("#set-groups [data-key]").forEach((input) => {
+    values[input.dataset.key] = input.type === "checkbox" ? String(input.checked) : input.value.trim();
+  });
+  $("set-save").disabled = true;
+  try {
+    const r = await api("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+    $("set-status").textContent = r.changed ? `Đã lưu ${r.changed} thay đổi ✓` : "Không có gì thay đổi.";
+    await loadSettings();
+    await loadStatus();
+  } catch (e) {
+    setError(e.message);
+  } finally {
+    $("set-save").disabled = false;
+  }
+});
+
+// ---------- Việc đang dở (sau khi máy tắt đột ngột) ----------
+async function loadUnfinished() {
+  const u = await api("/api/unfinished").catch(() => ({ jobs: [], discover: [] }));
+  const when = (iso) => new Date(iso).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+  const row = (icon, what, detail, onResume, onDismiss) => {
+    const r = el(
+      "div",
+      { className: "unfinished-row" },
+      el("div", { className: "what" }, el("b", { textContent: `${icon} ${what}` }), el("div", { className: "hint", textContent: detail })),
+      el("button", { type: "button", className: "primary", textContent: "▶ Tiếp tục", onclick: () => onResume().then(() => r.remove(), (e) => alert(e.message)).finally(syncBanner) }),
+      el("button", { type: "button", textContent: "Bỏ qua", onclick: () => onDismiss().then(() => r.remove()).finally(syncBanner) }),
+    );
+    return r;
+  };
+  const dismiss = (kind, id) => api("/api/unfinished/dismiss", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, id }) });
+  $("unfinished-list").replaceChildren(
+    ...u.jobs.map((j) =>
+      row(
+        "🎬",
+        `Dựng lại: ${j.title}`,
+        `${j.interrupted ? `Bị dừng giữa chừng ở bước "${j.stepLabel}"` : `Lỗi ở bước "${j.stepLabel}": ${j.error}`} · đã xong ${j.done}/${j.total} bước · ${when(j.updatedAt)}`,
+        async () => {
+          await api(`/api/jobs/${encodeURIComponent(j.id)}/resume`, { method: "POST" });
+          showTab("remake");
+          resetSteps();
+          $("progress-title").textContent = "Tiếp tục: " + j.title;
+          busy(true);
+          follow(j.id);
+          scrollTo({ top: 0, behavior: "smooth" });
+        },
+        () => dismiss("job", j.id),
+      ),
+    ),
+    ...u.discover.map((d) =>
+      row(
+        "🔥",
+        `Tìm video hot: ${d.label}`,
+        `${d.interrupted ? "Bị dừng giữa chừng" : `Lỗi: ${d.error}`} · ${d.progress} · đã dùng ${d.quotaUsed} đơn vị quota · ${when(d.updatedAt)}`,
+        async () => {
+          const { task } = await api(`/api/discover/${encodeURIComponent(d.id)}/resume`, { method: "POST" });
+          showTab("discover");
+          await initDiscover();
+          dResetProgress();
+          dFollow(task);
+        },
+        () => dismiss("discover", d.id),
+      ),
+    ),
+  );
+  syncBanner();
+}
+const syncBanner = () => ($("unfinished").hidden = !$("unfinished-list").children.length);
+
+loadStatus().then(loadHistory).then(loadUnfinished);
 let startTab = "remake";
 try {
-  startTab = location.hash === "#discover" ? "discover" : localStorage.getItem("tab") || "remake";
+  startTab = location.hash ? tabFromHash() : localStorage.getItem("tab") || "remake";
 } catch {}
-showTab(startTab === "discover" ? "discover" : "remake");
+showTab(TAB_NAMES.includes(startTab) ? startTab : "remake");
 </script>
 </body>
 </html>

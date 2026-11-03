@@ -18,6 +18,34 @@ export function ffmpegPath(): string {
   return p;
 }
 
+/**
+ * Writes a file so that a sudden power cut leaves either the old or the new
+ * content, never half a file: write to a temp file, flush it to disk, rename.
+ */
+export function writeFileAtomic(file: string, data: string | Buffer) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.tmp-${process.pid}`;
+  const fd = fs.openSync(tmp, "w");
+  try {
+    fs.writeSync(fd, typeof data === "string" ? Buffer.from(data) : data);
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+  fs.renameSync(tmp, file);
+}
+
+export const writeJsonAtomic = (file: string, data: unknown) => writeFileAtomic(file, JSON.stringify(data, null, 2));
+
+/** Reads JSON written by writeJsonAtomic; null when missing or unreadable. */
+export function readJsonSafe<T>(file: string): T | null {
+  try {
+    return fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, "utf8")) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 export type Command = { cmd: string; args: string[] };
 
 // The venv is called through `python -m yt_dlp` rather than its yt-dlp.exe

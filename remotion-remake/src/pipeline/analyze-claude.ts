@@ -3,9 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { numberSetting, setting } from "../settings";
 import { AiOutputSchema, buildContext, finalInstruction, progressReporter, SYSTEM_PROMPT, type AiInput, type AiOutput } from "./ai-common";
 
-export const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-opus-5-5";
+export type ClaudeEffort = "low" | "medium" | "high" | "xhigh" | "max";
+export const claudeModel = () => setting("CLAUDE_MODEL");
+export const claudeEffort = (key: "CLAUDE_EFFORT" | "CLAUDE_POST_EFFORT") => setting(key) as ClaudeEffort;
 
 /** True when the Anthropic SDK can find credentials (env var or an `ant auth login` profile). */
 export function hasClaudeCredentials(): boolean {
@@ -23,10 +26,10 @@ export async function analyzeWithClaude(input: AiInput): Promise<AiOutput> {
 
   const client = new Anthropic();
   const stream = client.beta.messages.stream({
-    model: CLAUDE_MODEL,
-    max_tokens: 64000,
+    model: claudeModel(),
+    max_tokens: numberSetting("CLAUDE_MAX_TOKENS"),
     // Opus 5.5 always thinks; effort controls how much.
-    output_config: { effort: "high", format: betaZodOutputFormat(AiOutputSchema) },
+    output_config: { effort: claudeEffort("CLAUDE_EFFORT"), format: betaZodOutputFormat(AiOutputSchema) },
     // If a safety classifier declines, the API retries on Anthropic's recommended fallback model.
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",

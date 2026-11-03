@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Html5Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { flip } from "@remotion/transitions/flip";
@@ -38,6 +38,22 @@ const ProgressBar: React.FC<{ total: number; color: string }> = ({ total, color 
   );
 };
 
+/** ElevenLabs voice-over: each clip starts when its scene becomes fully visible. */
+const Voiceover: React.FC<{ spec: VideoSpec; start: number[] }> = ({ spec, start }) => {
+  const { fps } = useVideoConfig();
+  return (
+    <>
+      {(spec.voiceover ?? []).map((clip) =>
+        start[clip.scene] === undefined ? null : (
+          <Sequence key={clip.src} from={start[clip.scene]} durationInFrames={Math.ceil(clip.durationSec * fps) + 1} layout="none">
+            <Html5Audio src={staticFile(clip.src)} />
+          </Sequence>
+        ),
+      )}
+    </>
+  );
+};
+
 export const Remake: React.FC<VideoSpec> = (spec) => {
   const { theme, scenes } = spec;
   const fontFamily = useFontFamily(theme.font);
@@ -63,6 +79,7 @@ export const Remake: React.FC<VideoSpec> = (spec) => {
     <SpecContext.Provider value={{ theme, locale: spec.meta.language }}>
       <AbsoluteFill style={{ fontFamily, color: theme.textColor, background: theme.bgColors[0] }}>
         <TransitionSeries>{children}</TransitionSeries>
+        <Voiceover spec={spec} start={t.start} />
         {scenes.map((s, i) => (i > 0 && t.trans[i] > 0 ? <Sfx key={i} name="whoosh" at={t.start[i] - t.trans[i]} volume={0.35} /> : null))}
         {theme.progressBar && <ProgressBar total={t.total} color={theme.accent} />}
         {theme.watermark.trim() && (

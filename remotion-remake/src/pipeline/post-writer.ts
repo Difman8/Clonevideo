@@ -11,7 +11,10 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { extractHashtags } from "../discover/classify";
 import { hasYoutubeKey, YoutubeApi } from "../discover/youtube-api";
+import { setting } from "../settings";
 import { PROVIDERS, type Provider } from "./ai";
+import { claudeEffort } from "./analyze-claude";
+import { openaiEffort } from "./analyze-openai";
 import { extractPostContent, type PostContent } from "./metadata";
 import { similarity, words } from "./similarity";
 import { OUT_DIR } from "./tools";
@@ -30,11 +33,11 @@ export type PostSource = {
 /** The creator's own channel, used to make the rewrite different and as a hashtag/keyword. */
 export type WriterOptions = { channel: string; brandTags: boolean };
 
-export const DEFAULT_CHANNEL = process.env.CHANNEL_NAME?.trim() || "Fedtoon";
+export const defaultChannel = () => setting("CHANNEL_NAME");
 
 export function parseWriterOptions(raw: { channel?: unknown; brandTags?: unknown }): WriterOptions {
   const channel = typeof raw.channel === "string" ? raw.channel.trim().slice(0, 60) : "";
-  return { channel: channel || DEFAULT_CHANNEL, brandTags: raw.brandTags !== false && raw.brandTags !== "false" };
+  return { channel: channel || defaultChannel(), brandTags: raw.brandTags !== false && raw.brandTags !== "false" };
 }
 
 /** "Fedtoon" → "#Fedtoon"; spaces and symbols are dropped. Null when nothing is left. */
@@ -177,7 +180,7 @@ async function draftWithClaude(system: string, text: string): Promise<PostDraft>
   const stream = new Anthropic().beta.messages.stream({
     model: PROVIDERS.claude.model,
     max_tokens: 16000,
-    output_config: { effort: "low", format: betaZodOutputFormat(PostDraftSchema) },
+    output_config: { effort: claudeEffort("CLAUDE_POST_EFFORT"), format: betaZodOutputFormat(PostDraftSchema) },
     // If a safety classifier declines, the API retries on Anthropic's recommended fallback model.
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
@@ -197,7 +200,7 @@ async function draftWithOpenAI(system: string, text: string): Promise<PostDraft>
     instructions: system,
     input: [{ role: "user", content: text }],
     text: { format: zodTextFormat(PostDraftSchema, "youtube_post") },
-    reasoning: { effort: "low" },
+    reasoning: { effort: openaiEffort("OPENAI_POST_REASONING_EFFORT") },
     max_output_tokens: 16000,
   });
   const response = await stream.finalResponse();

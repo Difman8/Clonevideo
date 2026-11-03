@@ -10,7 +10,8 @@
     "post": "tsx src/post-cli.ts",
     "studio": "remotion studio",
     "stills": "tsx scripts/stills.ts",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "env-example": "tsx scripts/env-example.ts"
   },
   "keywords": [],
   "author": "",
