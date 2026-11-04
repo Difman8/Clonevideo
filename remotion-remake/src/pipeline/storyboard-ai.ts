@@ -33,10 +33,10 @@ Shots:
 - speaker: the castId whose mouth moves while the narration plays, or "narrator".
 - background.prompt: the environment only, in English, concrete and visual (places, objects, lighting), 1-2 sentences. Never people, characters or text. Keep the lower middle third open: characters stand there. Do not describe the art style; it is added automatically. Reuse the same wording for shots that happen in the same place, so the image is generated once.
 - background.mood: night, day, sunset, space, indoor or abstract (abstract = flat rays or shapes, for ideas and feelings).
-- background.colors: the 2 named colors that dominate the background (${COLOR_NAMES.join(", ")}). They must be clearly different from the outfit/body colors of the characters in the shot and from the main colors of its props: never a teal character on teal or green, never a blue one on blue. Good sets: ${BACKGROUND_SETS.map((s) => s.join("+")).join(", ")}.
+- background.colors: the 2 named colors that dominate the background (${COLOR_NAMES.join(", ")}), chosen naturally for the scene (e.g. ${BACKGROUND_SETS.slice(0, 4).map((s) => s.join("+")).join(", ")}). The only rule: never the exact same color as the outfit/body color of a character in the shot.
 - camera: vary it (${CAMERAS.join(", ")}); "shake" only for impacts.
 - characters: 0-3 cast members with position, scale, action (${ACTIONS.join(", ")}) and expression (${EXPRESSIONS.join(", ")}). Characters who are not in the source can appear when they help tell the story.
-- props: 0-2 single objects that illustrate the narration (a planet, a cell, a coin, a phone…), in English, each drawn on its own. Name the object's main color, chosen to contrast with background.colors; give it a simple cute face when that fits the tone.
+- props: 0-2 single objects that illustrate the narration (a planet, a cell, a coin, a phone…), in English, each drawn on its own. Name the object's main color (never exactly one of background.colors); give it a simple cute face when that fits the tone.
 - text: at most 6 words and only when it helps; style "title" for the opening question/title, "label" for a key term (solid colored box), "caption" for a statistic or fact (dark rounded box), "big-number" for one striking number, "none" when unused.
 - transition: cut for fast-paced moments, fade or slide otherwise. sfx: none or one, sparingly.
 

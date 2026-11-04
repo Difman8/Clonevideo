@@ -1,7 +1,7 @@
 // Fedtoon brand kit: shared by the pipeline (image prompts) and the Remotion
 // composition (colors, font). Flat-vector explainer look: vivid saturated flat
 // colors, rounded geometric shapes, no outlines, no drop shadows, no glow.
-// Subjects stand out because the background is a clearly different color.
+// A background color is never the exact same color as a character (contrast.ts).
 // Fedtoon has its own mascot and logo; it does not reuse another channel's
 // characters or marks.
 
@@ -39,10 +39,7 @@ export const COLOR_NAMES = Object.keys(PALETTE) as [ColorName, ...ColorName[]];
 export const SKIN = { light: "#FFC9B0", tan: "#F2A08F", brown: "#C9805A", dark: "#8A5034" } as const;
 export const HAIR_COLORS = { black: "#25205C", brown: "#6B3A2A", blonde: "#F4C75E", red: "#D2502C", gray: "#C2C6D6", blue: "#4F6FFA", pink: "#F06BB4" } as const;
 
-/**
- * Background color sets for the fallback backdrop and the image prompts. A
- * shot gets the set that contrasts most with its characters (see contrast.ts).
- */
+/** Background color pairs offered to the AI as examples. */
 export const BACKGROUND_SETS: ColorName[][] = [
   ["plum", "violet"],
   ["cyan", "sky"],
@@ -76,5 +73,5 @@ export const DEFAULT_IMAGE_STYLE =
   "Flat 2D vector illustration for an animated science explainer. Bold, vivid, saturated colors (magenta, violet, deep purple, cyan, lime green, " +
   "yellow, orange, royal blue) filled as solid flat areas. Simple rounded geometric shapes, no outlines. Shading only as a few flat darker shapes " +
   "inside objects. No drop shadows, no cast shadows, no glow, no bloom, no lens effects, no vignette, no texture or grain. Clean layered depth " +
-  "(foreground, middle, background) with each layer in its own flat color, and strong color contrast between the subject and the background. " +
+  "(foreground, middle, background) with each layer in its own flat color. " +
   "Absolutely no text, letters, numbers, logos or watermarks.";
