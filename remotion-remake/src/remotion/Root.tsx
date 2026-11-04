@@ -4,7 +4,7 @@ import type { VideoSpec } from "../spec/schema";
 import { computeTimeline } from "../spec/timeline";
 import type { Storyboard } from "../spec/storyboard";
 import { storyboardTimeline } from "../spec/storyboard";
-import { CastSheet } from "./fedtoon/CastSheet";
+import { CastSheet, MascotSheet } from "./fedtoon/CastSheet";
 import { FedtoonVideo } from "./fedtoon/FedtoonVideo";
 import { sampleStoryboard } from "./fedtoon/sample";
 import { Remake } from "./Remake";
@@ -43,5 +43,6 @@ export const Root: React.FC = () => (
     })}
   />
   <Composition id="FedtoonCast" component={CastSheet} durationInFrames={150} fps={30} width={1080} height={1920} />
+  <Composition id="FedtoonMascot" component={MascotSheet} durationInFrames={150} fps={30} width={1080} height={1920} />
   </>
 );

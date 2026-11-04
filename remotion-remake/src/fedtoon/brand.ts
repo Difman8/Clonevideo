@@ -2,8 +2,8 @@
 // composition (colors, font). Flat-vector explainer look: vivid saturated flat
 // colors, rounded geometric shapes, no outlines, no drop shadows, no glow.
 // A background color is never the exact same color as a character (contrast.ts).
-// Fedtoon has its own mascot and logo; it does not reuse another channel's
-// characters or marks.
+// Fedtoon has its own mascot (Fed, drawn by the channel owner: assets/mascot/)
+// and logo; it does not reuse another channel's characters or marks.
 
 export const BRAND_NAME = "Fedtoon";
 
@@ -23,7 +23,7 @@ export const PALETTE = {
   lime: "#C4EF3C",
   green: "#119A4B",
   mint: "#6EE7C8",
-  teal: "#11B5A4",
+  teal: "#00B6B7", // = Fed's shirt (MASCOT_RIG.colors.shirt)
   cyan: "#18D8F2",
   sky: "#6FC8F5",
   blue: "#4F6FFA",

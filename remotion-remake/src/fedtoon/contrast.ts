@@ -3,6 +3,7 @@
 // Everything else is left as the AI chose it. Shared by the pipeline and the
 // Remotion composition (no Node APIs).
 import { HAIR_COLORS, PALETTE, SKIN, type ColorName } from "./brand";
+import { MASCOT_RIG } from "./mascot-rig";
 import type { CastMember } from "../spec/storyboard";
 
 function lab(hex: string): [number, number, number] {
@@ -26,10 +27,10 @@ export function deltaE(a: string, b: string): number {
   return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
 }
 
-/** Hex codes a character is drawn with: body/outfit, plus skin and hair for people. */
+/** Hex codes a character is drawn with: outfit, skin and hair (Fed's come from his drawing). */
 export function characterColors(member: CastMember): string[] {
+  if (member.kind === "mascot") return [MASCOT_RIG.colors.shirt, MASCOT_RIG.colors.skin, MASCOT_RIG.colors.hair];
   const outfit = PALETTE[member.outfit] ?? PALETTE.teal;
-  if (member.kind === "mascot") return [outfit];
   const hair = member.hair === "bald" || member.hair === "cap" ? [] : [HAIR_COLORS[member.hairColor] ?? HAIR_COLORS.black];
   return [outfit, SKIN[member.skin] ?? SKIN.tan, ...hair];
 }

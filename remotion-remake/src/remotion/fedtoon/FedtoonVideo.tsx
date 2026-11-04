@@ -8,6 +8,7 @@ import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
 import { BRAND_FONT, BRAND_NAME, PALETTE, type ColorName } from "../../fedtoon/brand";
 import { deltaE } from "../../fedtoon/contrast";
+import { MASCOT_RIG } from "../../fedtoon/mascot-rig";
 import type { VoiceClip } from "../../spec/schema";
 import { bgRef, imageRef, storyboardTimeline, type Prop, type Shot, type ShotCharacter, type Storyboard } from "../../spec/storyboard";
 import { useFontFamily } from "../fonts";
@@ -294,18 +295,7 @@ const Watermark: React.FC = () => {
   const { u } = useBox();
   return (
     <div style={{ position: "absolute", left: 40 * u, top: 40 * u, display: "flex", alignItems: "center", gap: 12 * u, opacity: 0.9 }}>
-      <svg width={54 * u} height={54 * u} viewBox="-30 -36 60 66">
-        <line x1={-8} y1={-18} x2={-10} y2={-30} stroke={PALETTE.teal} strokeWidth={3} strokeLinecap="round" />
-        <line x1={8} y1={-18} x2={10} y2={-30} stroke={PALETTE.teal} strokeWidth={3} strokeLinecap="round" />
-        <circle cx={-10} cy={-31} r={4} fill={PALETTE.yellow} />
-        <circle cx={10} cy={-31} r={4} fill={PALETTE.yellow} />
-        <circle cx={0} cy={0} r={26} fill={PALETTE.teal} />
-        <circle cx={-9} cy={-3} r={6} fill={PALETTE.white} />
-        <circle cx={9} cy={-3} r={6} fill={PALETTE.white} />
-        <circle cx={-8} cy={-2} r={3} fill={PALETTE.ink} />
-        <circle cx={10} cy={-2} r={3} fill={PALETTE.ink} />
-        <path d="M -7 9 Q 0 14 7 9" stroke={PALETTE.ink} strokeWidth={3} fill="none" strokeLinecap="round" />
-      </svg>
+      <Img src={staticFile("fedtoon/mascot/avatar.png")} style={{ height: 62 * u, width: (62 * u * MASCOT_RIG.parts.avatar.w) / MASCOT_RIG.parts.avatar.h }} />
       <Outlined fill={PALETTE.white} strokes={[{ color: PALETTE.ink, width: 6 * u }]} style={{ fontSize: 38 * u, fontWeight: 900 }}>
         {BRAND_NAME}
       </Outlined>
