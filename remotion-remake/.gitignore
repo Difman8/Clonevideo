@@ -3,3 +3,4 @@ node_modules/
 out/
 .env
 public/sfx/
+__pycache__/

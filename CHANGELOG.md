@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-04
 
+- **Bỏ file tạm Python khỏi git [skip changelog]** — @Difman8 · 18:26 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Linh vật Fed dùng ảnh của chủ kênh: cắt thành bộ phận để vẫy tay, nghiêng đầu, chớp mắt, nói theo giọng đọc** — @Difman8 · 18:26 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Bỏ vòng tròn màu sau nhân vật: chỉ cấm màu nền trùng mã màu với nhân vật, còn lại để tự nhiên** — @Difman8 · 17:46 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Fedtoon theo video tham khảo: bỏ bóng đổ, nền tự chọn màu tương phản với nhân vật** — @Difman8 · 17:36 · nhánh `claude/youtube-video-discovery-29q6gg`
