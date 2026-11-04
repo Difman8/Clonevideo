@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { COLOR_NAMES, HAIR_COLORS, MOODS, SKIN, type ColorName } from "../fedtoon/brand";
-import { contrastingBackground, subjectColors } from "../fedtoon/contrast";
+import { characterColors, withoutCharacterColors } from "../fedtoon/contrast";
 import { MetaSchema, VoiceClipSchema } from "./schema";
 
 // The "Fedtoon" storyboard: the contract between the AI (which writes it), the
@@ -60,7 +60,7 @@ export const ShotSchema = z.object({
     colors: z
       .array(z.enum(COLOR_NAMES))
       .catch([])
-      .describe("2 named colors that dominate the background. They must be clearly different from the colors of the characters and props in the shot."),
+      .describe("2 named colors that dominate the background. Never the exact same color as a character in the shot."),
   }),
   camera: z.enum(CAMERAS).catch("zoom-in"),
   characters: z.array(ShotCharacterSchema).describe("0-3 cast members on screen."),
@@ -88,8 +88,6 @@ export const StoryboardSchema = AnalyzedStoryboardSchema.extend({
   meta: MetaSchema,
   /** imageRef(kind, prompt) → path inside the render bundle's public folder. */
   images: z.record(z.string(), z.string()).catch({}),
-  /** Average color of each background image where characters stand (lower middle), measured after generation. */
-  imageColors: z.record(z.string(), z.string()).catch({}),
   voiceover: z.array(VoiceClipSchema).catch([]),
   captions: z.boolean().catch(true),
 });
@@ -137,13 +135,13 @@ export function storyboardTimeline(sb: Pick<Storyboard, "shots" | "meta">) {
 }
 
 /** Adds defaults, clamps numbers and drops references to unknown cast members. */
-export function finalizeStoryboard(analyzed: AnalyzedStoryboard, meta: Storyboard["meta"], extra: Partial<Pick<Storyboard, "images" | "imageColors" | "voiceover" | "captions">> = {}): Storyboard {
+export function finalizeStoryboard(analyzed: AnalyzedStoryboard, meta: Storyboard["meta"], extra: Partial<Pick<Storyboard, "images" | "voiceover" | "captions">> = {}): Storyboard {
   const cast = analyzed.cast.length ? analyzed.cast.slice(0, 4) : [CastMemberSchema.parse({ id: "fed", name: "Fed", kind: "mascot", outfit: "teal" })];
   const ids = new Set(cast.map((c) => c.id));
   const shots = analyzed.shots.map((s) => {
     const characters = s.characters.filter((c) => ids.has(c.castId)).slice(0, 3);
-    // No drop shadows in this style: characters stand out only if the background is another color.
-    const subjects = characters.flatMap((c) => subjectColors(cast.find((m) => m.id === c.castId)!));
+    // The one color rule: a background color is never exactly a character's color.
+    const subjects = characters.flatMap((c) => characterColors(cast.find((m) => m.id === c.castId)!));
     const requested = (s.background.colors ?? []).slice(0, 3) as ColorName[];
     return {
       ...s,
@@ -152,7 +150,7 @@ export function finalizeStoryboard(analyzed: AnalyzedStoryboard, meta: Storyboar
       speaker: ids.has(s.speaker) ? s.speaker : "narrator",
       characters,
       props: s.props.filter((p) => p.prompt.trim()).slice(0, 2),
-      background: { ...s.background, colors: contrastingBackground(requested.length ? requested : [...MOODS[s.background.mood].colors], subjects) },
+      background: { ...s.background, colors: withoutCharacterColors(requested.length ? requested : [...MOODS[s.background.mood].colors], subjects) },
     };
   });
   return StoryboardSchema.parse({
@@ -162,7 +160,6 @@ export function finalizeStoryboard(analyzed: AnalyzedStoryboard, meta: Storyboar
     kind: "fedtoon",
     meta,
     images: extra.images ?? {},
-    imageColors: extra.imageColors ?? {},
     voiceover: extra.voiceover ?? [],
     captions: extra.captions ?? true,
   });

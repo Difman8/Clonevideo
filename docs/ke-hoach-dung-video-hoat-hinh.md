@@ -22,7 +22,7 @@
 Chủ dự án gửi 6 bản quay màn hình Shorts tham khảo. Quan sát và đã áp dụng:
 
 - **Không bóng đổ, không phát sáng, không vignette.** Chủ thể nổi bật nhờ **màu nền khác hẳn màu chủ thể** (não hồng trên nền tím, mặt trời vàng trên trời xanh lơ, hồ xanh trên cỏ xanh lá). Đã bỏ bóng chân, viền sáng, hạt phát sáng, vignette, hào quang mặt trời.
-- **Màu nền tương phản tự động** (`src/fedtoon/contrast.ts`, đo ΔE trong không gian Lab): AI chọn `background.colors`; nếu trùng màu nhân vật trong cảnh, code đổi sang bộ màu tương phản nhất. Yêu cầu vẽ ảnh gửi kèm màu nền và màu cần tránh. Sau khi vẽ, app đo màu chủ đạo ở vùng nhân vật đứng; nếu vẫn trùng, đặt một **vòng tròn màu phẳng có viền** phía sau nhân vật (kiểu vòng tròn khoanh chủ thể trong video tham khảo).
+- **Quy tắc màu duy nhất** (`src/fedtoon/contrast.ts`): màu nền **không bao giờ trùng mã màu** với nhân vật trong cảnh (màu áo/thân, da, tóc). AI chọn `background.colors` tự nhiên; màu nào trùng đúng mã thì code thay bằng màu gần nhất không trùng, còn lại giữ nguyên. Yêu cầu vẽ ảnh gửi kèm màu nền và dặn không dùng đúng mã màu của nhân vật. (05/11: chủ dự án yêu cầu bỏ vòng tròn tương phản phía sau nhân vật và bỏ việc ép tương phản mạnh: không thêm lại.)
 - Bảng màu rực: hồng cánh sen, tím, tím than, xanh lơ, xanh chanh, vàng, cam, xanh dương (lấy mẫu từ video).
 - Mắt có lòng trắng và con ngươi, mí mắt theo biểu cảm; đồ vật có thể có mặt.
 - Chữ: tiêu đề viền nhiều lớp màu, nhãn là khối màu đặc, số liệu trong khung tím than bo tròn. Phụ đề trắng viền mảnh, tối đa 3 từ, không nền, nằm dưới chủ thể.

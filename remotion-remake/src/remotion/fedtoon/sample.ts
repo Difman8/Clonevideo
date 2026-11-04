@@ -4,7 +4,7 @@ import { SAMPLE_CAST } from "./CastSheet";
 const none = { content: "", style: "none" as const, position: "top" as const };
 
 // Preview storyboard for Remotion Studio (no generated images: backdrops are drawn in code).
-// Shot 1 asks for a teal background behind teal Fed on purpose: finalizeStoryboard swaps it for a contrasting set.
+// Shot 1 asks for a teal background behind teal Fed on purpose: finalizeStoryboard replaces that one color.
 export const sampleStoryboard: Storyboard = finalizeStoryboard(
   {
     title: "Vì sao bầu trời màu xanh?",

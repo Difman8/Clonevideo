@@ -1,8 +1,5 @@
 // "Fedtoon" composition: renders a storyboard (src/spec/storyboard.ts).
-// Look: flat vivid colors, no drop shadows, no glow, no vignette. Subjects stand
-// out because their background is a clearly different color (see contrast.ts);
-// when a generated background happens to match a character, a flat contrasting
-// disc is placed behind that character.
+// Look: flat vivid colors, no drop shadows, no glow, no vignette.
 import React from "react";
 import { AbsoluteFill, Easing, Html5Audio, Img, interpolate, random, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { linearTiming, TransitionSeries } from "@remotion/transitions";
@@ -10,7 +7,7 @@ import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
 import { BRAND_FONT, BRAND_NAME, PALETTE, type ColorName } from "../../fedtoon/brand";
-import { deltaE, MIN_CONTRAST, minContrast, standOutColor, subjectColors } from "../../fedtoon/contrast";
+import { deltaE } from "../../fedtoon/contrast";
 import type { VoiceClip } from "../../spec/schema";
 import { bgRef, imageRef, storyboardTimeline, type Prop, type Shot, type ShotCharacter, type Storyboard } from "../../spec/storyboard";
 import { useFontFamily } from "../fonts";
@@ -173,7 +170,7 @@ const PropView: React.FC<{ prop: Prop; src?: string; index: number; bgColor: str
   );
 };
 
-const CharacterView: React.FC<{ sb: Storyboard; ch: ShotCharacter; index: number; mouth: number; speaking: boolean; bgColor: string }> = ({ sb, ch, index, mouth, speaking, bgColor }) => {
+const CharacterView: React.FC<{ sb: Storyboard; ch: ShotCharacter; index: number; mouth: number; speaking: boolean }> = ({ sb, ch, index, mouth, speaking }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { width, height, vertical } = useBox();
@@ -190,29 +187,8 @@ const CharacterView: React.FC<{ sb: Storyboard; ch: ShotCharacter; index: number
   // A character who speaks but was given no gesture talks with its hands.
   const action = speaking && ch.action === "idle" ? "talk" : ch.action;
   const walkX = ch.action === "walk" ? (frame / fps) * (ch.facing === "left" ? -60 : 60) : 0;
-  // Same color as what is behind it: a flat contrasting disc (no shadows in this style).
-  const colors = subjectColors(member);
-  const needsDisc = minContrast(colors, [bgColor]) < MIN_CONTRAST;
-  const disc = needsDisc ? standOutColor(colors[0], bgColor) : "";
-  const ring = needsDisc ? standOutColor(disc, colors[0]) : "";
-  const discR = h * (member.kind === "mascot" ? 0.42 : 0.4);
   return (
     <div style={{ position: "absolute", left: x - h * 0.5 + walkX, top: feet - h, width: h, height: h, opacity, transform, transformOrigin: "50% 100%" }}>
-      {needsDisc && (
-        <div
-          style={{
-            position: "absolute",
-            left: h / 2 - discR,
-            top: h * (member.kind === "mascot" ? 0.62 : 0.5) - discR,
-            width: discR * 2,
-            height: discR * 2,
-            borderRadius: "50%",
-            background: disc,
-            border: `${h * 0.02}px solid ${ring}`,
-            boxSizing: "border-box",
-          }}
-        />
-      )}
       <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "center", alignItems: "flex-end" }}>
         <Puppet member={member} action={action} expression={ch.expression} facing={ch.facing} t={frame / fps} mouth={mouth} height={h} seed={index + sb.cast.indexOf(member) * 3} />
       </div>
@@ -347,9 +323,7 @@ const ShotView: React.FC<{ sb: Storyboard; shot: Shot; index: number; frames: nu
   const cam = camera(shot.camera, Math.min(1, frame / Math.max(1, frames)), frame, fps);
   const t = frame / fps;
   const mouth = clip ? mouthAt(t, clip.words, clip.durationSec) : 0;
-  // The color behind the characters: measured on the generated image, else the backdrop's ground/base.
-  const [c0, c1] = hex(shot.background.colors.length ? shot.background.colors : ["plum", "violet"]);
-  const groundColor = (bg && sb.imageColors[ref]) || (["day", "sunset", "indoor"].includes(shot.background.mood) && c1 ? c1 : c0);
+  const [c0] = hex(shot.background.colors.length ? shot.background.colors : ["plum", "violet"]);
   return (
     <AbsoluteFill style={{ overflow: "hidden", background: c0 }}>
       <AbsoluteFill style={{ transform: `scale(${cam.scale}) translate(${cam.x}%, ${cam.y}%)` }}>
@@ -360,7 +334,7 @@ const ShotView: React.FC<{ sb: Storyboard; shot: Shot; index: number; frames: nu
           <PropView key={i} prop={p} index={i} src={sb.images[imageRef("prop", p.prompt)]} bgColor={c0} />
         ))}
         {shot.characters.map((c, i) => (
-          <CharacterView key={c.castId + i} sb={sb} ch={c} index={i} speaking={shot.speaker === c.castId && !!clip} mouth={shot.speaker === c.castId ? mouth : 0} bgColor={groundColor} />
+          <CharacterView key={c.castId + i} sb={sb} ch={c} index={i} speaking={shot.speaker === c.castId && !!clip} mouth={shot.speaker === c.castId ? mouth : 0} />
         ))}
       </AbsoluteFill>
       <OnScreenText text={shot.text} bgColor={c0} />

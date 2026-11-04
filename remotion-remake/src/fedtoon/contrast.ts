@@ -1,11 +1,9 @@
-// Color contrast between subjects (characters) and backgrounds, measured as
-// CIE76 ΔE in Lab space: ~0 = same color, > ~35 = clearly different colors.
-// Shared by the pipeline and the Remotion composition (no Node APIs).
-import { BACKGROUND_SETS, PALETTE, SKIN, type ColorName } from "./brand";
+// Background colors vs characters: the only rule is that a background color is
+// never the exact same color (same hex code) as a character on screen.
+// Everything else is left as the AI chose it. Shared by the pipeline and the
+// Remotion composition (no Node APIs).
+import { HAIR_COLORS, PALETTE, SKIN, type ColorName } from "./brand";
 import type { CastMember } from "../spec/storyboard";
-
-/** Below this ΔE a character would melt into the background. */
-export const MIN_CONTRAST = 38;
 
 function lab(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", "").slice(0, 6), 16);
@@ -21,51 +19,36 @@ function lab(hex: string): [number, number, number] {
   return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
 }
 
+/** CIE76 color distance: 0 = identical. Used to pick readable text colors. */
 export function deltaE(a: string, b: string): number {
   const [l1, a1, b1] = lab(a);
   const [l2, a2, b2] = lab(b);
   return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
 }
 
-/** The colors that make a character recognisable: body/outfit (and skin for people). */
-export function subjectColors(member: CastMember): string[] {
+/** Hex codes a character is drawn with: body/outfit, plus skin and hair for people. */
+export function characterColors(member: CastMember): string[] {
   const outfit = PALETTE[member.outfit] ?? PALETTE.teal;
-  return member.kind === "mascot" ? [outfit] : [outfit, SKIN[member.skin] ?? SKIN.tan];
-}
-
-/** Smallest ΔE between any subject color and any background color. */
-export function minContrast(subjects: string[], background: string[]): number {
-  let min = Infinity;
-  for (const s of subjects) for (const b of background) min = Math.min(min, deltaE(s, b));
-  return min;
+  if (member.kind === "mascot") return [outfit];
+  const hair = member.hair === "bald" || member.hair === "cap" ? [] : [HAIR_COLORS[member.hairColor] ?? HAIR_COLORS.black];
+  return [outfit, SKIN[member.skin] ?? SKIN.tan, ...hair];
 }
 
 /**
- * Background colors for a shot: the requested ones if they contrast with every
- * character on screen, otherwise the set from BACKGROUND_SETS that contrasts most.
+ * Background colors with every color that is exactly a character's color
+ * replaced by the closest palette color that is not; other colors are kept.
  */
-export function contrastingBackground(requested: ColorName[], subjects: string[]): ColorName[] {
-  const hex = (names: ColorName[]) => names.map((n) => PALETTE[n]);
-  if (requested.length && (!subjects.length || minContrast(subjects, hex(requested)) >= MIN_CONTRAST)) return requested;
-  if (!subjects.length) return BACKGROUND_SETS[0];
-  let best = BACKGROUND_SETS[0];
-  let bestScore = -1;
-  for (const set of BACKGROUND_SETS) {
-    // Keep the AI's choice of hue family when one of its colors is in the set.
-    const score = minContrast(subjects, hex(set)) + (set.some((c) => requested.includes(c)) ? 6 : 0);
-    if (score > bestScore) [best, bestScore] = [set, score];
+export function withoutCharacterColors(colors: ColorName[], characters: string[]): ColorName[] {
+  const taken = new Set(characters.map((c) => c.toUpperCase()));
+  const clash = (name: ColorName) => taken.has(PALETTE[name].toUpperCase());
+  const out: ColorName[] = [];
+  for (const c of colors) {
+    let pick = c;
+    if (clash(c)) {
+      const others = (Object.keys(PALETTE) as ColorName[]).filter((n) => !clash(n) && !out.includes(n) && !colors.includes(n));
+      pick = others.sort((a, b) => deltaE(PALETTE[a], PALETTE[c]) - deltaE(PALETTE[b], PALETTE[c]))[0] ?? c;
+    }
+    if (!out.includes(pick)) out.push(pick);
   }
-  return best;
-}
-
-/** A flat color that stands out against both `a` and `b` (for a disc behind a character). */
-export function standOutColor(a: string, b: string): string {
-  let best: string = PALETTE.white;
-  let bestScore = -1;
-  for (const name of Object.keys(PALETTE) as ColorName[]) {
-    const c = PALETTE[name];
-    const score = Math.min(deltaE(c, a), deltaE(c, b));
-    if (score > bestScore) [best, bestScore] = [c, score];
-  }
-  return best;
+  return out;
 }
