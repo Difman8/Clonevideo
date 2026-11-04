@@ -2,6 +2,7 @@
 // channel owner): the picture is cut into parts that move around joints, so the
 // original art is kept. Fed's rig comes from assets/mascot/split.py, the side
 // characters' from assets/cast/split.py (src/fedtoon/cast-rigs.ts).
+import { castKey } from "./cast";
 import { CAST_RIGS } from "./cast-rigs";
 import { MASCOT_RIG } from "./mascot-rig";
 
@@ -18,10 +19,27 @@ export type CharacterRig = {
   centerX: number;
   parts: Record<string, Box>;
   head: { pivot: Pt };
-  /** "raised": the arm held up in the drawing (its last segment waves); "hanging": the arm along the body. */
-  arms: readonly { side: "left" | "right"; kind: "raised" | "hanging"; segments: readonly { part: string; pivot: Pt }[] }[];
-  /** Drawing order, back to front: part names, "arm:<index>" or "head" (head, brows, mouth, eyelids). */
+  /**
+   * "raised": an arm held up in the drawing (its last segment waves); "hanging": an arm along the body.
+   * `rest`/`point`: angles per segment (degrees, positive lifts the hand) from the drawn pose to an arm
+   * at rest / pointing, for arms drawn in a pose that does not suit every action (default: as drawn).
+   * A segment marked `front` is drawn with "arm:<i>:front" (e.g. a hand in front of the face).
+   */
+  arms: readonly {
+    side: "left" | "right";
+    kind: "raised" | "hanging";
+    segments: readonly { part: string; pivot: Pt; front?: boolean }[];
+    rest?: readonly number[];
+    point?: readonly number[];
+    /** Rounded shoulder [cx, cy, rx, ry] in the shirt color, shown while the arm is away from its drawn pose. */
+    cap?: readonly number[];
+  }[];
+  /** The action the drawing shows (its raised arms keep the drawn pose for it). */
+  drawnAction?: string;
+  /** Drawing order, back to front: part names, "arm:<index>", "arm:<index>:front" or "head" (head, brows, mouth, eyelids). */
   order: readonly string[];
+  /** The expression of the drawn mouth and whether it is open (an open mouth is reused for speech). Default: an open smile. */
+  mouthStyle?: { drawn: string; open: boolean };
   eyes: readonly { cx: number; cy: number; rx: number; ry: number }[];
   /** Top lip of the open mouth (x0, y0, x1, y1): the mouth part closes toward it. */
   mouthTop: Pt;
@@ -53,5 +71,5 @@ export const FED_RIG: CharacterRig = {
 
 /** The drawn rig of a cast member: Fed, or a recurring side character with a picture. */
 export function rigFor(member: { kind: string; id: string }): CharacterRig | undefined {
-  return member.kind === "mascot" ? FED_RIG : CAST_RIGS[member.id.toLowerCase()];
+  return member.kind === "mascot" ? FED_RIG : CAST_RIGS[castKey(member.id)];
 }

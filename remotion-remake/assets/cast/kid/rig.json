@@ -1,0 +1,54 @@
+{
+  "units": 300,
+  "centerX": 515,
+  "seed": [500, 850],
+  "colors": { "skin": "#FDC59C", "hair": "#FEBB06", "shirt": "#01BDBC", "mouth": "#7A0C14", "tongue": "#F04950", "pupil": "#08070B", "line": "#0A0B0E" },
+  "classes": {
+    "skin": ["#FDC59C", "#F89F6E"],
+    "outline": ["#A87850"],
+    "hairside": ["#A96A25"],
+    "hair": ["#FEBB06"],
+    "dark": ["#0F112B", "#08070B"],
+    "white": ["#FFFFFF"],
+    "teal": ["#01BDBC"],
+    "tealline": ["#014754"],
+    "scarf": ["#FD4A5F", "#831226"],
+    "navy": ["#0F1436", "#0B0D20"]
+  },
+  "parts": [
+    {
+      "name": "arm-r-lower",
+      "seed": [770, 430],
+      "regions": [
+        { "polygon": [[668, 300], [705, 292], [770, 320], [825, 410], [835, 500], [805, 515], [760, 505], [705, 478], [688, 430], [674, 360]] },
+        { "polygon": [[700, 440], [860, 430], [900, 520], [897, 598], [790, 612], [760, 560], [730, 505]], "classes": ["teal", "tealline", "skin", "outline"] }
+      ]
+    },
+    { "name": "arm-r-upper", "seed": [820, 650], "regions": [{ "polygon": [[690, 625], [790, 612], [897, 598], [905, 700], [702, 772]], "classes": ["teal", "tealline"] }] },
+    { "name": "arm-l", "seed": [280, 850], "regions": [{ "polygon": [[190, 640], [360, 640], [412, 742], [352, 992], [352, 1112], [190, 1112]], "classes": ["teal", "tealline", "skin", "outline"] }] },
+    { "name": "head", "regions": [{ "polygon": [[220, 60], [730, 60], [730, 585], [220, 585]], "classes": ["skin", "outline", "hairside", "hair", "dark", "white", "navy"] }] }
+  ],
+  "fills": [
+    { "part": "body", "color": "#F89F6E", "polygon": [[420, 500], [650, 500], [650, 590], [420, 590]], "under": "head" },
+    { "part": "arm-r-upper", "color": "#01BDBC", "disc": [705, 700, 40], "within": ["arm-r-upper", "body"] },
+    { "part": "arm-r-upper", "color": "#01BDBC", "dilate": 3, "into": "body" },
+    { "part": "arm-r-lower", "color": "#01BDBC", "disc": [840, 605, 45], "within": ["arm-r-lower", "arm-r-upper"] },
+    { "part": "arm-l", "color": "#01BDBC", "disc": [366, 736, 42], "within": ["arm-l", "body"] },
+    { "part": "arm-l", "color": "#01BDBC", "dilate": 3, "into": "body" }
+  ],
+  "head": { "pivot": [530, 585] },
+  "arms": [
+    { "side": "right", "kind": "raised", "segments": [{ "part": "arm-r-upper", "pivot": [705, 700] }, { "part": "arm-r-lower", "pivot": [840, 605], "front": true }] },
+    { "side": "left", "kind": "hanging", "segments": [{ "part": "arm-l", "pivot": [366, 736] }] }
+  ],
+  "order": ["arm:0", "arm:1", "body", "head", "arm:0:front"],
+  "drawnAction": "think",
+  "mouthStyle": { "drawn": "neutral", "open": false },
+  "lid": { "margin": 3, "line": true },
+  "face": {
+    "skin": "#FDC59C",
+    "mouth": { "box": [520, 455, 620, 502], "seed": [565, 492], "top": [530, 470, 610, 470] },
+    "brows": [{ "box": [400, 315, 488, 375], "seed": [440, 340] }, { "box": [565, 284, 650, 325], "seed": [605, 302] }],
+    "eyes": [{ "cx": 471, "cy": 414, "rx": 39, "ry": 39 }, { "cx": 623, "cy": 381, "rx": 35, "ry": 39 }]
+  }
+}

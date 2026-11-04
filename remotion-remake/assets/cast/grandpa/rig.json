@@ -1,0 +1,44 @@
+{
+  "units": 315,
+  "centerX": 505,
+  "seed": [500, 750],
+  "colors": { "skin": "#FDC094", "hair": "#FEFEFE", "shirt": "#0E2674", "mouth": "#700102", "tongue": "#FD433D", "pupil": "#000000" },
+  "classes": {
+    "skin": ["#FDC094"],
+    "fistline": ["#C65D3E"],
+    "white": ["#FEFEFE", "#F5F5F3"],
+    "dark": ["#000000"],
+    "brow": ["#101C4A"],
+    "mouth": ["#700102", "#FD433D"],
+    "navy": ["#0E2674"],
+    "collar": ["#051136"],
+    "pants": ["#0C1435", "#0B0C1C"]
+  },
+  "parts": [
+    { "name": "head", "regions": [{ "polygon": [[260, 90], [770, 90], [770, 505], [260, 505]], "classes": ["skin", "white", "dark", "brow", "mouth", "pants", "collar"] }] },
+    { "name": "arm-r", "seed": [860, 220], "regions": [{ "polygon": [[770, 100], [990, 100], [990, 662], [700, 662], [626, 505], [700, 420], [770, 300]], "classes": ["navy", "skin", "fistline"] }] },
+    { "name": "arm-l", "seed": [170, 220], "regions": [{ "polygon": [[40, 100], [262, 100], [262, 300], [330, 420], [400, 505], [322, 662], [40, 662]], "classes": ["navy", "skin", "fistline"] }] }
+  ],
+  "fills": [
+    { "part": "body", "color": "#FDC094", "polygon": [[420, 430], [640, 430], [640, 512], [420, 512]], "under": "head" },
+    { "part": "arm-r", "color": "#0E2674", "disc": [668, 565, 50], "within": ["arm-r", "body", "head"] },
+    { "part": "arm-r", "color": "#0E2674", "dilate": 3, "into": "body" },
+    { "part": "arm-l", "color": "#0E2674", "disc": [352, 565, 50], "within": ["arm-l", "body", "head"] },
+    { "part": "arm-l", "color": "#0E2674", "dilate": 3, "into": "body" }
+  ],
+  "head": { "pivot": [530, 505] },
+  "arms": [
+    { "side": "right", "kind": "raised", "segments": [{ "part": "arm-r", "pivot": [668, 565]}], "rest": [-138], "cap": [675, 640, 72, 150]},
+    { "side": "left", "kind": "raised", "segments": [{ "part": "arm-l", "pivot": [352, 565]}], "rest": [-138], "cap": [345, 640, 72, 150]}
+  ],
+  "order": ["arm:0", "arm:1", "body", "head"],
+  "drawnAction": "cheer",
+  "mouthStyle": { "drawn": "happy", "open": true },
+  "lid": { "margin": 2, "line": false },
+  "face": {
+    "skin": "#FDC094",
+    "mouth": { "box": [480, 352, 636, 475], "seed": [540, 400], "top": [489, 382, 627, 362] },
+    "brows": [{ "box": [392, 196, 478, 256], "seed": [430, 225] }, { "box": [578, 172, 656, 212], "seed": [615, 190] }],
+    "eyes": [{ "cx": 471, "cy": 307, "rx": 29, "ry": 33 }, { "cx": 623, "cy": 284, "rx": 27, "ry": 32 }]
+  }
+}
