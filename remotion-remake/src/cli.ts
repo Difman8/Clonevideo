@@ -9,11 +9,13 @@ const target = args.find((a) => !a.startsWith("--"));
 
 if (!target) {
   console.log(`Cách dùng:
-  npm run remake -- <link YouTube> [--openai] [--remix] [--basic] [--voice] [--no-render]
+  npm run remake -- <link YouTube> [--openai] [--remix] [--basic] [--voice] [--classic] [--review] [--no-render]
   npm run remake -- --resume <videoId>       (làm tiếp việc đang dở, ví dụ sau khi máy tắt đột ngột)
   npm run remake -- --rerender <videoId>     (render lại từ out/<videoId>/spec.json)
 
-  --voice   Lồng tiếng bằng ElevenLabs (cần ELEVENLABS_API_KEY và ELEVENLABS_VOICE_ID)`);
+  --voice    Lồng tiếng bằng ElevenLabs (cần ELEVENLABS_API_KEY và ELEVENLABS_VOICE_ID)
+  --classic  Kiểu chữ & đồ hoạ (cũ) thay cho Hoạt hình Fedtoon
+  --review   Dừng sau khi viết kịch bản để duyệt; sửa out/<videoId>/spec.json rồi chạy --rerender`);
   process.exit(1);
 }
 
@@ -48,6 +50,8 @@ try {
             provider: flag("--openai") ? "openai" : "claude",
             render: !flag("--no-render"),
             voice: flag("--voice"),
+            style: flag("--classic") ? "classic" : "fedtoon",
+            review: flag("--review"),
           },
           print,
         );

@@ -139,6 +139,8 @@ const server = http.createServer(async (req, res) => {
         provider: parseProvider(body.provider),
         render: body.render !== false,
         voice: body.voice === true,
+        style: body.style === "classic" ? "classic" : "fedtoon",
+        review: body.review === true,
       };
       startTask(id, (emit) => runJob(opts, emit));
       return json(res, 202, { id });

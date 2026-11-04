@@ -3,6 +3,7 @@ import path from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import type { VideoSpec } from "../spec/schema";
+import { isStoryboard, type Storyboard } from "../spec/storyboard";
 import { ensureSfx } from "./sfx";
 import { browserExecutable, PUBLIC_DIR, ROOT } from "./tools";
 
@@ -27,7 +28,7 @@ function getBundle(): Promise<string> {
  * renamed at the end, so an interrupted render never leaves a broken MP4.
  */
 export async function renderSpec(
-  spec: VideoSpec,
+  spec: VideoSpec | Storyboard,
   outputLocation: string,
   onProgress: (p: number) => void,
   publicFiles: { from: string; to: string }[] = [],
@@ -42,7 +43,8 @@ export async function renderSpec(
   const partial = `${outputLocation}.part.mp4`;
   const browser = await browserExecutable();
   const inputProps = spec as unknown as Record<string, unknown>;
-  const composition = await selectComposition({ serveUrl, id: "Remake", inputProps, browserExecutable: browser });
+  // Fedtoon storyboards and classic text specs have their own compositions (src/remotion/Root.tsx).
+  const composition = await selectComposition({ serveUrl, id: isStoryboard(spec) ? "Fedtoon" : "Remake", inputProps, browserExecutable: browser });
   let last = -1;
   await renderMedia({
     composition,

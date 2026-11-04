@@ -203,6 +203,8 @@ export const VoiceClipSchema = z.object({
   /** Path inside the render bundle's public folder, e.g. voice/<videoId>/3-ab12cd34.mp3. */
   src: z.string(),
   durationSec: z.number(),
+  /** Word timings inside the clip (seconds), from ElevenLabs: karaoke captions and lip-sync. */
+  words: z.array(z.object({ text: z.string(), start: z.number(), end: z.number() })).catch([]),
 });
 
 export const VideoSpecSchema = AnalyzedSpecSchema.extend({ meta: MetaSchema, voiceover: z.array(VoiceClipSchema).catch([]) });

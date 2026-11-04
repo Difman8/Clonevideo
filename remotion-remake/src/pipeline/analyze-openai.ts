@@ -10,7 +10,7 @@ export const openaiEffort = (key: "OPENAI_REASONING_EFFORT" | "OPENAI_POST_REASO
 export const hasOpenAICredentials = () => !!process.env.OPENAI_API_KEY;
 
 /** Strict structured outputs reject `default`; zod adds one for every `.catch()` fallback. */
-function stripDefaults(node: unknown) {
+export function stripDefaults(node: unknown) {
   if (Array.isArray(node)) node.forEach(stripDefaults);
   else if (node && typeof node === "object") {
     delete (node as Record<string, unknown>).default;

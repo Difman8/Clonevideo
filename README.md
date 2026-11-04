@@ -1,6 +1,6 @@
 # Clone Video — Remotion Remake
 
-Dán link YouTube → AI (Claude hoặc OpenAI) phân tích video → dựng lại bằng **Remotion** → xuất MP4, kèm nội dung đăng của video gốc (tiêu đề, hashtag, mô tả, keywords).
+Dán link YouTube → AI (Claude hoặc OpenAI) xem video và viết kịch bản → dựng lại thành **video hoạt hình Fedtoon** bằng **Remotion** (nền do OpenAI vẽ, nhân vật Fedtoon vẽ bằng code, giọng ElevenLabs) → xuất MP4, kèm nội dung đăng của video gốc (tiêu đề, hashtag, mô tả, keywords).
 
 Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline.
 
@@ -8,7 +8,7 @@ Thẻ **✍️ Soạn thông tin đăng YouTube bằng AI** viết lại tiêu �
 
 Có thể **lồng tiếng bằng ElevenLabs**, xem và sửa mọi thông số API (model, voice ID, effort…) trên tab **⚙️ Cài đặt**, và **tiếp tục việc đang dở** sau khi máy tắt đột ngột.
 
-Kế hoạch nâng cấp bộ dựng thành video hoạt hình thật: [docs/ke-hoach-dung-video-hoat-hinh.md](docs/ke-hoach-dung-video-hoat-hinh.md).
+Kế hoạch và tiến độ bộ dựng hoạt hình: [docs/ke-hoach-dung-video-hoat-hinh.md](docs/ke-hoach-dung-video-hoat-hinh.md).
 
 Tab **🔥 Tìm video hot** tìm video YouTube có nhiều lượt xem, lượt thích và bình luận nhất trong một khoảng thời gian (lọc theo quốc gia/ngôn ngữ, Shorts/video dài), trả về link, chủ đề, keywords và hashtag. Không dùng AI; chỉ cần khóa YouTube Data API v3 miễn phí — xem hướng dẫn ngay trên tab.
 
