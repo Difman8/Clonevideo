@@ -8,7 +8,7 @@ import { AiOutputSchema, buildContext, finalInstruction, progressReporter, SYSTE
 
 export type ClaudeEffort = "low" | "medium" | "high" | "xhigh" | "max";
 export const claudeModel = () => setting("CLAUDE_MODEL");
-export const claudeEffort = (key: "CLAUDE_EFFORT" | "CLAUDE_POST_EFFORT") => setting(key) as ClaudeEffort;
+export const claudeEffort = (key: "CLAUDE_ANALYZE_EFFORT" | "CLAUDE_POST_EFFORT") => setting(key) as ClaudeEffort;
 
 /** True when the Anthropic SDK can find credentials (env var or an `ant auth login` profile). */
 export function hasClaudeCredentials(): boolean {
@@ -29,7 +29,7 @@ export async function analyzeWithClaude(input: AiInput): Promise<AiOutput> {
     model: claudeModel(),
     max_tokens: numberSetting("CLAUDE_MAX_TOKENS"),
     // Opus 5.5 always thinks; effort controls how much.
-    output_config: { effort: claudeEffort("CLAUDE_EFFORT"), format: betaZodOutputFormat(AiOutputSchema) },
+    output_config: { effort: claudeEffort("CLAUDE_ANALYZE_EFFORT"), format: betaZodOutputFormat(AiOutputSchema) },
     // If a safety classifier declines, the API retries on Anthropic's recommended fallback model.
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",

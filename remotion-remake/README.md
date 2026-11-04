@@ -31,7 +31,14 @@ Không có khóa Claude/OpenAI thì app vẫn chạy với **phân tích cơ b�
 npm start
 ```
 
-Mở http://localhost:3210, dán link, gạt công tắc **Claude ⟷ OpenAI** để chọn AI, rồi chọn chế độ:
+Mở http://localhost:3210, dán link, chọn **kiểu video**:
+
+- **🎨 Hoạt hình Fedtoon** (mặc định): AI xem video gốc và viết kịch bản Fedtoon theo từng cảnh, gồm lời thoại viết lại, nhân vật Fedtoon thay cho nhân vật gốc, mô tả nền, đồ vật, chữ, góc máy. OpenAI vẽ nền và đồ vật theo phong cách đồ hoạ phẳng (đổi được ở tab Cài đặt). Nhân vật Fedtoon (linh vật Fed và các nhân vật người) được vẽ bằng code nên giống nhau ở mọi video và không tốn tiền; có biểu cảm, động tác, chớp mắt, khẩu hình theo giọng đọc. Video có phụ đề karaoke, logo Fedtoon, hiệu ứng âm thanh. Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa OpenAI thì dùng nền vẽ sẵn bằng code.
+- **🔤 Chữ & đồ hoạ** (kiểu cũ): 11 mẫu cảnh chữ và biểu đồ.
+
+Tích **✋ Dừng để duyệt kịch bản trước khi vẽ ảnh** nếu muốn xem và sửa kịch bản trước khi tốn tiền vẽ ảnh và lồng tiếng; sửa xong bấm **Lưu & render lại**. Mỗi ảnh được vẽ một lần rồi lưu lại: sửa một mô tả thì chỉ vẽ lại đúng ảnh đó.
+
+Gạt công tắc **Claude ⟷ OpenAI** để chọn AI viết kịch bản, rồi chọn chế độ:
 
 - **Bản sao** — dựng lại giống bản gốc nhất có thể (chữ, thứ tự, thời lượng, màu, chuyển cảnh).
 - **Remix** — giữ khuôn, nhịp và phong cách nhưng AI viết nội dung mới, kèm tiêu đề/mô tả/hashtag mới.
@@ -50,12 +57,14 @@ npm run remake -- "<link>" --openai       # phân tích bằng OpenAI thay vì C
 npm run remake -- "<link>" --remix        # chế độ remix
 npm run remake -- "<link>" --basic        # không dùng AI
 npm run remake -- "<link>" --voice        # lồng tiếng bằng ElevenLabs
+npm run remake -- "<link>" --review       # dừng sau kịch bản để duyệt (Fedtoon)
+npm run remake -- "<link>" --classic      # kiểu chữ & đồ hoạ cũ
 npm run remake -- "<link>" --no-render    # chỉ phân tích + lấy nội dung đăng
 npm run remake -- --resume <videoId>      # làm tiếp việc đang dở (sau khi máy tắt đột ngột)
 npm run remake -- --rerender <videoId>    # render lại sau khi sửa out/<videoId>/spec.json
 ```
 
-**Xem/chỉnh template trong Remotion Studio:** `npm run studio`
+**Xem/chỉnh template trong Remotion Studio:** `npm run studio`. Composition `Fedtoon` là video mẫu, `FedtoonCast` là bảng mọi nhân vật và động tác, `Remake` là kiểu chữ & đồ hoạ.
 
 ## Soạn thông tin đăng YouTube (AI)
 
@@ -115,6 +124,7 @@ npm run discover -- --help    # xem mọi tuỳ chọn
 | `spec.json` | Kịch bản cảnh-theo-cảnh mà Remotion render |
 | `analysis.json` | Kết quả thô của bộ phân tích |
 | `voice/` | Các đoạn giọng ElevenLabs (mỗi cảnh một file, kèm mốc thời gian từng ký tự) |
+| `img/` | Ảnh nền và đồ vật OpenAI vẽ cho kiểu Fedtoon (`refused.json`: mô tả bị OpenAI từ chối) |
 | `state.json` | Tiến trình các bước, dùng để tiếp tục khi máy tắt giữa chừng |
 | `transcript.txt`, `frames/` | Phụ đề và khung hình đã trích để phân tích |
 
@@ -123,8 +133,9 @@ npm run discover -- --help    # xem mọi tuỳ chọn
 1. `yt-dlp` lấy metadata, video ≤720p (chỉ hình) và phụ đề.
 2. `ffmpeg` cắt khung hình ở mỗi lần chuyển cảnh + mỗi vài giây (tối đa 60 khung).
 3. Claude (`claude-opus-5-5`) hoặc OpenAI (`gpt-5.5`) xem khung hình + phụ đề, trả về `spec.json` theo schema cố định ([src/spec/schema.ts](src/spec/schema.ts)). Hai bên dùng chung prompt trong [src/pipeline/ai-common.ts](src/pipeline/ai-common.ts).
-4. Nếu bật lồng tiếng, ElevenLabs đọc lời thoại từng cảnh ([src/pipeline/voiceover.ts](src/pipeline/voiceover.ts)).
-5. Remotion render spec bằng 11 mẫu cảnh trong [src/remotion/scenes.tsx](src/remotion/scenes.tsx), kèm giọng đọc.
+4. Kiểu Fedtoon: AI viết storyboard ([src/spec/storyboard.ts](src/spec/storyboard.ts), prompt ở [src/pipeline/storyboard-ai.ts](src/pipeline/storyboard-ai.ts)); OpenAI vẽ nền và đồ vật ([src/pipeline/images.ts](src/pipeline/images.ts)).
+5. Nếu bật lồng tiếng, ElevenLabs đọc lời thoại từng cảnh ([src/pipeline/voiceover.ts](src/pipeline/voiceover.ts)).
+6. Remotion render: kiểu Fedtoon bằng [src/remotion/fedtoon/FedtoonVideo.tsx](src/remotion/fedtoon/FedtoonVideo.tsx) (nhân vật trong [Puppet.tsx](src/remotion/fedtoon/Puppet.tsx), bộ nhận diện trong [src/fedtoon/brand.ts](src/fedtoon/brand.ts)); kiểu chữ & đồ hoạ bằng 11 mẫu cảnh trong [src/remotion/scenes.tsx](src/remotion/scenes.tsx).
 
 Mẫu cảnh: `title`, `text` (chữ động), `list-item` (top list), `quiz`, `bar-chart`, `big-number`, `quote`, `timeline`, `countdown`, `comparison`, `outro`. Tất cả vẽ bằng code: không cần ảnh, video, nhạc hay font tự cung cấp (font lấy từ Google Fonts, âm thanh tổng hợp bằng code).
 

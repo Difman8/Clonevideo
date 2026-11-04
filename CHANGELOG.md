@@ -2,6 +2,10 @@
 
 GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào `main` (mới nhất ở trên).
 
+## 2026-11-04
+
+- **Thêm kiểu video Hoạt hình Fedtoon: AI viết kịch bản theo cảnh, OpenAI vẽ nền, nhân vật Fedtoon có khẩu hình** — @Difman8 · 07:34 · nhánh `claude/youtube-video-discovery-29q6gg`
+
 ## 2026-11-03
 
 - **Thêm lồng tiếng ElevenLabs, tab Cài đặt API và tiếp tục việc dở sau khi máy tắt đột ngột** — @Difman8 · 22:09 · nhánh `claude/youtube-video-discovery-29q6gg`

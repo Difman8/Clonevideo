@@ -1,8 +1,31 @@
 # Kế hoạch: dựng video hoạt hình giống video gốc nhưng có chất riêng
 
-Trạng thái: **bản nháp, chờ xem video gốc.** Viết ngày 03/11/2026.
+## Quyết định của chủ dự án (04/11/2026)
 
-## 0. Việc cần làm trước: cho Claude xem video gốc
+- Hướng **A + C**: nền và đồ vật do AI vẽ (A), nhân vật Fedtoon dựng sẵn (C).
+- Tạo ảnh bằng **OpenAI** (dùng khóa đã có).
+- Phong cách hình ảnh tham khảo video Shorts `youtube.com/shorts/b1EMX3wyqCY`, bộ nhận diện theo phong cách kênh Kurzgesagt: đồ hoạ phẳng, màu rực trên nền xanh đậm, hình khối bo tròn, ánh sáng phát quang. Fedtoon **lấy cảm hứng từ phong cách** đó nhưng có linh vật, logo, nhân vật riêng; không dùng chim, logo hay nhân vật đặc trưng của Kurzgesagt (đó là nhận diện thương hiệu của họ).
+
+## Đã làm (bản đầu tiên)
+
+| Phần | File | Ghi chú |
+|---|---|---|
+| Bộ nhận diện | `remotion-remake/src/fedtoon/brand.ts` | Bảng màu, font Nunito, mô tả phong cách ảnh (sửa được ở tab Cài đặt: `FEDTOON_IMAGE_STYLE`) |
+| Nhân vật (hướng C) | `remotion-remake/src/remotion/fedtoon/Puppet.tsx` | Vẽ bằng SVG thay cho Rive/Lottie, vì không cần file thiết kế ngoài. Linh vật Fed + nhân vật người tuỳ chỉnh (da, tóc, màu áo, phụ kiện); 9 động tác, 6 biểu cảm, chớp mắt, khẩu hình theo mốc thời gian từng từ của ElevenLabs. Xem tất cả: Remotion Studio → `FedtoonCast` |
+| Kịch bản theo cảnh | `remotion-remake/src/spec/storyboard.ts`, `src/pipeline/storyboard-ai.ts` | AI (Claude/OpenAI) viết: lời thoại viết lại, người nói, mô tả nền, góc máy, nhân vật + động tác + biểu cảm, đồ vật, chữ, chuyển cảnh, hiệu ứng âm thanh |
+| Vẽ ảnh (hướng A) | `remotion-remake/src/pipeline/images.ts` | `gpt-image-2.5-sunburst` mặc định (đổi được), nền 9:16 đúng khung, đồ vật nền trong suốt; mỗi ảnh vẽ một lần; ảnh bị từ chối được thay bằng hình vẽ sẵn |
+| Dựng video | `remotion-remake/src/remotion/fedtoon/FedtoonVideo.tsx` | Máy quay lia/zoom/rung, hạt sáng, nhân vật, đồ vật chuyển động, chữ theo bộ nhận diện, phụ đề karaoke, logo, giọng, hiệu ứng âm thanh; nền vẽ bằng code khi chưa có ảnh |
+| Quy trình | `remotion-remake/src/pipeline/job.ts` | Bước mới "Vẽ hình ảnh"; tuỳ chọn dừng để duyệt kịch bản trước khi tốn tiền; tiếp tục được khi tắt máy |
+
+## Việc tiếp theo
+
+1. **Xem video tham chiếu** (`b1EMX3wyqCY`): máy chủ của Claude không vào được YouTube. Cần chủ dự án chia sẻ thư mục (mục 0) hoặc gửi 5–10 ảnh chụp, rồi chỉnh `FEDTOON_IMAGE_STYLE`, bảng màu, nhân vật cho sát hơn.
+2. **Chạy thử với khóa thật** và tinh chỉnh: độ nhất quán phong cách giữa các ảnh nền (cân nhắc dùng ảnh nền đầu tiên làm ảnh tham chiếu cho các ảnh sau qua `images.edit`), vị trí nhân vật so với nền.
+3. **Nhiều giọng nhân vật**: mỗi nhân vật một Voice ID ElevenLabs.
+4. **Nhạc nền và hiệu ứng âm thanh** bằng ElevenLabs Music / Sound Effects.
+5. Thêm động tác/kiểu nhân vật (động vật, robot…) nếu video gốc cần.
+
+## 0. Cho Claude xem video gốc và video tham chiếu
 
 Video gốc bạn đã chạy thử nằm trên máy tính của bạn, trong `remotion-remake/out/<videoId>/` (có `source.mp4`, `frames/`, `analysis.json`, `spec.json`, `transcript.txt`). Claude chạy trên máy chủ đám mây nên chưa mở được thư mục này. Có hai cách:
 
@@ -33,7 +56,7 @@ Bộ dựng hiện tại chỉ có 11 mẫu cảnh vẽ bằng code: chữ, danh
 | Lấy lời thoại khi video gốc không có phụ đề | ElevenLabs Speech to Text | ❌ Thiếu |
 | Chất riêng "Fedtoon" | Bộ nhận diện: nhân vật đại diện, màu, font, logo, intro/outro | ❌ Thiếu |
 
-## 3. Ba hướng dựng hình: bạn cần chọn
+## 3. Ba hướng dựng hình (đã chọn A + C)
 
 **A. Truyện tranh chuyển động (motion comic).** AI tạo ảnh nhân vật và bối cảnh, tách nền, rồi Remotion ghép thành nhiều lớp: máy quay lia/zoom, nhân vật nảy, di chuyển, đổi biểu cảm, khẩu hình đơn giản. Chi phí chủ yếu là tiền tạo ảnh (khoảng 20–40 ảnh mỗi video). Giống video gốc ở mức khá; hợp video kể chuyện, giải thích, top list.
 

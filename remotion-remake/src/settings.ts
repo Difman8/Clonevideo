@@ -2,8 +2,9 @@
 // Values live in .env; they are read when used, so a change saved from the
 // "⚙️ Cài đặt" tab applies at once without restarting the app.
 import { setEnvValue } from "./env";
+import { DEFAULT_IMAGE_STYLE } from "./fedtoon/brand";
 
-export type SettingType = "secret" | "text" | "number" | "select" | "boolean";
+export type SettingType = "secret" | "text" | "textarea" | "number" | "select" | "boolean";
 
 export type Setting = {
   /** Name of the line in .env. */
@@ -18,6 +19,8 @@ export type Setting = {
   min?: number;
   max?: number;
   step?: number;
+  /** Longest accepted value (default 300 characters). */
+  maxLength?: number;
   /** Takes effect only after the app is restarted. */
   restart?: boolean;
 };
@@ -25,6 +28,7 @@ export type Setting = {
 export const SETTING_GROUPS: { id: string; title: string; help: string; link?: string }[] = [
   { id: "claude", title: "Claude (Anthropic)", help: "Phân tích video và soạn thông tin đăng khi công tắc AI ở Claude.", link: "https://platform.claude.com" },
   { id: "openai", title: "OpenAI", help: "Phân tích video và soạn thông tin đăng khi công tắc AI ở OpenAI.", link: "https://platform.openai.com" },
+  { id: "images", title: "Hình ảnh Fedtoon (OpenAI)", help: "Vẽ nền và đồ vật cho kiểu video Hoạt hình Fedtoon, dùng khóa OpenAI ở trên. Mỗi ảnh tạo một lần rồi được lưu lại.", link: "https://platform.openai.com/usage" },
   { id: "elevenlabs", title: "ElevenLabs (lồng tiếng)", help: "Đọc lời thoại của video dựng lại. Bấm \"Tải giọng & model từ tài khoản\" để chọn giọng.", link: "https://elevenlabs.io/app/settings/api-keys" },
   { id: "youtube", title: "YouTube Data API v3", help: "Tab Tìm video hot (miễn phí 10.000 đơn vị quota mỗi ngày).", link: "https://console.cloud.google.com/apis/library/youtube.googleapis.com" },
   { id: "channel", title: "Kênh của bạn", help: "Dùng khi AI soạn thông tin đăng." },
@@ -65,7 +69,7 @@ export const SETTINGS: Setting[] = [
       { value: "claude-fable-5-1", label: "claude-fable-5-1 — Fable 5.1" },
     ],
   },
-  { key: "CLAUDE_EFFORT", group: "claude", label: "Mức suy nghĩ khi phân tích video", help: "Càng cao càng kỹ nhưng chậm và tốn token hơn.", type: "select", default: "high", options: EFFORTS_CLAUDE },
+  { key: "CLAUDE_ANALYZE_EFFORT", group: "claude", label: "Mức suy nghĩ khi phân tích video", help: "Càng cao càng kỹ nhưng chậm và tốn token hơn.", type: "select", default: "high", options: EFFORTS_CLAUDE },
   { key: "CLAUDE_POST_EFFORT", group: "claude", label: "Mức suy nghĩ khi soạn thông tin đăng", help: "Việc viết lại tiêu đề/mô tả đơn giản, low là đủ.", type: "select", default: "low", options: EFFORTS_CLAUDE },
   { key: "CLAUDE_MAX_TOKENS", group: "claude", label: "Số token trả lời tối đa (max_tokens)", help: "Gồm cả phần suy nghĩ. Kịch bản video dài cần nhiều hơn.", type: "number", default: "64000", min: 4000, max: 128000, step: 1000 },
 
@@ -83,6 +87,28 @@ export const SETTINGS: Setting[] = [
   { key: "OPENAI_REASONING_EFFORT", group: "openai", label: "Mức suy luận khi phân tích video (reasoning.effort)", help: "", type: "select", default: "high", options: EFFORTS_OPENAI },
   { key: "OPENAI_POST_REASONING_EFFORT", group: "openai", label: "Mức suy luận khi soạn thông tin đăng", help: "", type: "select", default: "low", options: EFFORTS_OPENAI },
   { key: "OPENAI_MAX_OUTPUT_TOKENS", group: "openai", label: "Số token trả lời tối đa (max_output_tokens)", help: "", type: "number", default: "64000", min: 4000, max: 128000, step: 1000 },
+
+  // Images
+  {
+    key: "OPENAI_IMAGE_MODEL",
+    group: "images",
+    label: "Model tạo ảnh",
+    help: "gpt-image-1 đã ngừng từ 23/10/2026. Các model gpt-image-2 trở lên tạo được ảnh đúng tỉ lệ 9:16.",
+    type: "text",
+    default: "gpt-image-2.5-sunburst",
+    options: opts("gpt-image-2.5-sunburst", "gpt-image-2.5-flare", "gpt-image-2", "gpt-image-1.5", "gpt-image-1-mini", "chatgpt-image-latest"),
+  },
+  { key: "OPENAI_IMAGE_QUALITY", group: "images", label: "Chất lượng ảnh (quality)", help: "Càng cao càng đẹp và càng tốn tiền. xhigh/max chỉ có ở gpt-image-2.5.", type: "select", default: "medium", options: opts("low", "medium", "high", "xhigh", "max", "auto") },
+  { key: "OPENAI_IMAGE_MODERATION", group: "images", label: "Mức kiểm duyệt (moderation)", help: "auto: mặc định của OpenAI; low: ít chặn hơn.", type: "select", default: "auto", options: opts("auto", "low") },
+  {
+    key: "FEDTOON_IMAGE_STYLE",
+    group: "images",
+    label: "Mô tả phong cách hình ảnh",
+    help: "Được thêm vào đầu mọi yêu cầu vẽ (tiếng Anh cho kết quả tốt nhất). Đổi ở đây để chỉnh \"chất\" Fedtoon; ảnh đã tạo theo phong cách cũ vẫn được giữ.",
+    type: "textarea",
+    default: DEFAULT_IMAGE_STYLE,
+    maxLength: 2000,
+  },
 
   // ElevenLabs
   { key: "ELEVENLABS_API_KEY", group: "elevenlabs", label: "API key", help: "Khóa ElevenLabs (xi-api-key).", type: "secret", default: "" },
@@ -163,7 +189,8 @@ export function publicSettings() {
 }
 
 function validate(s: Setting, value: string): string | null {
-  if (/[\r\n]/.test(value) || value.length > 300) return "giá trị không hợp lệ";
+  if (/[\r\n]/.test(value)) return "không được xuống dòng";
+  if (value.length > (s.maxLength ?? 300)) return `dài quá ${s.maxLength ?? 300} ký tự`;
   if (value === "") return null;
   if (s.type === "number") {
     const n = Number(value);

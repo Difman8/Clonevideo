@@ -23,7 +23,8 @@ Workflow sẽ không gộp nếu lệnh này lỗi.
 
 ## Lưu ý
 
-- Hướng phát triển bộ dựng video hoạt hình (đang chờ chủ dự án chọn hướng và cho xem video gốc): [docs/ke-hoach-dung-video-hoat-hinh.md](docs/ke-hoach-dung-video-hoat-hinh.md). Đọc trước khi sửa phần dựng hình.
+- Bộ dựng video hoạt hình "Fedtoon" (hướng A + C: ảnh OpenAI + nhân vật vẽ bằng code): kế hoạch và tiến độ ở [docs/ke-hoach-dung-video-hoat-hinh.md](docs/ke-hoach-dung-video-hoat-hinh.md). Đọc trước khi sửa phần dựng hình.
+- `src/spec/storyboard.ts` là hợp đồng của kiểu Fedtoon: đổi thì cập nhật `src/pipeline/storyboard-ai.ts` (prompt), `src/remotion/fedtoon/FedtoonVideo.tsx`, `src/remotion/fedtoon/sample.ts`. Bộ nhận diện (màu, font, mô tả phong cách ảnh) ở `src/fedtoon/brand.ts`; không dùng logo/nhân vật của kênh khác.
 - Mọi thông số API (model, effort, voice ID…) khai báo ở `src/settings.ts`; đọc bằng `setting()` lúc dùng, không ghi cứng. `.env.example` được sinh từ danh sách đó: sửa `settings.ts` rồi chạy `npm run env-example`.
 - Tiến trình dựng video lưu ở `out/<id>/state.json`, tìm kiếm dở ở `out/_discover/pending/`; ghi file bằng `writeFileAtomic`/`writeJsonAtomic` để mất điện không làm hỏng file.
 - Không commit `.env`, khóa API, `out/`, `node_modules/`, `.venv/`.

@@ -154,6 +154,13 @@
         <button class="primary" id="go">Phân tích &amp; Render</button>
       </div>
       <div class="row">
+        <select id="style" aria-label="Kiểu video">
+          <option value="fedtoon">🎨 Hoạt hình Fedtoon (ảnh OpenAI + nhân vật Fedtoon)</option>
+          <option value="classic">🔤 Chữ &amp; đồ hoạ (kiểu cũ)</option>
+        </select>
+        <label class="check" style="color:var(--text)" title="Dừng sau khi AI viết kịch bản: bạn sửa kịch bản rồi mới tốn tiền vẽ ảnh và lồng tiếng"><input type="checkbox" id="review" /> ✋ Dừng để duyệt kịch bản trước khi vẽ ảnh</label>
+      </div>
+      <div class="row">
         <div class="seg" role="radiogroup" aria-label="Chế độ">
           <label><input type="radio" name="mode" value="clone" checked /><span>Bản sao (y hệt)</span></label>
           <label><input type="radio" name="mode" value="remix" /><span>Remix (cùng khuôn, nội dung mới)</span></label>
@@ -170,7 +177,7 @@
         </select>
         <label class="check" style="color:var(--text)" title="Đọc lời thoại (narration) của từng cảnh bằng ElevenLabs"><input type="checkbox" id="voice" /> 🎙️ Lồng tiếng (ElevenLabs) <span class="hint" id="voice-hint"></span></label>
       </div>
-      <div class="hint">Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline. Cảnh quay thật/ảnh/giọng đọc sẽ được thay bằng chữ và đồ hoạ.</div>
+      <div class="hint" id="style-hint"></div>
     </form>
   </section>
 
@@ -234,6 +241,7 @@
     </div>
     <div class="card" style="margin-top:20px">
       <h2>Kịch bản (spec.json) — sửa rồi render lại</h2>
+      <div class="hint" style="margin:-6px 0 10px">Kiểu Fedtoon: mỗi cảnh có <code>narration</code> (lời thoại), <code>background.prompt</code> (mô tả nền, tiếng Anh), <code>characters</code> (nhân vật, động tác, biểu cảm), <code>props</code> (đồ vật), <code>text</code>, <code>camera</code>. Ảnh chỉ được vẽ lại cho mô tả mới hoặc đã sửa.</div>
       <textarea id="spec" spellcheck="false"></textarea>
       <div class="row" style="margin-top:10px">
         <button class="primary" id="rerender">Lưu &amp; render lại</button>
@@ -583,7 +591,10 @@ function renderResult(job) {
       field("Mô tả", el("div", { className: "value", textContent: r.description }), r.description),
     );
   }
-  $("analyzer-info").textContent = `Bộ phân tích: ${job.analyzer || "?"} · Chế độ: ${job.mode === "remix" ? "Remix" : "Bản sao"} · Thể loại: ${job.spec.genre} · ${job.spec.scenes.length} cảnh · ${job.spec.meta.width}x${job.spec.meta.height}@${job.spec.meta.fps}fps`;
+  const sp = job.spec;
+  const what = sp.kind === "fedtoon" ? `Hoạt hình Fedtoon · ${sp.shots.length} cảnh · ${sp.cast.length} nhân vật · ${Object.keys(sp.images || {}).length} ảnh` : `Chữ & đồ hoạ · Thể loại: ${sp.genre} · ${sp.scenes.length} cảnh`;
+  $("analyzer-info").textContent = `Bộ phân tích: ${job.analyzer || "?"} · Chế độ: ${job.mode === "remix" ? "Remix" : "Bản sao"} · ${what} · ${sp.meta.width}x${sp.meta.height}@${sp.meta.fps}fps`;
+  $("no-video").textContent = job.video ? "" : "Chưa có video. Nếu bạn chọn dừng để duyệt kịch bản: sửa ở ô Kịch bản bên dưới (lời thoại, mô tả nền, nhân vật…) rồi bấm Lưu & render lại.";
   $("notes").replaceChildren(...(job.notes.length ? job.notes : ["Không có ghi chú."]).map((n) => el("li", { textContent: n })));
   $("spec").value = JSON.stringify(job.spec, null, 2);
 }
@@ -614,6 +625,8 @@ $("form").addEventListener("submit", async (ev) => {
         analyzer: $("analyzer").value,
         provider: provider(),
         voice: $("voice").checked,
+        style: $("style").value,
+        review: $("review").checked,
       }),
     });
     follow(id);
@@ -641,6 +654,29 @@ $("rerender").addEventListener("click", async () => {
     onEvent({ type: "error", message: e.message });
   }
 });
+
+// ---------- Kiểu video ----------
+function syncStyle() {
+  const fedtoon = $("style").value === "fedtoon";
+  $("review").disabled = !fedtoon;
+  if (!fedtoon) $("review").checked = false;
+  $("style-hint").textContent = fedtoon
+    ? "AI xem video gốc rồi viết kịch bản Fedtoon theo từng cảnh (lời thoại viết lại, nhân vật Fedtoon thay cho nhân vật gốc); OpenAI vẽ nền và đồ vật theo phong cách ở tab Cài đặt; nhân vật Fedtoon được vẽ bằng code nên không tốn tiền. Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa OpenAI thì dùng nền vẽ sẵn."
+    : "Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline.";
+  try {
+    localStorage.setItem("remake-style", JSON.stringify({ style: $("style").value, review: $("review").checked }));
+  } catch {}
+}
+try {
+  const saved = JSON.parse(localStorage.getItem("remake-style") || "null");
+  if (saved) {
+    $("style").value = saved.style === "classic" ? "classic" : "fedtoon";
+    $("review").checked = !!saved.review;
+  }
+} catch {}
+$("style").addEventListener("change", syncStyle);
+$("review").addEventListener("change", syncStyle);
+syncStyle();
 
 // ---------- Tabs ----------
 function showTab(name) {
@@ -1063,6 +1099,9 @@ function settingInput(s) {
   if (s.type === "select") {
     input = el("select", common, ...s.options.map((o) => option(o.value, o.label)));
     input.value = s.value;
+  } else if (s.type === "textarea") {
+    input = el("textarea", { ...common, value: s.isSet ? s.value : "", placeholder: s.default, rows: 5, style: "min-height:120px;font:inherit;font-size:13px" });
+    if (!s.isSet) input.value = s.default;
   } else if (s.type === "secret") {
     input = el("input", { ...common, type: "password", autocomplete: "off", placeholder: s.isSet ? `Đã có khóa ${s.hint} — dán khóa mới để thay` : "Chưa có khóa" });
   } else {
@@ -1161,7 +1200,7 @@ async function loadSettings() {
           ...items.map((s) =>
             el(
               "div",
-              { className: "f" },
+              { className: "f", style: s.type === "textarea" ? "grid-column: 1 / -1" : "" },
               el("label", { htmlFor: "set-" + s.key, textContent: s.label }),
               settingInput(s),
               el("div", { className: "hint", textContent: [s.help, `(${s.key})`, s.restart ? "Cần khởi động lại." : ""].filter(Boolean).join(" ") }),
@@ -1178,7 +1217,7 @@ $("set-save").addEventListener("click", async () => {
   setError("");
   const values = {};
   document.querySelectorAll("#set-groups [data-key]").forEach((input) => {
-    values[input.dataset.key] = input.type === "checkbox" ? String(input.checked) : input.value.trim();
+    values[input.dataset.key] = input.type === "checkbox" ? String(input.checked) : input.value.replace(/\s*\n\s*/g, " ").trim();
   });
   $("set-save").disabled = true;
   try {
