@@ -35,14 +35,14 @@ export const CastSheet: React.FC<{ offset?: number }> = ({ offset = 0 }) => {
   );
 };
 
-/** Fed, the mascot, in every action (expressions cycle). */
-export const MascotSheet: React.FC = () => {
+/** One character (Fed by default, or `id` from the cast) in every action (expressions cycle). */
+export const MascotSheet: React.FC<{ id?: string }> = ({ id = "fed" }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   const t = frame / fps;
   const cols = 3;
   const cell = width / cols;
-  const fed = SAMPLE_CAST[0];
+  const fed = SAMPLE_CAST.find((m) => m.id === id) ?? SAMPLE_CAST[0];
   return (
     <AbsoluteFill style={{ background: PALETTE.magenta }}>
       {ACTIONS.map((action, i) => {
