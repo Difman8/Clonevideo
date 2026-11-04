@@ -162,7 +162,7 @@
       </div>
       <div class="row">
         <div class="seg" role="radiogroup" aria-label="Chế độ">
-          <label><input type="radio" name="mode" value="clone" checked /><span>Bản sao (y hệt)</span></label>
+          <label><input type="radio" name="mode" value="clone" checked /><span id="mode-clone">Bản sao (y hệt)</span></label>
           <label><input type="radio" name="mode" value="remix" /><span>Remix (cùng khuôn, nội dung mới)</span></label>
         </div>
         <div class="switch" title="Chọn AI dùng để phân tích video">
@@ -658,11 +658,17 @@ $("rerender").addEventListener("click", async () => {
 // ---------- Kiểu video ----------
 function syncStyle() {
   const fedtoon = $("style").value === "fedtoon";
+  const clone = document.querySelector("input[name=mode]:checked").value === "clone";
   $("review").disabled = !fedtoon;
   if (!fedtoon) $("review").checked = false;
-  $("style-hint").textContent = fedtoon
-    ? "AI xem video gốc rồi viết kịch bản Fedtoon theo từng cảnh (lời thoại viết lại, nhân vật Fedtoon thay cho nhân vật gốc); OpenAI vẽ nền và đồ vật theo phong cách ở tab Cài đặt; nhân vật Fedtoon được vẽ bằng code nên không tốn tiền. Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa OpenAI thì dùng nền vẽ sẵn."
-    : "Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline.";
+  // With Fedtoon, "Bản sao" copies what the video says; the pictures are always Fedtoon's.
+  $("mode-clone").textContent = fedtoon ? "Bản sao (giữ nguyên nội dung)" : "Bản sao (y hệt)";
+  const look = "Hình ảnh làm lại theo phong cách Fedtoon: OpenAI vẽ nền và đồ vật (phong cách ở tab Cài đặt), Fed thay người dẫn, nhân vật Fedtoon thay người trong video.";
+  $("style-hint").textContent = !fedtoon
+    ? "Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline."
+    : clone
+      ? `Giữ nguyên nội dung video gốc: lời thoại chép đúng từng câu theo phụ đề (cùng thứ tự, cùng nhịp), chữ trên hình giữ nguyên. ${look} Bật 🎙️ Lồng tiếng để đọc lời thoại bằng ElevenLabs. Video gốc không có phụ đề thì không chép được lời thoại. Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa OpenAI thì dùng nền vẽ sẵn.`
+      : `Cùng chủ đề, bố cục và nhịp với video gốc nhưng AI viết lời thoại mới bằng từ ngữ riêng (ví dụ, câu chữ mới), kèm tiêu đề, mô tả, hashtag mới. ${look} Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa OpenAI thì dùng nền vẽ sẵn.`;
   try {
     localStorage.setItem("remake-style", JSON.stringify({ style: $("style").value, review: $("review").checked }));
   } catch {}
@@ -676,6 +682,7 @@ try {
 } catch {}
 $("style").addEventListener("change", syncStyle);
 $("review").addEventListener("change", syncStyle);
+document.querySelectorAll("input[name=mode]").forEach((r) => r.addEventListener("change", syncStyle));
 syncStyle();
 
 // ---------- Tabs ----------
