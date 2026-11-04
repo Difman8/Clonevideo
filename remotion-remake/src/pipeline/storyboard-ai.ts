@@ -31,7 +31,7 @@ You receive keyframes of a source video (each labelled with its timestamp), its 
 Shots:
 - Cover the whole video in chronological order. Each shot is usually 2-6 seconds; durations should add up to roughly the source length.
 - narration: what the narrator (or the speaking character) says during the shot, in the video's language (copied or rewritten: see the mode). Leave "" for silent shots.
-- speaker: the castId whose mouth moves while the narration plays, or "narrator".
+- speaker: "narrator", or Fed's castId when Fed is on screen speaking as the host.
 - background.prompt: the environment only, in English, concrete and visual (places, objects, lighting), 1-2 sentences. Never people, characters or text. Keep the lower middle third open: characters stand there. Do not describe the art style; it is added automatically. Reuse the same wording for shots that happen in the same place, so the image is generated once.
 - background.mood: night, day, sunset, space, indoor or abstract (abstract = flat rays or shapes, for ideas and feelings).
 - background.colors: the 2 named colors that dominate the background (${COLOR_NAMES.join(", ")}), chosen naturally for the scene (e.g. ${BACKGROUND_SETS.slice(0, 4).map((s) => s.join("+")).join(", ")}). The only rule: never the exact same color as the outfit/body color of a character in the shot.
@@ -42,11 +42,12 @@ Shots:
 - transition: cut for fast-paced moments, fade or slide otherwise. sfx: none or one, sparingly.
 
 Cast:
-- 1-4 characters. Fed is the ${BRAND_NAME} host: a cheerful young man with messy dark navy hair, round orange glasses, a teal short-sleeved shirt, purple trousers and yellow sneakers (kind "mascot", outfit "teal"; his look is fixed). Include Fed when a host or narrator character fits; there is only one Fed, and no other character should look like him.
-- Replace the people or characters of the source with ${BRAND_NAME} characters (kind "human"): never copy a real person, a celebrity or another channel's character or mascot.
-- ${BRAND_NAME}'s recurring characters: reuse them (with exactly this id) whenever a role fits; their look is fixed, the name may change to fit the story:
+- 1-4 characters. Fed is the ${BRAND_NAME} host: a cheerful young man with messy dark navy hair, round orange glasses, a teal short-sleeved shirt, purple trousers and yellow sneakers (kind "mascot", outfit "teal"; his look is fixed). Include Fed when a host fits; there is only one Fed, and no other character should look like him.
+- ${BRAND_NAME} is an international channel: never use personal names (except Fed), whatever the language of the video.
+- Side characters (kind "human") are silent extras that only illustrate what the narration says: someone surprised by a fact, a scientist pointing at a diagram, a grandpa cheering. Pick the ones that fit each situation. They have no names and no story role, they never speak (speaker is "narrator" or Fed) and the narration never names, addresses or introduces them; people in the source are shown this way too, never as named characters. Never copy a real person, a celebrity or another channel's character.
+- Recurring side characters, used with exactly these ids (their look is fixed, the drawing's own pose suits that action best):
 ${RECURRING_CAST_TEXT}
-- Anyone else: a new id, built from skin, hair, hairColor, outfit (color of the top), top, pants and accessory, looking clearly different from the others.
+- Only if none fits: another extra with a short English descriptive id ("chef", "doctor"), built from skin, hair, hairColor, outfit (color of the top), top, pants and accessory, looking clearly different from the others.
 
 The last shot should be a short ${BRAND_NAME} outro: Fed waving, with a call to follow ${BRAND_NAME} in the video's language.
 Write notes in Vietnamese: what you changed from the source and why. Every field is required: use "" or [] when something does not apply.`;

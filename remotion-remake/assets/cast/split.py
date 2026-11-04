@@ -123,6 +123,26 @@ def split(cid: str) -> dict:
         extra = edge & ~taken & dilate(m, 3)
         masks[part["name"]] = m | extra
         taken |= extra
+    # Tay có tư thế nghỉ (xoay nhiều quanh vai): phần gốc tay phía thân, ngoài vòng khớp, để lại
+    # cho thân áo; nếu không, khi hạ tay phần gốc đó lòi ra thành gợn trên vai.
+    xs_, ys_ = np.meshgrid(np.arange(w), np.arange(h))
+    for arm in cfg["arms"]:
+        if "rest" not in arm:
+            continue
+        seg = arm["segments"][0]
+        disc = next((f["disc"] for f in cfg.get("fills", []) if f.get("part") == seg["part"] and "disc" in f), None)
+        if not disc:
+            continue
+        px, py = seg["pivot"]
+        m = masks[seg["part"]]
+        cy_, cx_ = np.argwhere(m).mean(0)
+        ax, ay = cx_ - px, cy_ - py
+        norm = max(1e-6, (ax * ax + ay * ay) ** 0.5)
+        proj = ((xs_ - px) * ax + (ys_ - py) * ay) / norm
+        far = (xs_ - px) ** 2 + (ys_ - py) ** 2 > disc[2] ** 2
+        moved = m & (proj < 0) & far
+        masks[seg["part"]] = m & ~moved
+        taken &= ~moved
     masks["body"] = visible & ~taken
 
     rgba = np.dstack([rgb, alpha])
@@ -213,7 +233,7 @@ def split(cid: str) -> dict:
         "mouthTop": face["mouth"]["top"],
         "brows": [f"brow-{i}" for i in range(len(face["brows"]))],
         "colors": cfg["colors"],
-        **({"lid": cfg["lid"]} if "lid" in cfg else {}),
+        **{k: cfg[k] for k in ("lid", "drawnAction", "mouthStyle") if k in cfg},
     }
 
 

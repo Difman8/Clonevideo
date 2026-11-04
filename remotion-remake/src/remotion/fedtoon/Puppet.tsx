@@ -494,16 +494,50 @@ const Joint: React.FC<RigCtx & { pivot: readonly number[]; deg: number; children
   </div>
 );
 
-/** An arm: each segment turns around its pivot, inside the previous one; later segments sit behind earlier ones. */
-const RigArm: React.FC<RigCtx & { segments: CharacterRig["arms"][number]["segments"]; angles: number[] }> = ({ rig, s, segments, angles }) => {
+/**
+ * An arm: each segment turns around its pivot, inside the previous one; later segments sit behind
+ * earlier ones. Only the segments on the requested layer (`front` or not) are drawn.
+ */
+const RigArm: React.FC<RigCtx & { segments: CharacterRig["arms"][number]["segments"]; angles: number[]; front: boolean }> = ({ rig, s, segments, angles, front }) => {
   const [first, ...rest] = segments;
   if (!first) return null;
   return (
     <Joint rig={rig} s={s} pivot={first.pivot} deg={angles[0] ?? 0}>
-      {rest.length > 0 && <RigArm rig={rig} s={s} segments={rest} angles={angles.slice(1)} />}
-      <RigImg rig={rig} s={s} name={first.part} />
+      {rest.length > 0 && <RigArm rig={rig} s={s} segments={rest} angles={angles.slice(1)} front={front} />}
+      {!!first.front === front && <RigImg rig={rig} s={s} name={first.part} />}
     </Joint>
   );
+};
+
+/** Mouths drawn in vector for expressions the drawing does not show, sized from the eye width `u`. */
+const VectorMouth: React.FC<{ kind: Expression | "talk"; cx: number; cy: number; u: number; mouth: number; colors: CharacterRig["colors"]; uid: string }> = ({ kind, cx, cy, u, mouth, colors, uid }) => {
+  const line = (d: string, width = 0.2) => <path d={d} stroke={colors.line ?? colors.pupil} strokeWidth={u * width} strokeLinecap="round" fill="none" />;
+  if (kind === "talk" || kind === "happy") {
+    const w = u * (kind === "talk" ? 0.95 : 1.1);
+    const h = u * (kind === "talk" ? 0.25 + 0.85 * Math.min(1, mouth) : 1);
+    const y0 = cy - u * 0.35;
+    const d = `M ${cx - w} ${y0} Q ${cx} ${y0 + u * 0.12} ${cx + w} ${y0} C ${cx + w} ${y0 + h * 0.9} ${cx + w * 0.55} ${y0 + h} ${cx} ${y0 + h} C ${cx - w * 0.55} ${y0 + h} ${cx - w} ${y0 + h * 0.9} ${cx - w} ${y0} Z`;
+    return (
+      <g>
+        <clipPath id={`${uid}-vm`}>
+          <path d={d} />
+        </clipPath>
+        <path d={d} fill={colors.mouth} />
+        <ellipse cx={cx + u * 0.05} cy={y0 + h * 0.88} rx={w * 0.6} ry={Math.max(u * 0.08, h * 0.36)} fill={colors.tongue} clipPath={`url(#${uid}-vm)`} />
+      </g>
+    );
+  }
+  if (kind === "surprised")
+    return (
+      <g>
+        <ellipse cx={cx} cy={cy + u * 0.1} rx={u * 0.42} ry={u * 0.55} fill={colors.mouth} />
+        <ellipse cx={cx} cy={cy + u * 0.42} rx={u * 0.26} ry={u * 0.18} fill={colors.tongue} />
+      </g>
+    );
+  if (kind === "sad") return line(`M ${cx - u * 0.62} ${cy + u * 0.28} Q ${cx} ${cy - u * 0.3} ${cx + u * 0.62} ${cy + u * 0.28}`);
+  if (kind === "angry") return line(`M ${cx - u * 0.62} ${cy + u * 0.2} Q ${cx} ${cy - u * 0.12} ${cx + u * 0.62} ${cy + u * 0.2}`, 0.24);
+  if (kind === "thinking") return line(`M ${cx - u * 0.3} ${cy} Q ${cx + u * 0.2} ${cy + u * 0.25} ${cx + u * 0.65} ${cy - u * 0.15}`);
+  return line(`M ${cx - u * 0.62} ${cy - u * 0.05} Q ${cx} ${cy + u * 0.38} ${cx + u * 0.62} ${cy - u * 0.05}`);
 };
 
 const RigFace: React.FC<RigCtx & { expression: Expression; mouth: number; eyes: number; uid: string }> = ({ rig, s, expression, mouth, eyes, uid }) => {
@@ -515,7 +549,22 @@ const RigFace: React.FC<RigCtx & { expression: Expression; mouth: number; eyes: 
   const m = rig.parts.mouth;
   const [x0, y0, x1, y1] = rig.mouthTop;
   const angle = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
-  const open = talking ? 0.22 + 0.78 * Math.min(1, mouth) : RIG_MOUTH[expression];
+  // Drawings with an open smile (Fed, woman, grandpa) squash it for most expressions; other drawn mouths are
+  // shown for their own expression (and reused for speech if open), vector mouths cover the rest.
+  const style = rig.mouthStyle ?? { drawn: "happy", open: true };
+  const legacy = style.drawn === "happy" && style.open;
+  const open = legacy
+    ? talking
+      ? 0.22 + 0.78 * Math.min(1, mouth)
+      : RIG_MOUTH[expression]
+    : talking
+      ? style.open
+        ? 0.22 + 0.78 * Math.min(1, mouth)
+        : undefined
+      : expression === style.drawn
+        ? 1
+        : undefined;
+  const vector: Expression | "talk" | undefined = open !== undefined ? undefined : talking ? "talk" : expression;
   const closed = eyes < 0.35;
   const lid = closed ? 1 : Math.max(RIG_LIDS[expression], 1 - eyes);
   return (
@@ -549,7 +598,8 @@ const RigFace: React.FC<RigCtx & { expression: Expression; mouth: number; eyes: 
         viewBox={`${head.x} ${head.y} ${head.w} ${head.h}`}
         style={{ position: "absolute", left: (head.x - rig.centerX) * s, top: (head.y - rig.feetY) * s, overflow: "visible" }}
       >
-        {open === undefined && m && expression === "sad" && (
+        {!legacy && vector && m && <VectorMouth kind={vector} cx={m.x + m.w / 2} cy={m.y + m.h / 2} u={rig.eyes[0]?.rx ?? FED_EYE_RX} mouth={mouth} colors={colors} uid={uid} />}
+        {legacy && open === undefined && m && expression === "sad" && (
           <path
             d={`M ${m.x + m.w * 0.16} ${m.y + m.h * 0.68} Q ${m.x + m.w * 0.5} ${m.y + m.h * 0.32} ${m.x + m.w * 0.84} ${m.y + m.h * 0.63}`}
             stroke={colors.mouth}
@@ -558,7 +608,7 @@ const RigFace: React.FC<RigCtx & { expression: Expression; mouth: number; eyes: 
             fill="none"
           />
         )}
-        {open === undefined && m && expression === "surprised" && (
+        {legacy && open === undefined && m && expression === "surprised" && (
           <g>
             <ellipse cx={m.x + m.w * 0.49} cy={m.y + m.h * 0.58} rx={m.w * 0.16} ry={m.h * 0.33} fill={colors.mouth} />
             <ellipse cx={m.x + m.w * 0.49} cy={m.y + m.h * 0.77} rx={m.w * 0.1} ry={m.h * 0.105} fill={colors.tongue} />
@@ -598,13 +648,24 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
   const uid = `rig${React.useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const unit = height / 380;
   const s = (unit * rig.units) / (rig.feetY - rig.top);
-  const pose = rigPose(action, expression, t + seed * 0.37);
+  const posed = rigPose(action, expression, t + seed * 0.37);
+  // For the action the drawing shows, keep it as drawn (just breathing), e.g. a finger on the temple.
+  const pose = action === rig.drawnAction ? { ...posed, head: wave(t, 0.4) * 1.2, raise: 0, bend: -wave(t + seed, 0.5) * 2 } : posed;
   const y = bob(action, t + seed * 0.37) * unit;
   const flip = facing === "left" ? -1 : 1;
-  const armAngles = (arm: CharacterRig["arms"][number]) => {
+  const firstRaised = rig.arms.findIndex((a) => a.kind === "raised");
+  const armAngles = (arm: CharacterRig["arms"][number], index: number): { angles: number[]; drawn: boolean } => {
     const dir = arm.side === "left" ? 1 : -1;
-    if (arm.kind === "hanging") return [pose.hang * dir];
-    return arm.segments.length > 1 ? [pose.raise * dir, pose.bend * dir] : [(pose.raise + pose.bend) * dir];
+    if (arm.kind === "hanging") return { angles: [pose.hang * dir], drawn: true };
+    const n = arm.segments.length;
+    // Raised arms keep the drawn pose for waving, cheering and the action of the drawing (the
+    // first raised arm only, except for cheering); otherwise they rest (or point) if the rig says how.
+    const main = index === firstRaised;
+    const drawn = !arm.rest || action === "cheer" || (main && (action === "wave" || action === rig.drawnAction));
+    const pointing = !drawn && main && action === "point" && arm.point;
+    if (drawn) return { angles: n > 1 ? [pose.raise * dir, pose.bend * dir] : [(pose.raise + pose.bend) * dir], drawn };
+    const base = (pointing ? arm.point : arm.rest) ?? [];
+    return { angles: Array.from({ length: n }, (_, i) => ((base[i] ?? 0) + (i === 0 ? (pointing ? wave(t, 0.5) * 1.5 : pose.hang) : 0)) * dir), drawn };
   };
   return (
     <div style={{ position: "relative", width, height }}>
@@ -618,8 +679,29 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
               </Joint>
             );
           if (item.startsWith("arm:")) {
-            const arm = rig.arms[Number(item.slice(4))];
-            return arm ? <RigArm key={item} rig={rig} s={s} segments={arm.segments} angles={armAngles(arm)} /> : null;
+            const [, i, layer] = item.split(":");
+            const arm = rig.arms[Number(i)];
+            if (!arm) return null;
+            const state = armAngles(arm, Number(i));
+            const cap = !state.drawn && layer !== "front" ? arm.cap : undefined;
+            return (
+              <React.Fragment key={item}>
+                <RigArm rig={rig} s={s} segments={arm.segments} angles={state.angles} front={layer === "front"} />
+                {cap && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: (cap[0] - cap[2] - rig.centerX) * s,
+                      top: (cap[1] - cap[3] - rig.feetY) * s,
+                      width: cap[2] * 2 * s,
+                      height: cap[3] * 2 * s,
+                      borderRadius: "50%",
+                      background: rig.colors.shirt ?? rig.colors.skin,
+                    }}
+                  />
+                )}
+              </React.Fragment>
+            );
           }
           return <RigImg key={item} rig={rig} s={s} name={item} />;
         })}

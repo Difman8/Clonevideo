@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { COLOR_NAMES, HAIR_COLORS, MOODS, SKIN, type ColorName } from "../fedtoon/brand";
-import { RECURRING_CAST } from "../fedtoon/cast";
+import { castKey, RECURRING_CAST } from "../fedtoon/cast";
 import { characterColors, withoutCharacterColors } from "../fedtoon/contrast";
 import { MetaSchema, VoiceClipSchema } from "./schema";
 
@@ -26,8 +26,8 @@ export const PANTS = ["dark", "jeans"] as const;
 const Color = z.enum(COLOR_NAMES).catch("teal");
 
 export const CastMemberSchema = z.object({
-  id: z.string().describe('Short id used by shots, e.g. "fed", "mai", "boss".'),
-  name: z.string(),
+  id: z.string().describe('Short id used by shots, e.g. "fed", "woman", "chef".'),
+  name: z.string().describe("A short English description (\"Chef\"), never a personal name, except Fed."),
   kind: z.enum(["mascot", "human"]).catch("human").describe('"mascot" = Fed, the Fedtoon host (a fixed drawing: the options below are ignored); "human" = a person built from the options below.'),
   skin: z.enum(Object.keys(SKIN) as [keyof typeof SKIN]).catch("tan"),
   hair: z.enum(HAIR_STYLES).catch("short"),
@@ -58,7 +58,7 @@ export const PropSchema = z.object({
 export const ShotSchema = z.object({
   durationSec: z.number().describe("Seconds on screen, usually 2-6."),
   narration: z.string().catch("").describe("Voice-over during this shot, in the video's language. Empty = silent."),
-  speaker: z.string().catch("narrator").describe('castId of the character speaking (their mouth moves), or "narrator".'),
+  speaker: z.string().catch("narrator").describe('"narrator", or Fed\'s castId when Fed speaks as the host (his mouth moves). Side characters never speak.'),
   background: z.object({
     prompt: z.string().describe("The environment only, in English: no characters, no text. Leave the lower middle open for characters."),
     mood: z.enum(Object.keys(MOODS) as [keyof typeof MOODS]).catch("night"),
@@ -142,11 +142,11 @@ export function storyboardTimeline(sb: Pick<Storyboard, "shots" | "meta">) {
 /** Adds defaults, clamps numbers and drops references to unknown cast members. */
 export function finalizeStoryboard(analyzed: AnalyzedStoryboard, meta: Storyboard["meta"], extra: Partial<Pick<Storyboard, "images" | "voiceover" | "captions">> = {}): Storyboard {
   // Fed is one person: a second "mascot" in the cast is drawn as an ordinary character.
-  // Recurring characters (src/fedtoon/cast.ts) always keep their own look.
+  // Recurring characters (src/fedtoon/cast.ts) always keep their own look and descriptive name.
   const cast = (analyzed.cast.length ? analyzed.cast.slice(0, 4) : [CastMemberSchema.parse({ id: "fed", name: "Fed", kind: "mascot", outfit: "teal" })]).map((m, i, all) => {
     const member = m.kind === "mascot" && all.findIndex((o) => o.kind === "mascot") !== i ? { ...m, kind: "human" as const } : m;
-    const regular = m.kind === "human" ? RECURRING_CAST.find((r) => r.id === m.id.toLowerCase()) : undefined;
-    return regular ? { ...regular, id: m.id, name: m.name || regular.name } : member;
+    const regular = m.kind === "human" ? RECURRING_CAST.find((r) => r.id === castKey(m.id)) : undefined;
+    return regular ? { ...regular, id: m.id } : member;
   });
   const ids = new Set(cast.map((c) => c.id));
   const shots = analyzed.shots.map((s) => {
@@ -158,7 +158,8 @@ export function finalizeStoryboard(analyzed: AnalyzedStoryboard, meta: Storyboar
       ...s,
       durationSec: Math.min(15, Math.max(1, Number(s.durationSec) || 3)),
       narration: s.narration.trim(),
-      speaker: ids.has(s.speaker) ? s.speaker : "narrator",
+      // Side characters are silent extras: only Fed (or the narrator) speaks.
+      speaker: cast.some((c) => c.id === s.speaker && c.kind === "mascot") ? s.speaker : "narrator",
       characters,
       props: s.props.filter((p) => p.prompt.trim()).slice(0, 2),
       background: { ...s.background, colors: withoutCharacterColors(requested.length ? requested : [...MOODS[s.background.mood].colors], subjects) },

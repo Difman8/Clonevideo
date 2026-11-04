@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-04
 
+- **Thêm 4 nhân vật phụ từ ảnh (man, scientist, kid, grandpa); nhân vật phụ dùng tên tiếng Anh, chỉ minh hoạ, không nói, không gọi tên** — @Difman8 · 22:22 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Mai dùng ảnh của chủ kênh thay cho bản vẽ code: cắt thành bộ phận để vẫy tay, nghiêng đầu, chớp mắt, nói theo giọng** — @Difman8 · 21:48 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Vẽ lại nhân vật phụ theo ảnh mẫu của kênh, cùng phong cách với Fed: dàn nhân vật cố định Mai, Tuấn, Lan, Khoa, Bảo, An, Ông** — @Difman8 · 21:19 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Fedtoon + Bản sao giữ nguyên nội dung gốc: chép đúng lời thoại theo phụ đề, chỉ làm lại hình theo phong cách Fedtoon** — @Difman8 · 20:39 · nhánh `claude/youtube-video-discovery-29q6gg`
