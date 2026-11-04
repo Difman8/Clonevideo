@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-04
 
+- **Fedtoon theo video tham khảo: bỏ bóng đổ, nền tự chọn màu tương phản với nhân vật** — @Difman8 · 17:36 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Thêm kiểu video Hoạt hình Fedtoon: AI viết kịch bản theo cảnh, OpenAI vẽ nền, nhân vật Fedtoon có khẩu hình** — @Difman8 · 07:34 · nhánh `claude/youtube-video-discovery-29q6gg`
 
 ## 2026-11-03

@@ -1,6 +1,6 @@
 // Fedtoon characters drawn in code (SVG): consistent in every video, free to
-// render, and fully animatable. Flat shapes, no outlines, a darker side for
-// volume and a soft rim light, in the brand palette.
+// render, and fully animatable. Flat shapes, no outlines, no shadows or glow:
+// volume comes only from flat darker shapes, in the brand palette.
 import React from "react";
 import { HAIR_COLORS, PALETTE, SKIN } from "../../fedtoon/brand";
 import type { CastMember, ShotCharacter } from "../../spec/storyboard";
@@ -73,7 +73,7 @@ function bob(action: Action, t: number) {
 }
 
 // ---------- face ----------
-const Face: React.FC<{ cx: number; cy: number; r: number; expression: Expression; mouth: number; eyesOpen: number; look: number; mascot?: boolean }> = ({
+const Face: React.FC<{ cx: number; cy: number; r: number; expression: Expression; mouth: number; eyesOpen: number; look: number; mascot?: boolean; lid: string }> = ({
   cx,
   cy,
   r,
@@ -82,8 +82,9 @@ const Face: React.FC<{ cx: number; cy: number; r: number; expression: Expression
   eyesOpen,
   look,
   mascot,
+  lid,
 }) => {
-  const eyeR = mascot ? r * 0.17 : r * 0.12;
+  const eyeR = mascot ? r * 0.2 : r * 0.15;
   const eyeY = cy - r * (mascot ? 0.12 : 0.05);
   const gap = r * (mascot ? 0.36 : 0.34);
   const surprised = expression === "surprised";
@@ -113,23 +114,44 @@ const Face: React.FC<{ cx: number; cy: number; r: number; expression: Expression
   }
   return (
     <g>
-      {[-1, 1].map((side) => (
+      {[-1, 1].map((side) => {
+        const ex = cx + side * gap + look * 0.4;
+        // Upper lid lowered for sad / angry / thinking looks, closed when blinking.
+        const lidDrop = { neutral: 0.05, happy: 0.0, sad: 0.42, surprised: 0, angry: 0.5, thinking: 0.3 }[expression];
+        const lidY = eyeY - eyeR * 1.15 + eyeR * 2.3 * Math.max(lidDrop, 1 - eyesOpen);
+        const clip = `eye-${side}-${Math.round(cx)}-${Math.round(cy)}`;
+        return (
         <g key={side}>
-          <ellipse cx={cx + side * gap + look} cy={eyeY + lookY} rx={eyeR} ry={eyeR * eyeScale} fill="#141022" />
-          {eyesOpen > 0.5 && <circle cx={cx + side * gap + look + eyeR * 0.35} cy={eyeY + lookY - eyeR * 0.35} r={eyeR * 0.32} fill="#FFFFFF" />}
+          <clipPath id={clip}>
+            <ellipse cx={ex} cy={eyeY} rx={eyeR} ry={eyeR * 1.15 * (surprised ? 1.15 : 1)} />
+          </clipPath>
+          <g clipPath={`url(#${clip})`}>
+            <ellipse cx={ex} cy={eyeY} rx={eyeR} ry={eyeR * 1.15 * (surprised ? 1.15 : 1)} fill="#FFFFFF" />
+            <circle cx={ex + look * 0.5} cy={eyeY + lookY + eyeR * 0.1} r={eyeR * (surprised ? 0.42 : 0.58)} fill="#141022" />
+            <circle cx={ex + look * 0.5 + eyeR * 0.2} cy={eyeY + lookY - eyeR * 0.15} r={eyeR * 0.18} fill="#FFFFFF" />
+            <rect
+              x={ex - eyeR * 1.3}
+              y={eyeY - eyeR * 2.6}
+              width={eyeR * 2.6}
+              height={lidY - (eyeY - eyeR * 2.6)}
+              fill={lid}
+              transform={`rotate(${expression === "angry" ? side * -14 : expression === "sad" ? side * 12 : 0} ${ex} ${lidY})`}
+            />
+          </g>
           <rect
-            x={cx + side * gap + look - eyeR * 1.2}
+            x={ex - eyeR * 1.2}
             y={browY - r * 0.025}
             width={eyeR * 2.4}
             height={r * 0.06}
             rx={r * 0.03}
             fill="#141022"
             opacity={mascot ? 0 : 0.85}
-            transform={`rotate(${side * brow} ${cx + side * gap + look} ${browY})`}
+            transform={`rotate(${side * brow} ${ex} ${browY})`}
           />
-          <ellipse cx={cx + side * (gap + eyeR * 0.9) + look} cy={eyeY + r * 0.3} rx={r * 0.12} ry={r * 0.07} fill="#FF6F91" opacity={0.35} />
+          <ellipse cx={ex + side * eyeR * 0.9} cy={eyeY + r * 0.32} rx={r * 0.12} ry={r * 0.07} fill="#FF6F91" opacity={0.45} />
         </g>
-      ))}
+        );
+      })}
       {mouthEl}
     </g>
   );
@@ -238,7 +260,7 @@ const Human: React.FC<PuppetProps & { eyes: number }> = ({ member, action, expre
         <path d={`M ${headR * 0.15} ${headY - headR * 0.99} A ${headR} ${headR} 0 0 1 ${headR * 0.15} ${headY + headR * 0.99} A ${headR * 0.9} ${headR} 0 0 0 ${headR * 0.15} ${headY - headR * 0.99} Z`} fill={shade(skin, 0.08)} />
         <circle cx={-headR * 1.0} cy={headY + 4} r={9} fill={shade(skin, 0.06)} />
         <circle cx={headR * 1.0} cy={headY + 4} r={9} fill={shade(skin, 0.1)} />
-        <Face cx={0} cy={headY} r={headR} expression={expression} mouth={mouth} eyesOpen={eyes} look={look} />
+        <Face cx={0} cy={headY} r={headR} expression={expression} mouth={mouth} eyesOpen={eyes} look={look} lid={skin} />
         <Hair style={member.hair} color={hair} cx={0} cy={headY} r={headR} layer="front" outfit={outfit} />
         {member.accessory === "glasses" && (
           <g fill="none" stroke="#141022" strokeWidth={3.5} opacity={0.85}>
@@ -254,8 +276,6 @@ const Human: React.FC<PuppetProps & { eyes: number }> = ({ member, action, expre
             <rect x={headR * 1.18 - 20} y={headY - 16} width={20} height={34} rx={9} fill={PALETTE.coral} />
           </g>
         )}
-        {/* rim light */}
-        <path d={`M ${-headR * 0.75} ${headY - headR * 0.66} A ${headR} ${headR} 0 0 1 ${headR * 0.2} ${headY - headR * 0.98}`} stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={4} fill="none" strokeLinecap="round" />
       </g>
       {/* front arm */}
       <Limb x={44} y={-184} angle={a.front} elbow={a.frontElbow} len={92} w={24} color={coat ? PALETTE.cream : light(outfit, 0.06)} hand={skin} />
@@ -269,7 +289,6 @@ const Fed: React.FC<PuppetProps & { eyes: number }> = ({ member, action, express
   const a = arms(action, t);
   const squash = action === "jump" ? 1 + Math.min(0, wave(t, 1.1)) * -0.06 : 1 + wave(t, 0.5) * 0.015;
   const look = facing === "left" ? -10 : facing === "right" ? 10 : 0;
-  const glow = 0.6 + wave(t, 0.6) * 0.25;
   const cy = -118;
   const r = 102;
   return (
@@ -278,7 +297,6 @@ const Fed: React.FC<PuppetProps & { eyes: number }> = ({ member, action, express
       {[-1, 1].map((s) => (
         <g key={s} transform={`rotate(${s * (14 + wave(t, 0.7, s * 0.25) * 6)} ${s * 30} ${cy - r * 0.85})`}>
           <line x1={s * 30} y1={cy - r * 0.85} x2={s * 34} y2={cy - r * 1.32} stroke={shade(body, 0.15)} strokeWidth={9} strokeLinecap="round" />
-          <circle cx={s * 34} cy={cy - r * 1.36} r={15} fill={PALETTE.amber} opacity={0.35 * glow} />
           <circle cx={s * 34} cy={cy - r * 1.36} r={10} fill={PALETTE.yellow} />
         </g>
       ))}
@@ -291,8 +309,7 @@ const Fed: React.FC<PuppetProps & { eyes: number }> = ({ member, action, express
       <ellipse cx={0} cy={cy} rx={r} ry={r * 0.94} fill={body} />
       <path d={`M ${r * 0.1} ${cy - r * 0.93} A ${r} ${r * 0.94} 0 0 1 ${r * 0.1} ${cy + r * 0.93} A ${r * 0.85} ${r * 0.94} 0 0 0 ${r * 0.1} ${cy - r * 0.93} Z`} fill={shade(body, 0.12)} />
       <ellipse cx={-4} cy={cy + r * 0.38} rx={r * 0.52} ry={r * 0.4} fill={light(body, 0.45)} opacity={0.75} />
-      <path d={`M ${-r * 0.78} ${cy - r * 0.45} A ${r} ${r * 0.94} 0 0 1 ${-r * 0.05} ${cy - r * 0.93}`} stroke="#FFFFFF" strokeOpacity={0.4} strokeWidth={6} fill="none" strokeLinecap="round" />
-      <Face cx={0} cy={cy - r * 0.08} r={r * 0.78} expression={expression} mouth={mouth} eyesOpen={eyes} look={look} mascot />
+      <Face cx={0} cy={cy - r * 0.08} r={r * 0.78} expression={expression} mouth={mouth} eyesOpen={eyes} look={look} mascot lid={body} />
       {member.accessory === "glasses" && (
         <g fill="none" stroke="#141022" strokeWidth={4.5} opacity={0.85}>
           <circle cx={-28 + look} cy={cy - 20} r={20} />
@@ -314,7 +331,6 @@ export const Puppet: React.FC<PuppetProps> = (props) => {
   const flip = facing === "left" ? -1 : 1;
   return (
     <svg width={height * (200 / 380)} height={height} viewBox="-100 -366 200 380" style={{ overflow: "visible" }}>
-      <ellipse cx={0} cy={6} rx={mascot ? 88 : 64} ry={12} fill="#000" opacity={0.22} />
       <g transform={`translate(0 ${y}) scale(${flip} 1)`}>{mascot ? <Fed {...props} eyes={eyes} /> : <Human {...props} eyes={eyes} />}</g>
     </svg>
   );

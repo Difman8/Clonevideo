@@ -25,7 +25,7 @@ export const CastSheet: React.FC = () => {
   const cols = 3;
   const cell = width / cols;
   return (
-    <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 30%, ${PALETTE.indigo} 0%, ${PALETTE.night} 75%)` }}>
+    <AbsoluteFill style={{ background: PALETTE.violet }}>
       {SAMPLE_CAST.map((m, i) => {
         const action = ACTIONS[i % ACTIONS.length];
         const expression = EXPRESSIONS[i % EXPRESSIONS.length];

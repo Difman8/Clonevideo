@@ -17,9 +17,19 @@
 | Dựng video | `remotion-remake/src/remotion/fedtoon/FedtoonVideo.tsx` | Máy quay lia/zoom/rung, hạt sáng, nhân vật, đồ vật chuyển động, chữ theo bộ nhận diện, phụ đề karaoke, logo, giọng, hiệu ứng âm thanh; nền vẽ bằng code khi chưa có ảnh |
 | Quy trình | `remotion-remake/src/pipeline/job.ts` | Bước mới "Vẽ hình ảnh"; tuỳ chọn dừng để duyệt kịch bản trước khi tốn tiền; tiếp tục được khi tắt máy |
 
+## Phong cách theo video tham khảo (04/11/2026)
+
+Chủ dự án gửi 6 bản quay màn hình Shorts tham khảo. Quan sát và đã áp dụng:
+
+- **Không bóng đổ, không phát sáng, không vignette.** Chủ thể nổi bật nhờ **màu nền khác hẳn màu chủ thể** (não hồng trên nền tím, mặt trời vàng trên trời xanh lơ, hồ xanh trên cỏ xanh lá). Đã bỏ bóng chân, viền sáng, hạt phát sáng, vignette, hào quang mặt trời.
+- **Màu nền tương phản tự động** (`src/fedtoon/contrast.ts`, đo ΔE trong không gian Lab): AI chọn `background.colors`; nếu trùng màu nhân vật trong cảnh, code đổi sang bộ màu tương phản nhất. Yêu cầu vẽ ảnh gửi kèm màu nền và màu cần tránh. Sau khi vẽ, app đo màu chủ đạo ở vùng nhân vật đứng; nếu vẫn trùng, đặt một **vòng tròn màu phẳng có viền** phía sau nhân vật (kiểu vòng tròn khoanh chủ thể trong video tham khảo).
+- Bảng màu rực: hồng cánh sen, tím, tím than, xanh lơ, xanh chanh, vàng, cam, xanh dương (lấy mẫu từ video).
+- Mắt có lòng trắng và con ngươi, mí mắt theo biểu cảm; đồ vật có thể có mặt.
+- Chữ: tiêu đề viền nhiều lớp màu, nhãn là khối màu đặc, số liệu trong khung tím than bo tròn. Phụ đề trắng viền mảnh, tối đa 3 từ, không nền, nằm dưới chủ thể.
+
 ## Việc tiếp theo
 
-1. **Xem video tham chiếu** (`b1EMX3wyqCY`): máy chủ của Claude không vào được YouTube. Cần chủ dự án chia sẻ thư mục (mục 0) hoặc gửi 5–10 ảnh chụp, rồi chỉnh `FEDTOON_IMAGE_STYLE`, bảng màu, nhân vật cho sát hơn.
+1. **Chạy thử với khóa thật** và so với video tham khảo; chỉnh `FEDTOON_IMAGE_STYLE`, bảng màu, nhân vật theo nhận xét.
 2. **Chạy thử với khóa thật** và tinh chỉnh: độ nhất quán phong cách giữa các ảnh nền (cân nhắc dùng ảnh nền đầu tiên làm ảnh tham chiếu cho các ảnh sau qua `images.edit`), vị trí nhân vật so với nền.
 3. **Nhiều giọng nhân vật**: mỗi nhân vật một Voice ID ElevenLabs.
 4. **Nhạc nền và hiệu ứng âm thanh** bằng ElevenLabs Music / Sound Effects.

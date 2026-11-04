@@ -7,7 +7,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
-import { BRAND_NAME } from "../fedtoon/brand";
+import { BACKGROUND_SETS, BRAND_NAME, COLOR_NAMES } from "../fedtoon/brand";
 import { numberSetting } from "../settings";
 import { ACTIONS, AnalyzedStoryboardSchema, CAMERAS, EXPRESSIONS } from "../spec/storyboard";
 import { PROVIDERS, type Provider } from "./ai";
@@ -23,7 +23,7 @@ export const StoryboardOutputSchema = AnalyzedStoryboardSchema.extend({
 });
 export type StoryboardOutput = z.infer<typeof StoryboardOutputSchema>;
 
-export const STORYBOARD_PROMPT = `You are the head writer and storyboard artist of "${BRAND_NAME}", an animated YouTube channel. ${BRAND_NAME} videos look like polished flat-vector science explainers: deep navy and indigo worlds lit by glowing warm accents, rounded geometric shapes, cute simple characters, smooth camera moves, a calm and curious narrator.
+export const STORYBOARD_PROMPT = `You are the head writer and storyboard artist of "${BRAND_NAME}", an animated YouTube channel. ${BRAND_NAME} videos look like polished flat-vector science explainers: bold saturated flat colors (magenta, violet, deep purple, cyan, lime green, yellow, orange, royal blue), rounded geometric shapes, no outlines, no drop shadows and no glow. A subject stands out only because its background is a clearly different color (a pink brain on deep purple, a yellow sun on cyan sky, a teal character on magenta). Objects often get simple cute faces (a sleepy brain, a smiling sun); diagrams are shown inside big flat circles; key terms appear in solid colored boxes. Smooth camera moves, a calm and curious narrator.
 
 You receive keyframes of a source video (each labelled with its timestamp), its transcript when available and its metadata. Turn it into a ${BRAND_NAME} storyboard: same topic, same hook, same structure, pacing and key points, but told in ${BRAND_NAME}'s own words and visuals, never a copy.
 
@@ -32,11 +32,12 @@ Shots:
 - narration: what the narrator (or the speaking character) says during the shot, in the video's language, rewritten in your own words. At most about 2.5 words per second of durationSec. Leave "" for silent shots.
 - speaker: the castId whose mouth moves while the narration plays, or "narrator".
 - background.prompt: the environment only, in English, concrete and visual (places, objects, lighting), 1-2 sentences. Never people, characters or text. Keep the lower middle third open: characters stand there. Do not describe the art style; it is added automatically. Reuse the same wording for shots that happen in the same place, so the image is generated once.
-- background.mood: night, day, sunset, space, indoor or abstract.
+- background.mood: night, day, sunset, space, indoor or abstract (abstract = flat rays or shapes, for ideas and feelings).
+- background.colors: the 2 named colors that dominate the background (${COLOR_NAMES.join(", ")}). They must be clearly different from the outfit/body colors of the characters in the shot and from the main colors of its props: never a teal character on teal or green, never a blue one on blue. Good sets: ${BACKGROUND_SETS.map((s) => s.join("+")).join(", ")}.
 - camera: vary it (${CAMERAS.join(", ")}); "shake" only for impacts.
 - characters: 0-3 cast members with position, scale, action (${ACTIONS.join(", ")}) and expression (${EXPRESSIONS.join(", ")}). Characters who are not in the source can appear when they help tell the story.
-- props: 0-2 single objects that illustrate the narration (a planet, a cell, a coin, a phone…), in English, each drawn on its own.
-- text: at most 6 words and only when it helps (a number, a key term, the title); style none when unused.
+- props: 0-2 single objects that illustrate the narration (a planet, a cell, a coin, a phone…), in English, each drawn on its own. Name the object's main color, chosen to contrast with background.colors; give it a simple cute face when that fits the tone.
+- text: at most 6 words and only when it helps; style "title" for the opening question/title, "label" for a key term (solid colored box), "caption" for a statistic or fact (dark rounded box), "big-number" for one striking number, "none" when unused.
 - transition: cut for fast-paced moments, fade or slide otherwise. sfx: none or one, sparingly.
 
 Cast:
