@@ -8,6 +8,7 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { BACKGROUND_SETS, BRAND_NAME, COLOR_NAMES } from "../fedtoon/brand";
+import { RECURRING_CAST_TEXT } from "../fedtoon/cast";
 import { numberSetting } from "../settings";
 import { ACTIONS, AnalyzedStoryboardSchema, CAMERAS, EXPRESSIONS } from "../spec/storyboard";
 import { PROVIDERS, type Provider } from "./ai";
@@ -43,6 +44,9 @@ Shots:
 Cast:
 - 1-4 characters. Fed is the ${BRAND_NAME} host: a cheerful young man with messy dark navy hair, round orange glasses, a teal short-sleeved shirt, purple trousers and yellow sneakers (kind "mascot", outfit "teal"; his look is fixed). Include Fed when a host or narrator character fits; there is only one Fed, and no other character should look like him.
 - Replace the people or characters of the source with ${BRAND_NAME} characters (kind "human"): never copy a real person, a celebrity or another channel's character or mascot.
+- ${BRAND_NAME}'s recurring characters: reuse them (with exactly this id) whenever a role fits; their look is fixed, the name may change to fit the story:
+${RECURRING_CAST_TEXT}
+- Anyone else: a new id, built from skin, hair, hairColor, outfit (color of the top), top, pants and accessory, looking clearly different from the others.
 
 The last shot should be a short ${BRAND_NAME} outro: Fed waving, with a call to follow ${BRAND_NAME} in the video's language.
 Write notes in Vietnamese: what you changed from the source and why. Every field is required: use "" or [] when something does not apply.`;

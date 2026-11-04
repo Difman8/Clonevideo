@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { COLOR_NAMES, HAIR_COLORS, MOODS, SKIN, type ColorName } from "../fedtoon/brand";
+import { RECURRING_CAST } from "../fedtoon/cast";
 import { characterColors, withoutCharacterColors } from "../fedtoon/contrast";
 import { MetaSchema, VoiceClipSchema } from "./schema";
 
@@ -18,7 +19,9 @@ export const PROP_MOTIONS = ["float", "pop", "spin", "pulse", "none"] as const;
 export const TEXT_STYLES = ["none", "title", "label", "big-number", "caption"] as const;
 export const SFX = ["whoosh", "pop", "ding", "tick"] as const;
 export const HAIR_STYLES = ["short", "long", "bun", "curly", "spiky", "bald", "cap"] as const;
-export const ACCESSORIES = ["none", "glasses", "scarf", "backpack", "lab-coat", "headphones"] as const;
+export const ACCESSORIES = ["none", "glasses", "scarf", "backpack", "lab-coat", "headphones", "headband"] as const;
+export const TOPS = ["sweater", "hoodie", "polo"] as const;
+export const PANTS = ["dark", "jeans"] as const;
 
 const Color = z.enum(COLOR_NAMES).catch("teal");
 
@@ -29,7 +32,9 @@ export const CastMemberSchema = z.object({
   skin: z.enum(Object.keys(SKIN) as [keyof typeof SKIN]).catch("tan"),
   hair: z.enum(HAIR_STYLES).catch("short"),
   hairColor: z.enum(Object.keys(HAIR_COLORS) as [keyof typeof HAIR_COLORS]).catch("black"),
-  outfit: Color.describe("Main clothing color."),
+  outfit: Color.describe("Color of the top (sweater, hoodie or polo)."),
+  top: z.enum(TOPS).catch("sweater"),
+  pants: z.enum(PANTS).catch("dark"),
   accessory: z.enum(ACCESSORIES).catch("none"),
 });
 
@@ -137,9 +142,12 @@ export function storyboardTimeline(sb: Pick<Storyboard, "shots" | "meta">) {
 /** Adds defaults, clamps numbers and drops references to unknown cast members. */
 export function finalizeStoryboard(analyzed: AnalyzedStoryboard, meta: Storyboard["meta"], extra: Partial<Pick<Storyboard, "images" | "voiceover" | "captions">> = {}): Storyboard {
   // Fed is one person: a second "mascot" in the cast is drawn as an ordinary character.
-  const cast = (analyzed.cast.length ? analyzed.cast.slice(0, 4) : [CastMemberSchema.parse({ id: "fed", name: "Fed", kind: "mascot", outfit: "teal" })]).map((m, i, all) =>
-    m.kind === "mascot" && all.findIndex((o) => o.kind === "mascot") !== i ? { ...m, kind: "human" as const } : m,
-  );
+  // Recurring characters (src/fedtoon/cast.ts) always keep their own look.
+  const cast = (analyzed.cast.length ? analyzed.cast.slice(0, 4) : [CastMemberSchema.parse({ id: "fed", name: "Fed", kind: "mascot", outfit: "teal" })]).map((m, i, all) => {
+    const member = m.kind === "mascot" && all.findIndex((o) => o.kind === "mascot") !== i ? { ...m, kind: "human" as const } : m;
+    const regular = m.kind === "human" ? RECURRING_CAST.find((r) => r.id === m.id.toLowerCase()) : undefined;
+    return regular ? { ...regular, id: m.id, name: m.name || regular.name } : member;
+  });
   const ids = new Set(cast.map((c) => c.id));
   const shots = analyzed.shots.map((s) => {
     const characters = s.characters.filter((c) => ids.has(c.castId)).slice(0, 3);
