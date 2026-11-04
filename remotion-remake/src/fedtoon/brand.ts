@@ -1,6 +1,7 @@
 // Fedtoon brand kit: shared by the pipeline (image prompts) and the Remotion
-// composition (colors, font). Flat-vector explainer look: deep navy/indigo
-// worlds lit by warm glowing accents, rounded geometric shapes, no outlines.
+// composition (colors, font). Flat-vector explainer look: vivid saturated flat
+// colors, rounded geometric shapes, no outlines, no drop shadows, no glow.
+// Subjects stand out because the background is a clearly different color.
 // Fedtoon has its own mascot and logo; it does not reuse another channel's
 // characters or marks.
 
@@ -8,40 +9,61 @@ export const BRAND_NAME = "Fedtoon";
 
 /** Named colors: the storyboard refers to them by name, the renderer maps them to hex. */
 export const PALETTE = {
-  night: "#0B1633",
-  navy: "#13285A",
-  indigo: "#2C3D8F",
-  blue: "#3D7DD8",
-  sky: "#7EC8F2",
-  teal: "#16B8A6",
-  mint: "#7CE7D2",
-  green: "#5BC26A",
-  yellow: "#FFD15C",
-  amber: "#FFAA2B",
-  orange: "#FF7B3A",
-  coral: "#FF5D73",
-  pink: "#F472B6",
-  purple: "#9B6BFF",
-  cream: "#FFF3DE",
+  night: "#140B2E",
+  plum: "#2A1050",
+  indigo: "#3A2C8C",
+  violet: "#5B2A9E",
+  purple: "#7B3FE4",
+  magenta: "#D62E9E",
+  pink: "#F06BB4",
+  coral: "#FF5A6E",
+  orange: "#F7862A",
+  amber: "#FFB627",
+  yellow: "#FFD84D",
+  lime: "#C4EF3C",
+  green: "#119A4B",
+  mint: "#6EE7C8",
+  teal: "#11B5A4",
+  cyan: "#18D8F2",
+  sky: "#6FC8F5",
+  blue: "#4F6FFA",
+  navy: "#1E2A6E",
+  cream: "#FFF1DC",
   white: "#FFFFFF",
-  gray: "#9AA7C7",
-  ink: "#0A1024",
+  gray: "#9AA3C7",
+  ink: "#120A24",
 } as const;
 export type ColorName = keyof typeof PALETTE;
 export const COLOR_NAMES = Object.keys(PALETTE) as [ColorName, ...ColorName[]];
 
-export const SKIN = { light: "#FFD9C2", tan: "#F2B48C", brown: "#C98458", dark: "#8A5534" } as const;
-export const HAIR_COLORS = { black: "#1B1B2F", brown: "#5B3A29", blonde: "#F2C46D", red: "#C4502E", gray: "#B8BCC8", blue: "#3D7DD8", pink: "#F472B6" } as const;
+export const SKIN = { light: "#FFC9B0", tan: "#F2A08F", brown: "#C9805A", dark: "#8A5034" } as const;
+export const HAIR_COLORS = { black: "#25205C", brown: "#6B3A2A", blonde: "#F4C75E", red: "#D2502C", gray: "#C2C6D6", blue: "#4F6FFA", pink: "#F06BB4" } as const;
 
-/** Background moods: the fallback backdrop (drawn in code) and the image prompt both use them. */
+/**
+ * Background color sets for the fallback backdrop and the image prompts. A
+ * shot gets the set that contrasts most with its characters (see contrast.ts).
+ */
+export const BACKGROUND_SETS: ColorName[][] = [
+  ["plum", "violet"],
+  ["cyan", "sky"],
+  ["green", "lime"],
+  ["magenta", "pink"],
+  ["navy", "indigo"],
+  ["orange", "amber"],
+  ["blue", "sky"],
+  ["night", "purple"],
+  ["yellow", "amber"],
+];
+
+/** Background moods: decide the shapes of the fallback backdrop (sky, hills, stars, room…). */
 export const MOODS = {
-  night: { sky: ["#0B1633", "#2C3D8F"], glow: "#FFD15C", ground: "#13285A" },
-  day: { sky: ["#3D7DD8", "#7EC8F2"], glow: "#FFF3DE", ground: "#16B8A6" },
-  sunset: { sky: ["#2C3D8F", "#FF7B3A"], glow: "#FFD15C", ground: "#13285A" },
-  space: { sky: ["#05091C", "#2C1B5E"], glow: "#9B6BFF", ground: "#13285A" },
-  indoor: { sky: ["#13285A", "#3D7DD8"], glow: "#FFAA2B", ground: "#0B1633" },
-  abstract: { sky: ["#2C3D8F", "#9B6BFF"], glow: "#7CE7D2", ground: "#13285A" },
-} as const;
+  night: { colors: ["night", "plum"], glow: "yellow" },
+  day: { colors: ["cyan", "green"], glow: "yellow" },
+  sunset: { colors: ["violet", "orange"], glow: "yellow" },
+  space: { colors: ["night", "violet"], glow: "cream" },
+  indoor: { colors: ["indigo", "blue"], glow: "amber" },
+  abstract: { colors: ["magenta", "purple"], glow: "lime" },
+} as const satisfies Record<string, { colors: ColorName[]; glow: ColorName }>;
 export type Mood = keyof typeof MOODS;
 
 export const BRAND_FONT = "Nunito" as const;
@@ -51,7 +73,8 @@ export const BRAND_FONT = "Nunito" as const;
  * (FEDTOON_IMAGE_STYLE) to fine-tune the look without changing code.
  */
 export const DEFAULT_IMAGE_STYLE =
-  "Flat 2D vector illustration for an animated science explainer. Clean geometric shapes with rounded corners, no outlines, " +
-  "smooth soft gradients and a very subtle grain texture. Rich saturated colors: a deep navy and indigo base lit by glowing warm accents " +
-  "(amber, coral, yellow) and cool teal and mint highlights. Soft rim light and gentle glow, simple stylized forms, minimal detail, " +
-  "strong depth with layered foreground and background, cinematic composition. Absolutely no text, letters, numbers, logos or watermarks.";
+  "Flat 2D vector illustration for an animated science explainer. Bold, vivid, saturated colors (magenta, violet, deep purple, cyan, lime green, " +
+  "yellow, orange, royal blue) filled as solid flat areas. Simple rounded geometric shapes, no outlines. Shading only as a few flat darker shapes " +
+  "inside objects. No drop shadows, no cast shadows, no glow, no bloom, no lens effects, no vignette, no texture or grain. Clean layered depth " +
+  "(foreground, middle, background) with each layer in its own flat color, and strong color contrast between the subject and the background. " +
+  "Absolutely no text, letters, numbers, logos or watermarks.";
