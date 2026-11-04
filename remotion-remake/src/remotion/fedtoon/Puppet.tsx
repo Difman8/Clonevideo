@@ -1,10 +1,10 @@
-// Fedtoon characters: people drawn in code (SVG), consistent in every video,
-// free to render and fully animatable (flat shapes, no outlines, no shadows or
-// glow), plus Fed, the mascot, animated from the channel owner's own drawing.
+// Fedtoon characters: Fed and the side characters the channel owner drew are
+// animated from their drawings (cut into parts); anyone else is drawn in code
+// (SVG) in the same style, consistent in every video and fully animatable.
 import React from "react";
 import { Img, staticFile } from "remotion";
 import { HAIR_COLORS, PALETTE, SKIN } from "../../fedtoon/brand";
-import { MASCOT_RIG } from "../../fedtoon/mascot-rig";
+import { rigFor, type CharacterRig } from "../../fedtoon/rig";
 import type { CastMember, ShotCharacter } from "../../spec/storyboard";
 
 type Action = ShotCharacter["action"];
@@ -413,50 +413,43 @@ const Human: React.FC<PuppetProps & { eyes: number; uid: string }> = ({ member, 
   );
 };
 
-// ---------- Fed, the mascot ----------
-// Fed is drawn from the channel owner's own artwork (assets/mascot/source.png),
-// cut into parts by assets/mascot/split.py: arms, body, head, mouth and brows
-// move separately, so the original drawing is kept untouched.
+// ---------- characters animated from a drawing (Fed, side characters) ----------
+// The picture is cut into parts (src/fedtoon/rig.ts): arms turn around the
+// shoulder/elbow, the head around the neck, brows and mouth change with the
+// expression and eyelids are drawn over the eyes, so the original art is kept.
 
-type MascotPart = keyof typeof MASCOT_RIG.parts;
-type Point = readonly [number, number];
-
-/** Fed's height in the 380-unit puppet box (code-drawn people are ~300-310). */
-const MASCOT_UNITS = 330;
-const MASCOT_SKIN = MASCOT_RIG.colors.skin;
-
-/** Joint angles (degrees, clockwise) for each action. */
-function mascotPose(action: Action, expression: Expression, t: number) {
+/** Joint angles for each action: `raise`/`bend` = shoulder/elbow of the raised arm (positive lifts the hand), `hang` = hanging arm outward, `head` = tilt. */
+function rigPose(action: Action, expression: Expression, t: number) {
   const tilt = expression === "sad" ? 4 : expression === "thinking" ? -4 : 0;
   const pose = (() => {
     switch (action) {
       case "wave":
-        return { head: 3 + wave(t, 1.1) * 2, armUp: wave(t, 2.2) * 16, armDown: 2, sway: 0 };
+        return { head: 3 + wave(t, 1.1) * 2, raise: 0, bend: -wave(t, 2.2) * 16, hang: 2, sway: 0 };
       case "point":
-        return { head: 2, armUp: -6 + wave(t, 0.5) * 1.5, armDown: 1, sway: 0 };
+        return { head: 2, raise: 6 - wave(t, 0.5) * 1.5, bend: 0, hang: 1, sway: 0 };
       case "walk":
-        return { head: wave(t, 1.8) * 1.5, armUp: wave(t, 1.8) * 6, armDown: wave(t, 1.8) * 9, sway: wave(t, 1.8) * 1.5 };
+        return { head: wave(t, 1.8) * 1.5, raise: -wave(t, 1.8) * 6, bend: 0, hang: wave(t, 1.8) * 9, sway: wave(t, 1.8) * 1.5 };
       case "think":
-        return { head: -6, armUp: -34 + wave(t, 0.4) * 1.5, armDown: 1, sway: 0 };
+        return { head: -6, raise: 20, bend: 14 - wave(t, 0.4) * 1.5, hang: 1, sway: 0 };
       case "cheer":
-        return { head: wave(t, 2.5) * 3, armUp: -18 + wave(t, 2.5) * 10, armDown: 10 + wave(t, 2.5) * 5, sway: 0 };
+        return { head: wave(t, 2.5) * 3, raise: 12, bend: 6 - wave(t, 2.5) * 10, hang: 10 + wave(t, 2.5) * 5, sway: 0 };
       case "shrug": {
         const up = Math.max(0, wave(t, 0.9));
-        return { head: 6, armUp: 22 + up * 6, armDown: 12 + up * 4, sway: 0 };
+        return { head: 6, raise: -12 - up * 3, bend: -10 - up * 3, hang: 12 + up * 4, sway: 0 };
       }
       case "jump":
-        return { head: wave(t, 1.1) * 2, armUp: -12, armDown: 8, sway: 0 };
+        return { head: wave(t, 1.1) * 2, raise: 8, bend: 4, hang: 8, sway: 0 };
       case "talk":
-        return { head: wave(t, 0.7) * 3, armUp: -3 + wave(t, 0.8) * 9, armDown: 1 + wave(t, 0.8, 0.3) * 2, sway: 0 };
+        return { head: wave(t, 0.7) * 3, raise: 3, bend: -wave(t, 0.8) * 9, hang: 1 + wave(t, 0.8, 0.3) * 2, sway: 0 };
       default:
-        return { head: wave(t, 0.4) * 1.5, armUp: wave(t, 0.5) * 3, armDown: 1 + wave(t, 0.5) * 1.5, sway: 0 };
+        return { head: wave(t, 0.4) * 1.5, raise: 0, bend: -wave(t, 0.5) * 3, hang: 1 + wave(t, 0.5) * 1.5, sway: 0 };
     }
   })();
   return { ...pose, head: pose.head + tilt };
 }
 
-/** Brow offset (px) and rotation (deg) for [left, right] brows; positive rotation lowers the inner end. */
-const MASCOT_BROWS: Record<Expression, [{ dy: number; rot: number }, { dy: number; rot: number }]> = {
+/** Brow offset (in Fed-sized face pixels) and rotation (deg) for [left, right] brows; positive rotation lowers the inner end. */
+const RIG_BROWS: Record<Expression, [{ dy: number; rot: number }, { dy: number; rot: number }]> = {
   neutral: [{ dy: 0, rot: 0 }, { dy: 0, rot: 0 }],
   happy: [{ dy: -4, rot: 0 }, { dy: -4, rot: 0 }],
   sad: [{ dy: 2, rot: -12 }, { dy: 2, rot: -12 }],
@@ -465,22 +458,27 @@ const MASCOT_BROWS: Record<Expression, [{ dy: number; rot: number }, { dy: numbe
   thinking: [{ dy: -8, rot: -6 }, { dy: 2, rot: 4 }],
 };
 /** How far the upper lid covers the pupil (0-1) for each expression. */
-const MASCOT_LIDS: Record<Expression, number> = { neutral: 0, happy: 0, sad: 0.35, surprised: 0, angry: 0.4, thinking: 0.25 };
-/** Height of the drawn smile (1 = as drawn) when Fed is not talking. */
-const MASCOT_MOUTH: Partial<Record<Expression, number>> = { neutral: 0.55, happy: 1, angry: 0.28, thinking: 0.3 };
+const RIG_LIDS: Record<Expression, number> = { neutral: 0, happy: 0, sad: 0.35, surprised: 0, angry: 0.4, thinking: 0.25 };
+/** Height of the drawn mouth (1 = as drawn) when not talking; missing = drawn in vector. */
+const RIG_MOUTH: Partial<Record<Expression, number>> = { neutral: 0.55, happy: 1, angry: 0.28, thinking: 0.3 };
+/** Eye width of Fed's drawing: other faces scale brow moves and strokes from it. */
+const FED_EYE_RX = 19;
 
-const MascotImg: React.FC<{ name: MascotPart; s: number; style?: React.CSSProperties }> = ({ name, s, style }) => {
-  const p = MASCOT_RIG.parts[name];
+type RigCtx = { rig: CharacterRig; s: number };
+
+const RigImg: React.FC<RigCtx & { name: string; style?: React.CSSProperties }> = ({ rig, s, name, style }) => {
+  const p = rig.parts[name];
+  if (!p) return null;
   return (
     <Img
-      src={staticFile(`fedtoon/mascot/${name}.png`)}
-      style={{ position: "absolute", left: (p.x - MASCOT_RIG.centerX) * s, top: (p.y - MASCOT_RIG.feetY) * s, width: p.w * s, height: p.h * s, maxWidth: "none", ...style }}
+      src={staticFile(`${rig.dir}/${name}.png`)}
+      style={{ position: "absolute", left: (p.x - rig.centerX) * s, top: (p.y - rig.feetY) * s, width: p.w * s, height: p.h * s, maxWidth: "none", ...style }}
     />
   );
 };
 
 /** Children rotated `deg` clockwise around `pivot` (source pixels). */
-const Joint: React.FC<{ pivot: Point; deg: number; s: number; children: React.ReactNode }> = ({ pivot, deg, s, children }) => (
+const Joint: React.FC<RigCtx & { pivot: readonly number[]; deg: number; children: React.ReactNode }> = ({ rig, s, pivot, deg, children }) => (
   <div
     style={{
       position: "absolute",
@@ -489,77 +487,104 @@ const Joint: React.FC<{ pivot: Point; deg: number; s: number; children: React.Re
       width: 0,
       height: 0,
       transform: `rotate(${deg}deg)`,
-      transformOrigin: `${(pivot[0] - MASCOT_RIG.centerX) * s}px ${(pivot[1] - MASCOT_RIG.feetY) * s}px`,
+      transformOrigin: `${(pivot[0] - rig.centerX) * s}px ${(pivot[1] - rig.feetY) * s}px`,
     }}
   >
     {children}
   </div>
 );
 
-const MascotFace: React.FC<{ s: number; expression: Expression; mouth: number; eyes: number; uid: string }> = ({ s, expression, mouth, eyes, uid }) => {
-  const head = MASCOT_RIG.parts.head;
-  const { colors } = MASCOT_RIG;
+/** An arm: each segment turns around its pivot, inside the previous one; later segments sit behind earlier ones. */
+const RigArm: React.FC<RigCtx & { segments: CharacterRig["arms"][number]["segments"]; angles: number[] }> = ({ rig, s, segments, angles }) => {
+  const [first, ...rest] = segments;
+  if (!first) return null;
+  return (
+    <Joint rig={rig} s={s} pivot={first.pivot} deg={angles[0] ?? 0}>
+      {rest.length > 0 && <RigArm rig={rig} s={s} segments={rest} angles={angles.slice(1)} />}
+      <RigImg rig={rig} s={s} name={first.part} />
+    </Joint>
+  );
+};
+
+const RigFace: React.FC<RigCtx & { expression: Expression; mouth: number; eyes: number; uid: string }> = ({ rig, s, expression, mouth, eyes, uid }) => {
+  const head = rig.parts.head;
+  const { colors } = rig;
+  const k = (rig.eyes[0]?.rx ?? FED_EYE_RX) / FED_EYE_RX;
   const talking = mouth > 0.04;
-  // The drawn open smile, squashed toward its top lip for smaller mouths.
-  const m = MASCOT_RIG.parts.mouth;
-  const top = MASCOT_RIG.mouthTop;
-  const angle = (Math.atan2(top.y1 - top.y0, top.x1 - top.x0) * 180) / Math.PI;
-  const open = talking ? 0.22 + 0.78 * Math.min(1, mouth) : MASCOT_MOUTH[expression];
-  const pivot = [(top.x0 + top.x1) / 2 - m.x, (top.y0 + top.y1) / 2 - m.y];
+  // The drawn open mouth, squashed toward its top lip for smaller mouths.
+  const m = rig.parts.mouth;
+  const [x0, y0, x1, y1] = rig.mouthTop;
+  const angle = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
+  const open = talking ? 0.22 + 0.78 * Math.min(1, mouth) : RIG_MOUTH[expression];
   const closed = eyes < 0.35;
-  const lid = closed ? 1 : Math.max(MASCOT_LIDS[expression], 1 - eyes);
+  const lid = closed ? 1 : Math.max(RIG_LIDS[expression], 1 - eyes);
   return (
     <>
-      {(["brow-left", "brow-right"] as const).map((name, i) => {
-        const b = MASCOT_BROWS[expression][i];
-        const p = MASCOT_RIG.parts[name];
+      {rig.brows.map((name, i) => {
+        const b = RIG_BROWS[expression][i];
+        const p = rig.parts[name];
+        if (!b || !p) return null;
         const side = i === 0 ? 1 : -1;
         return (
-          <MascotImg
+          <RigImg
             key={name}
-            name={name}
+            rig={rig}
             s={s}
-            style={{ transform: `translateY(${b.dy * s}px) rotate(${side * b.rot}deg)`, transformOrigin: `${(p.w / 2) * s}px ${(p.h / 2) * s}px` }}
+            name={name}
+            style={{ transform: `translateY(${b.dy * k * s}px) rotate(${side * b.rot}deg)`, transformOrigin: `${(p.w / 2) * s}px ${(p.h / 2) * s}px` }}
           />
         );
       })}
-      {open !== undefined && (
-        <MascotImg
-          name="mouth"
+      {open !== undefined && m && (
+        <RigImg
+          rig={rig}
           s={s}
-          style={{ transform: `rotate(${angle}deg) scaleY(${open}) rotate(${-angle}deg)`, transformOrigin: `${pivot[0] * s}px ${pivot[1] * s}px` }}
+          name="mouth"
+          style={{ transform: `rotate(${angle}deg) scaleY(${open}) rotate(${-angle}deg)`, transformOrigin: `${((x0 + x1) / 2 - m.x) * s}px ${((y0 + y1) / 2 - m.y) * s}px` }}
         />
       )}
       <svg
         width={head.w * s}
         height={head.h * s}
         viewBox={`${head.x} ${head.y} ${head.w} ${head.h}`}
-        style={{ position: "absolute", left: (head.x - MASCOT_RIG.centerX) * s, top: (head.y - MASCOT_RIG.feetY) * s, overflow: "visible" }}
+        style={{ position: "absolute", left: (head.x - rig.centerX) * s, top: (head.y - rig.feetY) * s, overflow: "visible" }}
       >
-        {open === undefined && expression === "sad" && <path d="M 444 392 Q 475 371 506 389" stroke={colors.mouth} strokeWidth={8} strokeLinecap="round" fill="none" />}
-        {open === undefined && expression === "surprised" && (
+        {open === undefined && m && expression === "sad" && (
+          <path
+            d={`M ${m.x + m.w * 0.16} ${m.y + m.h * 0.68} Q ${m.x + m.w * 0.5} ${m.y + m.h * 0.32} ${m.x + m.w * 0.84} ${m.y + m.h * 0.63}`}
+            stroke={colors.mouth}
+            strokeWidth={m.w * 0.087}
+            strokeLinecap="round"
+            fill="none"
+          />
+        )}
+        {open === undefined && m && expression === "surprised" && (
           <g>
-            <ellipse cx={474} cy={386} rx={15} ry={19} fill={colors.mouth} />
-            <ellipse cx={474} cy={397} rx={9} ry={6} fill={colors.tongue} />
+            <ellipse cx={m.x + m.w * 0.49} cy={m.y + m.h * 0.58} rx={m.w * 0.16} ry={m.h * 0.33} fill={colors.mouth} />
+            <ellipse cx={m.x + m.w * 0.49} cy={m.y + m.h * 0.77} rx={m.w * 0.1} ry={m.h * 0.105} fill={colors.tongue} />
           </g>
         )}
-        {MASCOT_RIG.eyes.map((e, i) => {
+        {rig.eyes.map((e, i) => {
           const side = i === 0 ? 1 : -1;
-          const y0 = e.cy - e.ry - 5;
-          const lidY = y0 + (e.ry * 2 + 10) * lid;
+          const margin = rig.lid?.margin ?? 4 * k;
+          const top = e.cy - e.ry - 5 * k;
+          const lidY = top + (e.ry * 2 + 10 * k) * lid;
           const tilt = expression === "angry" ? side * 14 : expression === "sad" ? side * -12 : 0;
           return (
             <g key={i}>
               <clipPath id={`${uid}-eye${i}`}>
-                <ellipse cx={e.cx} cy={e.cy} rx={e.rx + 4} ry={e.ry + 4} />
+                <ellipse cx={e.cx} cy={e.cy} rx={e.rx + margin} ry={e.ry + margin} />
               </clipPath>
               {lid > 0.01 && (
                 <g clipPath={`url(#${uid}-eye${i})`}>
-                  <rect x={e.cx - e.rx - 10} y={y0 - 24} width={(e.rx + 10) * 2} height={lidY - y0 + 24} fill={MASCOT_SKIN} transform={`rotate(${tilt} ${e.cx} ${lidY})`} />
+                  <g transform={`rotate(${tilt} ${e.cx} ${lidY})`}>
+                    <rect x={e.cx - e.rx - 10 * k} y={top - 24 * k} width={(e.rx + 10 * k) * 2} height={lidY - top + 24 * k} fill={colors.skin} />
+                    {rig.lid?.line && !closed && <line x1={e.cx - e.rx - 10 * k} y1={lidY} x2={e.cx + e.rx + 10 * k} y2={lidY} stroke={colors.pupil} strokeWidth={4 * k} />}
+                  </g>
                 </g>
               )}
               {closed && (
-                <path d={`M ${e.cx - e.rx - 1} ${e.cy + 2} Q ${e.cx} ${e.cy + e.ry * 0.7} ${e.cx + e.rx + 1} ${e.cy + 2}`} stroke={colors.pupil} strokeWidth={5} strokeLinecap="round" fill="none" />
+                <path d={`M ${e.cx - e.rx - 1} ${e.cy + 2 * k} Q ${e.cx} ${e.cy + e.ry * 0.7} ${e.cx + e.rx + 1} ${e.cy + 2 * k}`} stroke={colors.pupil} strokeWidth={5 * k} strokeLinecap="round" fill="none" />
               )}
             </g>
           );
@@ -569,27 +594,35 @@ const MascotFace: React.FC<{ s: number; expression: Expression; mouth: number; e
   );
 };
 
-const Mascot: React.FC<PuppetProps & { eyes: number; width: number }> = ({ action, expression, t, mouth, eyes, facing, height, width, seed = 0 }) => {
-  const uid = `fed${React.useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width: number }> = ({ rig, action, expression, t, mouth, eyes, facing, height, width, seed = 0 }) => {
+  const uid = `rig${React.useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const unit = height / 380;
-  const s = (unit * MASCOT_UNITS) / (MASCOT_RIG.feetY - MASCOT_RIG.top);
-  const pose = mascotPose(action, expression, t + seed * 0.37);
+  const s = (unit * rig.units) / (rig.feetY - rig.top);
+  const pose = rigPose(action, expression, t + seed * 0.37);
   const y = bob(action, t + seed * 0.37) * unit;
   const flip = facing === "left" ? -1 : 1;
+  const armAngles = (arm: CharacterRig["arms"][number]) => {
+    const dir = arm.side === "left" ? 1 : -1;
+    if (arm.kind === "hanging") return [pose.hang * dir];
+    return arm.segments.length > 1 ? [pose.raise * dir, pose.bend * dir] : [(pose.raise + pose.bend) * dir];
+  };
   return (
     <div style={{ position: "relative", width, height }}>
       <div style={{ position: "absolute", left: width / 2, top: unit * 366, width: 0, height: 0, transform: `translateY(${y}px) scaleX(${flip}) rotate(${pose.sway}deg)` }}>
-        <Joint pivot={MASCOT_RIG.shoulder} deg={pose.armDown} s={s}>
-          <MascotImg name="arm-down" s={s} />
-        </Joint>
-        <Joint pivot={MASCOT_RIG.elbow} deg={pose.armUp} s={s}>
-          <MascotImg name="arm-up" s={s} />
-        </Joint>
-        <MascotImg name="body" s={s} />
-        <Joint pivot={MASCOT_RIG.neck} deg={pose.head} s={s}>
-          <MascotImg name="head" s={s} />
-          <MascotFace s={s} expression={expression} mouth={mouth} eyes={eyes} uid={uid} />
-        </Joint>
+        {rig.order.map((item) => {
+          if (item === "head")
+            return (
+              <Joint key={item} rig={rig} s={s} pivot={rig.head.pivot} deg={pose.head}>
+                <RigImg rig={rig} s={s} name="head" />
+                <RigFace rig={rig} s={s} expression={expression} mouth={mouth} eyes={eyes} uid={uid} />
+              </Joint>
+            );
+          if (item.startsWith("arm:")) {
+            const arm = rig.arms[Number(item.slice(4))];
+            return arm ? <RigArm key={item} rig={rig} s={s} segments={arm.segments} angles={armAngles(arm)} /> : null;
+          }
+          return <RigImg key={item} rig={rig} s={s} name={item} />;
+        })}
       </div>
     </div>
   );
@@ -602,7 +635,8 @@ export const Puppet: React.FC<PuppetProps> = (props) => {
   const y = bob(action, t + seed * 0.37);
   const flip = facing === "left" ? -1 : 1;
   const uid = `p${React.useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-  if (member.kind === "mascot") return <Mascot {...props} eyes={eyes} width={height * (200 / 380)} />;
+  const rig = rigFor(member);
+  if (rig) return <RigPuppet {...props} rig={rig} eyes={eyes} width={height * (200 / 380)} />;
   return (
     <svg width={height * (200 / 380)} height={height} viewBox="-100 -366 200 380" style={{ overflow: "visible" }}>
       <g transform={`translate(0 ${y}) scale(${flip} 1)`}>
