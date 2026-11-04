@@ -11,7 +11,7 @@ import { extractFrames, type Frame } from "./frames";
 import { generateStoryboardImages, hasImageKey, imageDir } from "./images";
 import { extractPostContent, postContentText, type PostContent } from "./metadata";
 import { renderSpec } from "./render";
-import { writeStoryboard } from "./storyboard-ai";
+import { narrationCoverage, writeStoryboard } from "./storyboard-ai";
 import { OUT_DIR, readJsonSafe, writeFileAtomic, writeJsonAtomic } from "./tools";
 import { parseVtt, transcriptText, type Cue } from "./transcript";
 import { addStoryboardVoice, addVoiceover, narrationChars, voiceDir } from "./voiceover";
@@ -238,6 +238,17 @@ export async function runJob(opts: JobOptions, emit: Emit, { resume = false } = 
         async () => {
           emit({ type: "log", message: `${analyzerName} xem ${frames.length} khung hình + phụ đề và viết kịch bản Fedtoon…` });
           const result = await writeStoryboard(opts.provider, { info, post, frames, cues, mode: opts.mode, onProgress: (message) => emit({ type: "log", message }) });
+          if (opts.mode === "clone") {
+            // "Bản sao" copies what the source says: check how much of the transcript the narration kept.
+            const check = !cues.length
+              ? "Video gốc không có phụ đề nên không chép được lời thoại: AI lấy lời từ chữ trên hình (hoặc tự mô tả)."
+              : (() => {
+                  const kept = Math.round(narrationCoverage(cues, result.shots.map((s) => s.narration)) * 100);
+                  return kept >= 85 ? `Lời thoại giữ ${kept}% số từ của phụ đề gốc.` : `⚠️ Lời thoại chỉ giữ ${kept}% số từ của phụ đề gốc: nên xem lại kịch bản (bật "Dừng để duyệt kịch bản" để sửa trước khi vẽ ảnh).`;
+                })();
+            emit({ type: "log", message: check });
+            result.notes = [check, ...result.notes];
+          }
           writeJsonAtomic(path.join(dir, "analysis.json"), result);
           return result;
         },

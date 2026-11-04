@@ -33,14 +33,14 @@ npm start
 
 Mở http://localhost:3210, dán link, chọn **kiểu video**:
 
-- **🎨 Hoạt hình Fedtoon** (mặc định): AI xem video gốc và viết kịch bản Fedtoon theo từng cảnh, gồm lời thoại viết lại, nhân vật Fedtoon thay cho nhân vật gốc, mô tả nền, đồ vật, chữ, góc máy. OpenAI vẽ nền và đồ vật theo phong cách đồ hoạ phẳng (đổi được ở tab Cài đặt). Linh vật Fed là ảnh do chủ kênh vẽ, được cắt thành từng bộ phận để cử động (vẫy tay, nghiêng đầu, chớp mắt, khẩu hình theo giọng đọc, đổi biểu cảm); các nhân vật người khác được vẽ bằng code. Cả hai giống nhau ở mọi video và không tốn tiền. Phong cách đồ hoạ phẳng màu rực, không bóng đổ; màu nền không bao giờ trùng mã màu với nhân vật trong cảnh, ngoài ra để tự nhiên. Video có phụ đề, logo Fedtoon, hiệu ứng âm thanh. Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa OpenAI thì dùng nền vẽ sẵn bằng code.
+- **🎨 Hoạt hình Fedtoon** (mặc định): AI xem video gốc và viết kịch bản Fedtoon theo từng cảnh, gồm lời thoại (chép nguyên hoặc viết mới tuỳ chế độ), nhân vật Fedtoon thay cho nhân vật gốc, mô tả nền, đồ vật, chữ, góc máy. OpenAI vẽ nền và đồ vật theo phong cách đồ hoạ phẳng (đổi được ở tab Cài đặt). Linh vật Fed là ảnh do chủ kênh vẽ, được cắt thành từng bộ phận để cử động (vẫy tay, nghiêng đầu, chớp mắt, khẩu hình theo giọng đọc, đổi biểu cảm); các nhân vật người khác được vẽ bằng code. Cả hai giống nhau ở mọi video và không tốn tiền. Phong cách đồ hoạ phẳng màu rực, không bóng đổ; màu nền không bao giờ trùng mã màu với nhân vật trong cảnh, ngoài ra để tự nhiên. Video có phụ đề, logo Fedtoon, hiệu ứng âm thanh. Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa OpenAI thì dùng nền vẽ sẵn bằng code.
 - **🔤 Chữ & đồ hoạ** (kiểu cũ): 11 mẫu cảnh chữ và biểu đồ.
 
 Tích **✋ Dừng để duyệt kịch bản trước khi vẽ ảnh** nếu muốn xem và sửa kịch bản trước khi tốn tiền vẽ ảnh và lồng tiếng; sửa xong bấm **Lưu & render lại**. Mỗi ảnh được vẽ một lần rồi lưu lại: sửa một mô tả thì chỉ vẽ lại đúng ảnh đó.
 
 Gạt công tắc **Claude ⟷ OpenAI** để chọn AI viết kịch bản, rồi chọn chế độ:
 
-- **Bản sao** — dựng lại giống bản gốc nhất có thể (chữ, thứ tự, thời lượng, màu, chuyển cảnh).
+- **Bản sao** — giữ nguyên nội dung video gốc. Với kiểu **Hoạt hình Fedtoon**: lời thoại chép đúng từng câu theo phụ đề (cùng thứ tự, cùng nhịp), chữ trên hình giữ nguyên, chỉ hình ảnh làm lại theo phong cách Fedtoon (Fed thay người dẫn) và thêm một cảnh kết ngắn "Theo dõi Fedtoon". App so lời thoại với phụ đề và báo số % từ được giữ; video không có phụ đề thì không chép được lời thoại. Với kiểu chữ & đồ hoạ: dựng giống bản gốc nhất có thể (chữ, thứ tự, thời lượng, màu, chuyển cảnh).
 - **Remix** — giữ khuôn, nhịp và phong cách nhưng AI viết nội dung mới, kèm tiêu đề/mô tả/hashtag mới.
 
 Tích **🎙️ Lồng tiếng (ElevenLabs)** để AI viết lời thoại (`narration`) cho từng cảnh và ElevenLabs đọc lời đó. Cảnh nào lời đọc dài hơn cảnh sẽ được kéo dài cho vừa. Giọng đã tạo được lưu lại: render lại hay tiếp tục sau khi tắt máy không phải trả tiền lại cho câu đã đọc.
