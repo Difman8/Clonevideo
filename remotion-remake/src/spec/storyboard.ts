@@ -25,11 +25,11 @@ const Color = z.enum(COLOR_NAMES).catch("teal");
 export const CastMemberSchema = z.object({
   id: z.string().describe('Short id used by shots, e.g. "fed", "mai", "boss".'),
   name: z.string(),
-  kind: z.enum(["mascot", "human"]).catch("human").describe('"mascot" = Fed, the round Fedtoon guide creature; "human" = a person built from the options below.'),
+  kind: z.enum(["mascot", "human"]).catch("human").describe('"mascot" = Fed, the Fedtoon host (a fixed drawing: the options below are ignored); "human" = a person built from the options below.'),
   skin: z.enum(Object.keys(SKIN) as [keyof typeof SKIN]).catch("tan"),
   hair: z.enum(HAIR_STYLES).catch("short"),
   hairColor: z.enum(Object.keys(HAIR_COLORS) as [keyof typeof HAIR_COLORS]).catch("black"),
-  outfit: Color.describe("Main clothing color (for the mascot: body color)."),
+  outfit: Color.describe("Main clothing color."),
   accessory: z.enum(ACCESSORIES).catch("none"),
 });
 
@@ -136,7 +136,10 @@ export function storyboardTimeline(sb: Pick<Storyboard, "shots" | "meta">) {
 
 /** Adds defaults, clamps numbers and drops references to unknown cast members. */
 export function finalizeStoryboard(analyzed: AnalyzedStoryboard, meta: Storyboard["meta"], extra: Partial<Pick<Storyboard, "images" | "voiceover" | "captions">> = {}): Storyboard {
-  const cast = analyzed.cast.length ? analyzed.cast.slice(0, 4) : [CastMemberSchema.parse({ id: "fed", name: "Fed", kind: "mascot", outfit: "teal" })];
+  // Fed is one person: a second "mascot" in the cast is drawn as an ordinary character.
+  const cast = (analyzed.cast.length ? analyzed.cast.slice(0, 4) : [CastMemberSchema.parse({ id: "fed", name: "Fed", kind: "mascot", outfit: "teal" })]).map((m, i, all) =>
+    m.kind === "mascot" && all.findIndex((o) => o.kind === "mascot") !== i ? { ...m, kind: "human" as const } : m,
+  );
   const ids = new Set(cast.map((c) => c.id));
   const shots = analyzed.shots.map((s) => {
     const characters = s.characters.filter((c) => ids.has(c.castId)).slice(0, 3);

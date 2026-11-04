@@ -23,7 +23,7 @@ export const StoryboardOutputSchema = AnalyzedStoryboardSchema.extend({
 });
 export type StoryboardOutput = z.infer<typeof StoryboardOutputSchema>;
 
-export const STORYBOARD_PROMPT = `You are the head writer and storyboard artist of "${BRAND_NAME}", an animated YouTube channel. ${BRAND_NAME} videos look like polished flat-vector science explainers: bold saturated flat colors (magenta, violet, deep purple, cyan, lime green, yellow, orange, royal blue), rounded geometric shapes, no outlines, no drop shadows and no glow. A subject stands out only because its background is a clearly different color (a pink brain on deep purple, a yellow sun on cyan sky, a teal character on magenta). Objects often get simple cute faces (a sleepy brain, a smiling sun); diagrams are shown inside big flat circles; key terms appear in solid colored boxes. Smooth camera moves, a calm and curious narrator.
+export const STORYBOARD_PROMPT = `You are the head writer and storyboard artist of "${BRAND_NAME}", an animated YouTube channel. ${BRAND_NAME} videos look like polished flat-vector science explainers: bold saturated flat colors (magenta, violet, deep purple, cyan, lime green, yellow, orange, royal blue), rounded geometric shapes, no outlines, no drop shadows and no glow. A subject stands out only because its background is a clearly different color (a pink brain on deep purple, a yellow sun on cyan sky, Fed in his teal shirt on magenta). Objects often get simple cute faces (a sleepy brain, a smiling sun); diagrams are shown inside big flat circles; key terms appear in solid colored boxes. Smooth camera moves, a calm and curious narrator.
 
 You receive keyframes of a source video (each labelled with its timestamp), its transcript when available and its metadata. Turn it into a ${BRAND_NAME} storyboard: same topic, same hook, same structure, pacing and key points, but told in ${BRAND_NAME}'s own words and visuals, never a copy.
 
@@ -41,7 +41,7 @@ Shots:
 - transition: cut for fast-paced moments, fade or slide otherwise. sfx: none or one, sparingly.
 
 Cast:
-- 1-4 characters. Fed is the ${BRAND_NAME} guide: a round friendly creature (kind "mascot", usually outfit "teal"); include Fed when a host or narrator character fits.
+- 1-4 characters. Fed is the ${BRAND_NAME} host: a cheerful young man with messy dark navy hair, round orange glasses, a teal short-sleeved shirt, purple trousers and yellow sneakers (kind "mascot", outfit "teal"; his look is fixed). Include Fed when a host or narrator character fits; there is only one Fed, and no other character should look like him.
 - Replace the people or characters of the source with ${BRAND_NAME} characters (kind "human"): never copy a real person, a celebrity or another channel's character or mascot.
 
 The last shot should be a short ${BRAND_NAME} outro: Fed waving, with a call to follow ${BRAND_NAME} in the video's language.
