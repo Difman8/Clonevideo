@@ -99,7 +99,15 @@ export const SETTINGS: Setting[] = [
     options: opts("gpt-image-2.5-sunburst", "gpt-image-2.5-flare", "gpt-image-2", "gpt-image-1.5", "gpt-image-1-mini", "chatgpt-image-latest"),
   },
   { key: "OPENAI_IMAGE_QUALITY", group: "images", label: "Chất lượng ảnh (quality)", help: "Càng cao càng đẹp và càng tốn tiền. xhigh/max chỉ có ở gpt-image-2.5.", type: "select", default: "medium", options: opts("low", "medium", "high", "xhigh", "max", "auto") },
-  { key: "OPENAI_IMAGE_MODERATION", group: "images", label: "Mức kiểm duyệt (moderation)", help: "auto: mặc định của OpenAI; low: ít chặn hơn.", type: "select", default: "auto", options: opts("auto", "low") },
+  {
+    key: "OPENAI_IMAGE_STYLE_REFS",
+    group: "images",
+    label: "Vẽ theo ảnh mẫu phong cách",
+    help: "Gửi kèm ảnh trong thư mục remotion-remake/assets/style/ (mặc định: bảng nhân vật Fedtoon) để nền và đồ vật cùng nét vẽ với nhân vật. Mỗi lần vẽ tốn thêm một ít tiền cho ảnh đầu vào. Có thể thêm ảnh của bạn vào thư mục đó (tối đa 8 ảnh).",
+    type: "boolean",
+    default: "true",
+  },
+  { key: "OPENAI_IMAGE_MODERATION", group: "images", label: "Mức kiểm duyệt (moderation)", help: "auto: mặc định của OpenAI; low: ít chặn hơn. Chỉ áp dụng khi tắt \"Vẽ theo ảnh mẫu phong cách\" (cách vẽ có ảnh mẫu không có tuỳ chọn này).", type: "select", default: "auto", options: opts("auto", "low") },
   {
     key: "FEDTOON_IMAGE_STYLE",
     group: "images",

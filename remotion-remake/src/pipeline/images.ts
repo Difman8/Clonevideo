@@ -3,18 +3,42 @@
 // job, a re-render or a later video reusing the same place never pays again.
 import fs from "node:fs";
 import path from "node:path";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import { mapLimit } from "../discover/classify";
-import { setting } from "../settings";
-import { PALETTE, type ColorName } from "../fedtoon/brand";
+import { boolSetting, setting } from "../settings";
+import { PALETTE, STYLE_REFERENCE_NOTE, type ColorName } from "../fedtoon/brand";
 import { bgRef, imageFileKey, imageRef, type Shot, type Storyboard } from "../spec/storyboard";
-import { OUT_DIR, readJsonSafe, writeFileAtomic, writeJsonAtomic } from "./tools";
+import { OUT_DIR, readJsonSafe, ROOT, writeFileAtomic, writeJsonAtomic } from "./tools";
 
 export const imageDir = (id: string) => path.join(OUT_DIR, id, "img");
 export const hasImageKey = () => !!process.env.OPENAI_API_KEY?.trim();
 
 type Kind = "bg" | "prop";
 
+/** Folder of the style reference images (the channel's character sheet, plus any image the owner adds). */
+export const STYLE_DIR = path.join(ROOT, "assets", "style");
+const MAX_STYLE_REFS = 8;
+
+/** Style reference images sent with every drawing, when enabled in the settings. */
+export function styleRefs(): string[] {
+  if (!boolSetting("OPENAI_IMAGE_STYLE_REFS")) return [];
+  try {
+    return fs
+      .readdirSync(STYLE_DIR)
+      .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
+      .sort()
+      .slice(0, MAX_STYLE_REFS)
+      .map((f) => path.join(STYLE_DIR, f))
+      .filter((f) => fs.statSync(f).size < 40 * 1024 * 1024);
+  } catch {
+    return [];
+  }
+}
+
+/** Changes whenever the reference images change, so pictures drawn with other references are redrawn. */
+const refsSignature = (refs: string[]) => refs.map((f) => `${path.basename(f)}:${fs.statSync(f).size}`).join(",");
+
+const mimeOf = (file: string) => (/\.png$/i.test(file) ? "image/png" : /\.webp$/i.test(file) ? "image/webp" : "image/jpeg");
 /** Exact 9:16 / 16:9 frames for gpt-image-2+, the closest standard size otherwise. */
 function sizeFor(model: string, kind: Kind, meta: Storyboard["meta"]): string {
   if (kind === "prop") return "1024x1024";
@@ -27,7 +51,8 @@ const named = (names: readonly ColorName[]) => names.map((n) => `${n} (${PALETTE
 
 /** What the image model is asked to draw. Backgrounds carry their colors and the colors to avoid. */
 function fullPrompt(kind: Kind, prompt: string, style: string, portrait: boolean, colors: ColorName[] = [], avoid: ColorName[] = []): string {
-  if (kind === "prop") return `${style}\n\nA single isolated object, centered and filling most of the frame, on a fully transparent background, with no ground, no shadow and no text: ${prompt}`;
+  if (kind === "prop")
+    return `${style}\n\nA single isolated object, centered and filling most of the frame, on a fully transparent background, with no ground, no shadow and no text. If it has a face, draw it in the same cute style as the characters' faces: ${prompt}`;
   return [
     style,
     "",
@@ -63,17 +88,31 @@ export async function generateImage(
   avoid: ColorName[] = [],
 ): Promise<{ data: Buffer; ext: "jpg" | "png" }> {
   const model = setting("OPENAI_IMAGE_MODEL");
-  const res = await new OpenAI().images.generate({
+  const text = fullPrompt(kind, prompt, setting("FEDTOON_IMAGE_STYLE"), meta.height >= meta.width, colors, avoid);
+  const common = {
     model,
-    prompt: fullPrompt(kind, prompt, setting("FEDTOON_IMAGE_STYLE"), meta.height >= meta.width, colors, avoid),
     size: sizeFor(model, kind, meta),
-    quality: setting("OPENAI_IMAGE_QUALITY") as OpenAI.Images.ImageGenerateParams["quality"],
-    moderation: setting("OPENAI_IMAGE_MODERATION") as OpenAI.Images.ImageGenerateParams["moderation"],
-    background: kind === "prop" ? "transparent" : "opaque",
-    output_format: kind === "prop" ? "png" : "jpeg",
+    background: kind === "prop" ? ("transparent" as const) : ("opaque" as const),
+    output_format: kind === "prop" ? ("png" as const) : ("jpeg" as const),
     ...(kind === "bg" ? { output_compression: 90 } : {}),
     n: 1,
-  });
+  };
+  const refs = styleRefs();
+  const client = new OpenAI();
+  // With style references the picture is drawn by the edits endpoint, which takes reference images.
+  const res = refs.length
+    ? await client.images.edit({
+        ...common,
+        image: await Promise.all(refs.map((f) => toFile(fs.readFileSync(f), path.basename(f), { type: mimeOf(f) }))),
+        prompt: `${STYLE_REFERENCE_NOTE}\n\n${text}`,
+        quality: setting("OPENAI_IMAGE_QUALITY") as OpenAI.Images.ImageEditParams["quality"],
+      })
+    : await client.images.generate({
+        ...common,
+        prompt: text,
+        quality: setting("OPENAI_IMAGE_QUALITY") as OpenAI.Images.ImageGenerateParams["quality"],
+        moderation: setting("OPENAI_IMAGE_MODERATION") as OpenAI.Images.ImageGenerateParams["moderation"],
+      });
   const b64 = res.data?.[0]?.b64_json;
   if (!b64) throw new Error("OpenAI không trả về ảnh.");
   return { data: Buffer.from(b64, "base64"), ext: kind === "prop" ? "png" : "jpg" };
@@ -91,7 +130,9 @@ export async function generateStoryboardImages(
   sb: Storyboard,
   onProgress: (done: number, total: number, message: string) => void,
 ): Promise<{ storyboard: Storyboard; report: ImageReport }> {
-  const style = setting("FEDTOON_IMAGE_STYLE");
+  // The cache key covers the style text and the reference images: changing either draws new pictures.
+  const refs = styleRefs();
+  const style = refs.length ? `${setting("FEDTOON_IMAGE_STYLE")}\nrefs:${refsSignature(refs)}` : setting("FEDTOON_IMAGE_STYLE");
   type Want = { kind: Kind; prompt: string; colors: ColorName[]; avoid: ColorName[] };
   const wanted = new Map<string, Want>();
   const outfitsOf = (shot: Shot) => [...new Set(shot.characters.map((c) => sb.cast.find((m) => m.id === c.castId)?.outfit).filter((x): x is ColorName => !!x))];
