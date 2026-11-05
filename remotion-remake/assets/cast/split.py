@@ -15,7 +15,7 @@ Cấu hình rig.json:
   parts     bộ phận theo thứ tự ưu tiên: {name, regions: [{polygon, classes?}], seed?, open?}; phần còn lại là "body"
   erase     [{part, polygon}] vùng xoá khỏi một bộ phận (mẩu nhọn lộ ra khi cử động)
   fills     phần bị che (chỉ lộ ra khi bộ phận xoay): {part, color, disc: [x, y, r]} | {part, color, polygon, under}
-            | {part, color, dilate: px, into: part, polygon?}
+            | {part, color, dilate: px, into: part, polygon?} | {part, copy: polygon, classes} (chép điểm ảnh gốc)
   head      {pivot}; arms [{side, kind: raised|hanging, segments: [{part, pivot}]}] (đoạn sau nằm trong đoạn trước)
   order     thứ tự vẽ từ sau ra trước: tên bộ phận, "arm:<i>" hoặc "head"
   face      {skin, mouth: {box, seed, top}, brows: [{box, seed}], eyes: [{cx, cy, rx, ry}], browGap?}
@@ -203,7 +203,17 @@ def split(cid: str, done: dict) -> dict:
         arr[..., 3] = new_a * 255
 
     for f in cfg.get("fills", []):
-        if "disc" in f:
+        if "copy" in f:
+            # Chép nguyên điểm ảnh gốc (vd. đường viền giữa tay và thân) vào bộ phận này: nhân vật có nét viền
+            # thì cả thân lẫn tay đều giữ viền khi tay đưa ra.
+            # Một lớp riêng (vd. "lines") vẽ dưới hai tay: chỉ lộ ra ở khe giữa tay và thân khi tay đưa ra,
+            # nên không thành đường đôi khi tay còn chồng lên thân.
+            region = polygon(w, h, f["copy"]) & visible
+            where = dilate(region & np.isin(cls, f["classes"]), 1) & region
+            if f["part"] not in layers:
+                layers[f["part"]] = np.zeros_like(rgba)
+            layers[f["part"]][where] = rgba[where]
+        elif "disc" in f:
             x, y, r = f["disc"]
             d = smooth_disc(w, h, x, y, r)
             # Lúc đứng yên, vòng khớp phải nằm gọn sau (hoặc trùng) các bộ phận trong "within".
@@ -266,6 +276,15 @@ def split(cid: str, done: dict) -> dict:
                 seg["seam"] = {"part": name, "reach": int(np.sqrt((xs_ - px) ** 2 + (ys_ - py) ** 2).max())}
             segs.append(seg)
         arms_out.append({**arm, "segments": segs})
+
+    # Nhân vật có nét viền: mép thân giáp tay không giữ mẩu viền (viền nằm ở lớp "lines" bên dưới tay),
+    # tránh thành đường chấm chấm trên tay khi tay đưa ra.
+    be = cfg.get("bodyEdge")
+    if be:
+        arm_parts = [sg["part"] for a in cfg["arms"] for sg in a["segments"]]
+        near_arm = np.any([dilate(masks[p], be.get("px", 3)) for p in arm_parts], axis=0)
+        fix = near_arm & masks["body"] & np.isin(cls, be["classes"]) & (layers["body"][..., 3] > 0)
+        layers["body"][fix, :3] = np.array(hex_rgb(be["color"]), dtype=float)
 
     # Xoá tay những mẩu nhỏ không đẹp khi bộ phận cử động (vd. góc nhọn của tay áo).
     for e in cfg.get("erase", []):
