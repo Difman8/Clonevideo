@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-05
 
+- **Thêm nhân vật boy (Bảo) từ ảnh: dáng đứng và dáng nhảy tay chạm cằm cho nhảy, suy nghĩ** — @Difman8 · 12:37 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Thêm nhân vật teen (Khoa) từ ảnh: dáng đứng và dáng đi riêng, giữ nét mặt cau có đặc trưng** — @Difman8 · 09:39 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Làm lại nhân vật woman (Mai) với ảnh mới: dáng đứng tự nhiên, dáng đưa tay riêng, khớp vai và khuỷu liền mạch** — @Difman8 · 09:01 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Lan: khuỷu tay chỉ liền mạch khi cử động, không còn tách thành hai khối** — @Difman8 · 08:42 · nhánh `claude/youtube-video-discovery-29q6gg`

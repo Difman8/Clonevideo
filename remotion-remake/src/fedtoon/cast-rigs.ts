@@ -1550,5 +1550,267 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       "open": false
     },
     "faceBase": "angry"
+  },
+  "boy": {
+    "dir": "fedtoon/cast/boy",
+    "units": 320,
+    "feetY": 1488,
+    "top": 69,
+    "centerX": 512,
+    "parts": {
+      "head": {
+        "x": 268,
+        "y": 68,
+        "w": 521,
+        "h": 502
+      },
+      "arm-l": {
+        "x": 267,
+        "y": 651,
+        "w": 170,
+        "h": 425
+      },
+      "arm-r": {
+        "x": 583,
+        "y": 651,
+        "w": 171,
+        "h": 425
+      },
+      "body": {
+        "x": 328,
+        "y": 520,
+        "w": 366,
+        "h": 971
+      },
+      "arm-l-seam": {
+        "x": 348,
+        "y": 698,
+        "w": 51,
+        "h": 243
+      },
+      "arm-r-seam": {
+        "x": 622,
+        "y": 698,
+        "w": 51,
+        "h": 243
+      },
+      "mouth": {
+        "x": 484,
+        "y": 464,
+        "w": 79,
+        "h": 24
+      },
+      "brow-0": {
+        "x": 397,
+        "y": 292,
+        "w": 89,
+        "h": 42
+      },
+      "brow-1": {
+        "x": 565,
+        "y": 285,
+        "w": 80,
+        "h": 32
+      }
+    },
+    "head": {
+      "pivot": [
+        512,
+        560
+      ]
+    },
+    "arms": [
+      {
+        "side": "left",
+        "kind": "hanging",
+        "trim": true,
+        "segments": [
+          {
+            "part": "arm-l",
+            "pivot": [
+              388,
+              700
+            ],
+            "seam": {
+              "part": "arm-l-seam",
+              "reach": 243
+            }
+          }
+        ]
+      },
+      {
+        "side": "right",
+        "kind": "hanging",
+        "trim": true,
+        "segments": [
+          {
+            "part": "arm-r",
+            "pivot": [
+              632,
+              700
+            ],
+            "seam": {
+              "part": "arm-r-seam",
+              "reach": 243
+            }
+          }
+        ]
+      }
+    ],
+    "order": [
+      "arm:0",
+      "arm:1",
+      "body",
+      "arm:0:seam",
+      "arm:1:seam",
+      "head"
+    ],
+    "eyes": [
+      {
+        "cx": 442,
+        "cy": 392,
+        "rx": 40,
+        "ry": 40
+      },
+      {
+        "cx": 602,
+        "cy": 390,
+        "rx": 39,
+        "ry": 40
+      }
+    ],
+    "mouthTop": [
+      488,
+      474,
+      560,
+      474
+    ],
+    "brows": [
+      "brow-0",
+      "brow-1"
+    ],
+    "colors": {
+      "skin": "#FDBB8A",
+      "hair": "#0F1229",
+      "shirt": "#42CC3D",
+      "mouth": "#7A0C14",
+      "tongue": "#F04950",
+      "pupil": "#000000",
+      "line": "#040301"
+    },
+    "lid": {
+      "margin": 3,
+      "line": true
+    },
+    "mouthStyle": {
+      "drawn": "neutral",
+      "open": false
+    },
+    "poses": {
+      "jump": "boy-think",
+      "think": "boy-think"
+    }
+  },
+  "boy-think": {
+    "dir": "fedtoon/cast/boy-think",
+    "units": 270,
+    "feetY": 1351,
+    "top": 164,
+    "centerX": 485,
+    "parts": {
+      "hand": {
+        "x": 588,
+        "y": 566,
+        "w": 138,
+        "h": 161
+      },
+      "head": {
+        "x": 264,
+        "y": 163,
+        "w": 525,
+        "h": 481
+      },
+      "body": {
+        "x": 163,
+        "y": 491,
+        "w": 644,
+        "h": 862
+      },
+      "mouth": {
+        "x": 560,
+        "y": 510,
+        "w": 73,
+        "h": 24
+      },
+      "brow-0": {
+        "x": 436,
+        "y": 353,
+        "w": 85,
+        "h": 46
+      },
+      "brow-1": {
+        "x": 607,
+        "y": 336,
+        "w": 71,
+        "h": 30
+      }
+    },
+    "head": {
+      "pivot": [
+        540,
+        640
+      ]
+    },
+    "arms": [],
+    "order": [
+      "body",
+      "head",
+      "hand"
+    ],
+    "eyes": [
+      {
+        "cx": 496,
+        "cy": 447,
+        "rx": 36,
+        "ry": 36
+      },
+      {
+        "cx": 648,
+        "cy": 426,
+        "rx": 30,
+        "ry": 35
+      }
+    ],
+    "mouthTop": [
+      562,
+      522,
+      630,
+      518
+    ],
+    "brows": [
+      "brow-0",
+      "brow-1"
+    ],
+    "colors": {
+      "skin": "#FDC395",
+      "hair": "#0E1228",
+      "shirt": "#4BC94E",
+      "mouth": "#7A0C14",
+      "tongue": "#F04950",
+      "pupil": "#000000",
+      "line": "#040301"
+    },
+    "lid": {
+      "margin": 3,
+      "line": true
+    },
+    "drawnAction": [
+      "jump",
+      "think"
+    ],
+    "mouthStyle": {
+      "drawn": "thinking",
+      "open": false
+    }
   }
 };
