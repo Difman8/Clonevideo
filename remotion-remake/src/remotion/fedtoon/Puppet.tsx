@@ -4,7 +4,7 @@
 import React from "react";
 import { Img, staticFile } from "remotion";
 import { HAIR_COLORS, PALETTE, SKIN } from "../../fedtoon/brand";
-import { rigFor, type CharacterRig } from "../../fedtoon/rig";
+import { isDrawnAction, rigFor, type CharacterRig } from "../../fedtoon/rig";
 import type { CastMember, ShotCharacter } from "../../spec/storyboard";
 
 type Action = ShotCharacter["action"];
@@ -666,7 +666,7 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
   // For the action the drawing shows, keep it as drawn: only the hand waves (wave, cheer) or the
   // character breathes (e.g. a finger on the temple).
   const drawnBend = action === "wave" ? -wave(t, 2.2) * 16 : action === "cheer" ? -wave(t, 2.5) * 8 : -wave(t + seed, 0.5) * 2;
-  const pose = action === rig.drawnAction ? { ...posed, head: wave(t, 0.4) * 1.2, raise: 0, bend: drawnBend } : posed;
+  const pose = isDrawnAction(rig, action) ? { ...posed, head: wave(t, 0.4) * 1.2, raise: 0, bend: drawnBend } : posed;
   const y = bob(action, t + seed * 0.37) * unit;
   const flip = facing === "left" ? -1 : 1;
   const firstRaised = rig.arms.findIndex((a) => a.kind === "raised");
@@ -677,11 +677,13 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
     // Raised arms keep the drawn pose for waving, cheering and the action of the drawing (the
     // first raised arm only, except for cheering); otherwise they rest (or point) if the rig says how.
     const main = index === firstRaised;
-    const drawn = !arm.rest || action === "cheer" || (main && (action === "wave" || action === rig.drawnAction));
+    const drawn = !arm.rest || action === "cheer" || (main && (action === "wave" || isDrawnAction(rig, action)));
     const pointing = !drawn && main && action === "point" && arm.point;
     if (drawn) {
       const share = n > 1 ? (rig.shoulderShare ?? 1) : 1;
-      return { angles: n > 1 ? [pose.raise * share * dir, (pose.bend + pose.raise * (1 - share)) * dir] : [(pose.raise + pose.bend) * dir], drawn };
+      const [lo, hi] = rig.elbowRange ?? [-180, 180];
+      const elbow = Math.min(hi, Math.max(lo, n > 1 ? pose.bend + pose.raise * (1 - share) : pose.raise + pose.bend));
+      return { angles: n > 1 ? [pose.raise * share * dir, elbow * dir] : [elbow * dir], drawn };
     }
     const base = (pointing ? arm.point : arm.rest) ?? [];
     return { angles: Array.from({ length: n }, (_, i) => ((base[i] ?? 0) + (i === 0 ? (pointing ? wave(t, 0.5) * 1.5 : pose.hang) : 0)) * dir), drawn };
