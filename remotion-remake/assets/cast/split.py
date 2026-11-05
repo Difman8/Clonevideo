@@ -12,10 +12,10 @@ Kết quả:
 
 Cấu hình rig.json:
   classes   nhóm màu {tên: [mã màu, ...]}; mỗi pixel thuộc nhóm có màu gần nó nhất
-  parts     bộ phận theo thứ tự ưu tiên: {name, regions: [{polygon, classes?}]}; phần còn lại là "body"
+  parts     bộ phận theo thứ tự ưu tiên: {name, regions: [{polygon, classes?}], seed?, open?}; phần còn lại là "body"
   erase     [{part, polygon}] vùng xoá khỏi một bộ phận (mẩu nhọn lộ ra khi cử động)
   fills     phần bị che (chỉ lộ ra khi bộ phận xoay): {part, color, disc: [x, y, r]} | {part, color, polygon, under}
-            | {part, color, dilate: px, into: part}
+            | {part, color, dilate: px, into: part, polygon?}
   head      {pivot}; arms [{side, kind: raised|hanging, segments: [{part, pivot}]}] (đoạn sau nằm trong đoạn trước)
   order     thứ tự vẽ từ sau ra trước: tên bộ phận, "arm:<i>" hoặc "head"
   face      {skin, mouth: {box, seed, top}, brows: [{box, seed}], eyes: [{cx, cy, rx, ry}]}
@@ -81,11 +81,33 @@ def smooth_disc(w: int, h: int, x: float, y: float, r: float) -> np.ndarray:
     return np.array(img.resize((w, h), Image.LANCZOS)).astype(float) / 255
 
 
+def defringe(rgb: np.ndarray, alpha: np.ndarray, iters: int = 4) -> np.ndarray:
+    """Điểm ảnh bán trong suốt ở mép lấy màu của điểm ảnh đặc gần nhất (ảnh tách nền thường còn
+    lẫn màu nền/quầng sáng ở mép), để mép không bị viền màu lạ và được xếp đúng nhóm màu."""
+    out = rgb.copy()
+    filled = alpha >= 200
+    for _ in range(iters):
+        acc = np.zeros_like(out)
+        cnt = np.zeros(alpha.shape)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy == 0 and dx == 0:
+                    continue
+                f = np.roll(np.roll(filled, dy, 0), dx, 1)
+                acc += np.roll(np.roll(out, dy, 0), dx, 1) * f[..., None]
+                cnt += f
+        new = ~filled & (cnt > 0)
+        out[new] = acc[new] / cnt[new][:, None]
+        filled |= new
+    return out
+
+
 def split(cid: str, done: dict) -> dict:
     cfg = json.loads((HERE / cid / "rig.json").read_text(encoding="utf-8"))
     im = np.array(Image.open(HERE / cid / "source.png").convert("RGBA")).astype(float)
     h, w = im.shape[:2]
     rgb, alpha = im[..., :3], im[..., 3]
+    rgb = defringe(rgb, alpha)
 
     # Dọn chấm lẻ còn sót khi tách nền; nền gần như đặc → đặc hẳn.
     main = component(alpha > 24, cfg["seed"])
@@ -112,6 +134,10 @@ def split(cid: str, done: dict) -> dict:
             if "classes" in region:
                 r &= np.isin(cls, region["classes"])
             m |= r
+        if part.get("open"):
+            # Bỏ các mẩu mảnh 1-2 px dính ở mép (điểm ảnh pha màu giữa bộ phận và phần bên cạnh).
+            k = part["open"] * 2 + 1
+            m = m & (np.array(to_img(m).filter(ImageFilter.MinFilter(k)).filter(ImageFilter.MaxFilter(k))) > 127)
         if "seed" in part:
             m = component(m, part["seed"])
         m = fill_holes(m) & visible & ~taken if part.get("fillHoles", True) else m
@@ -122,6 +148,12 @@ def split(cid: str, done: dict) -> dict:
     for part in cfg["parts"]:
         m = masks[part["name"]]
         extra = edge & ~taken & dilate(m, 3)
+        # …nhưng chỉ viền có màu thuộc vùng của bộ phận ở đó (vd. viền áo trắng sát bàn tay không đi theo tay).
+        allowed = np.zeros((h, w), bool)
+        for r in part["regions"]:
+            near_r = dilate(polygon(w, h, r["polygon"]), 3)
+            allowed |= near_r & np.isin(cls, r["classes"]) if "classes" in r else near_r
+        extra &= allowed
         masks[part["name"]] = m | extra
         taken |= extra
     # Tay có tư thế nghỉ (xoay nhiều quanh vai): phần gốc tay phía thân, ngoài vòng khớp, để lại
@@ -148,9 +180,15 @@ def split(cid: str, done: dict) -> dict:
 
     rgba = np.dstack([rgb, alpha])
     layers = {}
+    palette = np.array([hex_rgb(c) for c in colors], dtype=float)
     for name, m in masks.items():
         arr = rgba.copy()
         arr[..., 3] = np.where(m, alpha, 0)
+        if name not in ("body", "head"):
+            # Mép tay giáp thân: điểm ảnh pha màu (vd. da lẫn áo trắng) đổi về đúng màu nhóm của nó,
+            # để khi tay cử động không còn vệt/chấm màu của thân dính theo.
+            bnd = m & dilate(masks["body"], 1) & solid
+            arr[bnd, :3] = palette[nearest[bnd]]
         layers[name] = arr
 
     def paint(name: str, where: np.ndarray, color: str, cover: np.ndarray | float = 1.0, force: bool = False) -> None:
@@ -175,7 +213,10 @@ def split(cid: str, done: dict) -> dict:
             paint(f["part"], d > 0, f["color"], d)
         elif "dilate" in f:
             src = masks[f["part"]]
-            paint(f["part"], dilate(src, f["dilate"]) & ~src & (layers[f["into"]][..., 3] > 200), f["color"])
+            where = dilate(src, f["dilate"]) & ~src & (layers[f["into"]][..., 3] > 200)
+            if "polygon" in f:  # chỉ trong vùng này (vd. phần tay áo, không viền quanh bàn tay)
+                where &= polygon(w, h, f["polygon"])
+            paint(f["part"], where, f["color"])
         else:
             where = polygon(w, h, f["polygon"]) & (layers[f["part"]][..., 3] < 250) & solid
             if "under" in f:
@@ -217,7 +258,8 @@ def split(cid: str, done: dict) -> dict:
                 near = dilate(region, 6)
                 arm_layer[..., 3] = np.where(near, arm_layer[..., 3] * keep, arm_layer[..., 3])
                 # Thân áo phủ kín tới tâm đường viền (phần bù của tay), để khi viền ẩn không lộ khe.
-                body_cover = np.clip(0.5 + d, 0, 1)
+                # Đặc hẳn tới quá tâm 1 px: mép khử răng cưa của tay đè lên thân đặc thì không lộ vệt nền.
+                body_cover = np.clip(1.5 + d, 0, 1)
                 paint("body", near & solid & (body_cover > 0) & (d > -12), cfg["colors"]["shirt"], body_cover, force=True)
                 px, py = seg["pivot"]
                 seg["seam"] = {"part": name, "reach": int(np.sqrt((xs_ - px) ** 2 + (ys_ - py) ** 2).max())}
@@ -244,6 +286,19 @@ def split(cid: str, done: dict) -> dict:
         paint("head", dilate(m, 1) & inside, face["skin"], force=True)
 
     cut_feature("mouth", face["mouth"]["box"], face["mouth"]["seed"])
+
+    def soften(name: str) -> None:
+        """Lông mày: viền pha màu với da thành màu lông mày bán trong suốt, để khi nhướn lên tóc không lộ quầng sáng."""
+        arr = layers[name]
+        core = (arr[..., 3] > 200) & (dist(rgb, face["skin"]) > 120)
+        if not core.any():
+            return
+        brow = np.median(arr[core][:, :3], axis=0)
+        span = max(1.0, float(np.sqrt(((brow - np.array(hex_rgb(face["skin"]))) ** 2).sum())))
+        t = np.clip(dist(arr[..., :3], face["skin"]) / span, 0, 1)
+        on = arr[..., 3] > 0
+        arr[on, :3] = brow
+        arr[..., 3] = np.where(on, arr[..., 3] * t, 0)
     mouth_top = face["mouth"]["top"]
     mf = cfg.get("mouthFrom")
     if mf:
@@ -270,6 +325,7 @@ def split(cid: str, done: dict) -> dict:
         mouth_top = tf(t[0], t[1]) + tf(t[2], t[3])
     for i, b in enumerate(face["brows"]):
         cut_feature(f"brow-{i}", b["box"], b["seed"])
+        soften(f"brow-{i}")
 
     out = OUT / cid
     out.mkdir(parents=True, exist_ok=True)

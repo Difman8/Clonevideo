@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-05
 
+- **Làm lại nhân vật scientist (Lan) với ảnh mới: dáng đứng tự nhiên, dáng chỉ tay riêng, mép bộ phận sạch hơn** — @Difman8 · 08:06 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Tuấn: sửa nách bị méo khi đưa tay lên hoặc dang tay** — @Difman8 · 07:36 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Tuấn: viền tay áo chỉ hiện khi tay nép sát thân áo, tay đưa ra không còn viền lệch** — @Difman8 · 07:24 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Làm lại nhân vật man (Tuấn) với ảnh mới: dáng đưa tay tự nhiên, dáng vẫy tay riêng, hết méo ở vai và khuỷu** — @Difman8 · 07:09 · nhánh `claude/youtube-video-discovery-29q6gg`

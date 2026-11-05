@@ -428,7 +428,7 @@ function rigPose(action: Action, expression: Expression, t: number) {
       case "point":
         return { head: 2, raise: 6 - wave(t, 0.5) * 1.5, bend: 0, hang: 0.3, sway: 0 };
       case "walk":
-        return { head: wave(t, 1.8) * 1.5, raise: -wave(t, 1.8) * 6, bend: 0, hang: wave(t, 1.8) * 9, sway: wave(t, 1.8) * 1.5 };
+        return { head: wave(t, 1.8) * 1.5, raise: -wave(t, 1.8) * 6, bend: 0, hang: wave(t, 1.8) * 9, hang2: -wave(t, 1.8) * 9, sway: wave(t, 1.8) * 1.5 };
       case "think":
         return { head: -6, raise: 20, bend: 14 - wave(t, 0.4) * 1.5, hang: 0.3, sway: 0 };
       case "cheer":
@@ -445,7 +445,8 @@ function rigPose(action: Action, expression: Expression, t: number) {
         return { head: wave(t, 0.4) * 1.5, raise: 0, bend: -wave(t, 0.5) * 3, hang: 0.2 + wave(t, 0.5) * 0.2, sway: 0 };
     }
   })();
-  return { ...pose, head: pose.head + tilt };
+  // `hang2`: a second hanging arm (characters drawn with both arms down) swings opposite to the first when walking.
+  return { hang2: undefined as number | undefined, ...pose, head: pose.head + tilt };
 }
 
 /** Brow offset (in Fed-sized face pixels) and rotation (deg) for [left, right] brows; positive rotation lowers the inner end. */
@@ -672,7 +673,10 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
   const firstRaised = rig.arms.findIndex((a) => a.kind === "raised");
   const armAngles = (arm: CharacterRig["arms"][number], index: number): { angles: number[]; drawn: boolean } => {
     const dir = arm.side === "left" ? 1 : -1;
-    if (arm.kind === "hanging") return { angles: [pose.hang * dir], drawn: true };
+    if (arm.kind === "hanging") {
+      const second = rig.arms.slice(0, index).some((a) => a.kind === "hanging");
+      return { angles: [(second ? (pose.hang2 ?? pose.hang) : pose.hang) * dir], drawn: true };
+    }
     const n = arm.segments.length;
     // Raised arms keep the drawn pose for waving, cheering and the action of the drawing (the
     // first raised arm only, except for cheering); otherwise they rest (or point) if the rig says how.
