@@ -168,27 +168,39 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       },
       "arm-l": {
         "x": 250,
-        "y": 653,
+        "y": 601,
         "w": 163,
-        "h": 413
+        "h": 465
       },
       "arm-r": {
         "x": 613,
-        "y": 653,
+        "y": 602,
         "w": 157,
-        "h": 413
+        "h": 464
       },
       "body": {
-        "x": 307,
+        "x": 319,
         "y": 512,
-        "w": 406,
+        "w": 384,
         "h": 974
       },
-      "lines": {
-        "x": 330,
+      "arm-l-bodyline": {
+        "x": 339,
         "y": 693,
-        "w": 371,
-        "h": 253
+        "w": 47,
+        "h": 289
+      },
+      "arm-r-bodyline": {
+        "x": 641,
+        "y": 846,
+        "w": 39,
+        "h": 135
+      },
+      "arm-r-edge": {
+        "x": 623,
+        "y": 652,
+        "w": 78,
+        "h": 201
       },
       "mouth": {
         "x": 467,
@@ -219,37 +231,47 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       {
         "side": "left",
         "kind": "hanging",
-        "trim": true,
+        "trim": false,
         "segments": [
           {
             "part": "arm-l",
             "pivot": [
               366,
               700
-            ]
+            ],
+            "away": {
+              "body": "arm-l-bodyline",
+              "reach": 280
+            }
           }
         ]
       },
       {
         "side": "right",
         "kind": "hanging",
-        "trim": true,
+        "trim": false,
         "segments": [
           {
             "part": "arm-r",
             "pivot": [
               660,
               700
-            ]
+            ],
+            "away": {
+              "body": "arm-r-bodyline",
+              "arm": "arm-r-edge",
+              "reach": 279
+            }
           }
         ]
       }
     ],
     "order": [
-      "lines",
       "arm:0",
       "arm:1",
       "body",
+      "arm:0:bodyline",
+      "arm:1:bodyline",
       "head"
     ],
     "eyes": [

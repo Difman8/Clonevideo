@@ -32,7 +32,18 @@ export type CharacterRig = {
      * `seam`: the dark line where the sleeve meets the body, drawn by "arm:<i>:seam" over the body and
      * only while the sleeve stays against the body (`reach` = its farthest pixel from the pivot).
      */
-    segments: readonly { part: string; pivot: Pt; front?: boolean; seam?: { part: string; reach: number } }[];
+    segments: readonly {
+      part: string;
+      pivot: Pt;
+      front?: boolean;
+      seam?: { part: string; reach: number };
+      /**
+       * Outlined characters: the body's own copy of the line between arm and body (`body`, drawn by
+       * "arm:<i>:bodyline", stays with the body) and a line added along the arm where the drawing has
+       * none (`arm`, moves with the arm, shown only once the arm has left the body).
+       */
+      away?: { body?: string; arm?: string; reach: number };
+    }[];
     rest?: readonly number[];
     point?: readonly number[];
     /** Shoulder side of the first segment left to the body, outside its joint disc (assets/cast/split.py). */
@@ -48,7 +59,7 @@ export type CharacterRig = {
   elbowRange?: readonly number[];
   /** Other drawings of the same character for some actions, e.g. { wave: "man-wave" } (ids in CAST_RIGS). */
   poses?: Record<string, string>;
-  /** Drawing order, back to front: part names, "arm:<index>", "arm:<index>:front", "arm:<index>:seam" or "head" (head, brows, mouth, eyelids). */
+  /** Drawing order, back to front: part names, "arm:<index>", "arm:<index>:front", "arm:<index>:seam", "arm:<index>:bodyline" or "head" (head, brows, mouth, eyelids). */
   order: readonly string[];
   /** The expression of the drawn mouth and whether it is open (an open mouth is reused for speech). Default: an open smile. */
   mouthStyle?: { drawn: string; open: boolean };

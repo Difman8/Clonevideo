@@ -499,7 +499,10 @@ const Joint: React.FC<RigCtx & { pivot: readonly number[]; deg: number; children
  * An arm: each segment turns around its pivot, inside the previous one; later segments sit behind
  * earlier ones. Only the segments on the requested layer (`front` or not) are drawn.
  */
-type ArmLayer = "back" | "front" | "seam";
+type ArmLayer = "back" | "front" | "seam" | "bodyline";
+
+/** Opacity of the lines an outlined arm needs once it has left the body (its far end moved ~1.5-4.5 source px). */
+const awayOpacity = (reach: number, deg: number) => Math.min(1, Math.max(0, (reach * Math.sin((Math.abs(deg) * Math.PI) / 180) - 1.5) / 3));
 
 /**
  * Opacity of a sleeve seam: 1 while the sleeve stays against the body (its farthest point moved less
@@ -515,10 +518,23 @@ const RigArm: React.FC<RigCtx & { segments: CharacterRig["arms"][number]["segmen
   if (!first) return null;
   const deg = angles[0] ?? 0;
   const seam = layer === "seam" && first.seam ? seamOpacity(first.seam.reach, turned + deg) : 0;
+  const away = first.away ? awayOpacity(first.away.reach, turned + deg) : 0;
+  // The body's own line stays with the body (outside this segment's rotation). It is the very same
+  // pixels as the arm's line at rest, so it is always drawn: no seam opens when the arm barely moves.
+  if (layer === "bodyline") {
+    return (
+      <>
+        {first.away?.body && <RigImg rig={rig} s={s} name={first.away.body} />}
+        {rest.length > 0 && <RigArm rig={rig} s={s} segments={rest} angles={angles.slice(1)} layer={layer} turned={turned + deg} />}
+      </>
+    );
+  }
+  const drawn = layer !== "seam" && !!first.front === (layer === "front");
   return (
     <Joint rig={rig} s={s} pivot={first.pivot} deg={deg}>
       {rest.length > 0 && <RigArm rig={rig} s={s} segments={rest} angles={angles.slice(1)} layer={layer} turned={turned + deg} />}
-      {layer !== "seam" && !!first.front === (layer === "front") && <RigImg rig={rig} s={s} name={first.part} />}
+      {drawn && <RigImg rig={rig} s={s} name={first.part} />}
+      {drawn && away > 0 && first.away?.arm && <RigImg rig={rig} s={s} name={first.away.arm} style={{ opacity: away }} />}
       {seam > 0 && first.seam && <RigImg rig={rig} s={s} name={first.seam.part} style={{ opacity: seam }} />}
     </Joint>
   );
@@ -716,7 +732,7 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
             const cap = !state.drawn && !layer ? arm.cap : undefined;
             return (
               <React.Fragment key={item}>
-                <RigArm rig={rig} s={s} segments={arm.segments} angles={state.angles} layer={layer === "front" || layer === "seam" ? layer : "back"} />
+                <RigArm rig={rig} s={s} segments={arm.segments} angles={state.angles} layer={layer === "front" || layer === "seam" || layer === "bodyline" ? layer : "back"} />
                 {cap && (
                   <div
                     style={{
