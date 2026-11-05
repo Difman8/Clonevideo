@@ -263,9 +263,9 @@
       "part": "arm-l-lower",
       "color": "#F2F2F2",
       "disc": [
-        330,
-        676,
-        58
+        332,
+        674,
+        64
       ],
       "within": [
         "arm-l-lower",
@@ -749,8 +749,8 @@
         {
           "part": "arm-l-lower",
           "pivot": [
-            330,
-            676
+            332,
+            674
           ]
         }
       ],

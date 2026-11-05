@@ -953,8 +953,8 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       "arm-l-lower": {
         "x": 59,
         "y": 582,
-        "w": 332,
-        "h": 158
+        "w": 340,
+        "h": 159
       },
       "arm-l-upper": {
         "x": 331,
@@ -1026,8 +1026,8 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
           {
             "part": "arm-l-lower",
             "pivot": [
-              330,
-              676
+              332,
+              674
             ]
           }
         ],
