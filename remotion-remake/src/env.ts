@@ -8,10 +8,62 @@ import { parseEnv } from "node:util";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const ENV_FILE = path.join(ROOT, ".env");
 
-// Values saved in .env (the ⚙️ Cài đặt tab) win over variables inherited from the
-// parent process; empty values do not, so a key set system-wide keeps working.
-if (fs.existsSync(ENV_FILE)) {
-  for (const [key, value] of Object.entries(parseEnv(fs.readFileSync(ENV_FILE, "utf8")))) if (value !== "") process.env[key] = value;
+/** Variables inherited from the parent process, restored when their line leaves .env. */
+const inherited: Record<string, string | undefined> = { ...process.env };
+/** Non-empty values last read from .env, and the file version they came from. */
+let fromFile: Record<string, string> = {};
+let loadedVersion: string | null = null;
+
+const readEnvFile = () => {
+  try {
+    return fs.readFileSync(ENV_FILE, "utf8");
+  } catch {
+    return "";
+  }
+};
+
+/**
+ * Loads .env again if it changed on disk, so a hand edit applies without restarting
+ * the app. Values in .env win over variables inherited from the parent process;
+ * empty values do not, so a key set system-wide keeps working.
+ */
+export function refreshEnv() {
+  let version = "missing";
+  try {
+    const st = fs.statSync(ENV_FILE);
+    version = `${st.mtimeMs}:${st.size}`;
+  } catch {
+    // no .env: only inherited variables
+  }
+  if (version === loadedVersion) return;
+  loadedVersion = version;
+  const next: Record<string, string> = {};
+  for (const [key, value] of Object.entries(parseEnv(readEnvFile()))) if (value) next[key] = value;
+  for (const key of Object.keys(fromFile)) {
+    if (key in next) continue;
+    if (inherited[key] === undefined) delete process.env[key];
+    else process.env[key] = inherited[key];
+  }
+  for (const [key, value] of Object.entries(next)) process.env[key] = value;
+  fromFile = next;
+}
+refreshEnv();
+
+/**
+ * Values on commented-out lines of .env (`# KEY=value`) whose key has no active line.
+ * Every line of a .env copied from .env.example starts with "# ", so a value typed
+ * there without removing the # does nothing.
+ */
+export function commentedEnvValues(): Record<string, string> {
+  const text = readEnvFile();
+  const active = parseEnv(text);
+  const out: Record<string, string> = {};
+  for (const m of text.matchAll(/^[ \t]*#[ \t]*([A-Z][A-Z0-9_]*)[ \t]*=(.*)$/gm)) {
+    const [, key, rest] = m;
+    if (key in active || key in out) continue;
+    out[key] = parseEnv(`${key}=${rest}`)[key] ?? "";
+  }
+  return out;
 }
 
 /**

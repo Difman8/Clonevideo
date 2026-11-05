@@ -1,7 +1,7 @@
 // Every configurable API parameter of the app (besides the keys themselves).
 // Values live in .env; they are read when used, so a change saved from the
 // "⚙️ Cài đặt" tab applies at once without restarting the app.
-import { setEnvValue } from "./env";
+import { commentedEnvValues, refreshEnv, setEnvValue } from "./env";
 import { DEFAULT_IMAGE_STYLE } from "./fedtoon/brand";
 
 export type SettingType = "secret" | "text" | "textarea" | "number" | "select" | "boolean";
@@ -173,11 +173,34 @@ export const SETTINGS: Setting[] = [
 
 const byKey = new Map(SETTINGS.map((s) => [s.key, s]));
 
-/** Current value: .env / environment, else the default. */
+/** Current value: .env / environment, else the default. A hand edit of .env applies at once. */
 export function setting(key: string): string {
   const def = byKey.get(key);
   if (!def) throw new Error(`Unknown setting ${key}`);
+  refreshEnv();
   return process.env[key]?.trim() || def.default;
+}
+
+/**
+ * A value typed on a line of .env that still starts with # (so it has no effect),
+ * when it differs from the value in use. Secrets are reported without their value.
+ */
+function commentedValue(s: Setting, commented: Record<string, string>): string {
+  const v = commented[s.key]?.trim() ?? "";
+  if (!v || v === s.default) return "";
+  if (s.type === "secret") return process.env[s.key]?.trim() ? "" : "(khóa)";
+  return v === setting(s.key) ? "" : v;
+}
+
+/** Warnings for .env lines that were edited but still start with # (one per setting). */
+export function commentedSettingWarnings(keys?: string[]): string[] {
+  const commented = commentedEnvValues();
+  return SETTINGS.filter((s) => !keys || keys.includes(s.key)).flatMap((s) => {
+    const v = commentedValue(s, commented);
+    if (!v) return [];
+    const shown = s.type === "secret" ? s.key : `${s.key}=${v}`;
+    return [`⚠ Dòng "# ${shown}" trong file .env còn dấu # ở đầu nên chưa có tác dụng; app đang dùng ${s.type === "secret" ? "khóa trống" : setting(s.key)}. Xoá dấu # hoặc đặt lại ở tab ⚙️ Cài đặt.`];
+  });
 }
 export const numberSetting = (key: string) => Number(setting(key));
 export const boolSetting = (key: string) => setting(key) === "true";
@@ -185,13 +208,16 @@ export const optionalNumberSetting = (key: string) => (setting(key) === "" ? und
 
 /** Settings for the page. Secrets are never sent back, only whether they are set and their last 4 characters. */
 export function publicSettings() {
+  refreshEnv();
+  const commented = commentedEnvValues();
   return {
     groups: SETTING_GROUPS,
     settings: SETTINGS.map((s) => {
       const raw = process.env[s.key]?.trim() ?? "";
+      const off = commentedValue(s, commented);
       return s.type === "secret"
-        ? { ...s, value: "", isSet: !!raw, hint: raw ? `…${raw.slice(-4)}` : "" }
-        : { ...s, value: setting(s.key), isSet: !!raw, hint: "" };
+        ? { ...s, value: "", isSet: !!raw, hint: raw ? `…${raw.slice(-4)}` : "", commented: off }
+        : { ...s, value: setting(s.key), isSet: !!raw, hint: "", commented: off };
     }),
   };
 }

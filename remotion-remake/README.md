@@ -19,7 +19,7 @@ Mở app, vào tab **⚙️ Cài đặt** (hoặc sửa file `.env`) để đi�
 - **ElevenLabs** (`ELEVENLABS_API_KEY` + chọn giọng): lồng tiếng cho video.
 - **YouTube Data API** (`YOUTUBE_API_KEY`): tab Tìm video hot.
 
-Mọi thông số ngoài khóa đều xem và sửa được trên tab Cài đặt, có hiệu lực ngay, không cần khởi động lại: model, mức suy nghĩ (effort), số token tối đa của Claude/OpenAI; voice ID, model, ngôn ngữ, stability, similarity_boost, style, speaker boost, tốc độ, định dạng âm thanh, chuẩn hoá số, seed của ElevenLabs; tên kênh. Danh sách đầy đủ kèm giải thích nằm trong [.env.example](.env.example). Trên tab Cài đặt, nút **Tải giọng & model từ tài khoản** liệt kê giọng và model của tài khoản ElevenLabs (model nào có tiếng Việt, còn bao nhiêu ký tự); nút **Nghe thử** đọc một câu bằng cài đặt đang lưu.
+Mọi thông số ngoài khóa đều xem và sửa được trên tab Cài đặt, có hiệu lực ngay, không cần khởi động lại: model, mức suy nghĩ (effort), số token tối đa của Claude/OpenAI; voice ID, model, ngôn ngữ, stability, similarity_boost, style, speaker boost, tốc độ, định dạng âm thanh, chuẩn hoá số, seed của ElevenLabs; tên kênh. Danh sách đầy đủ kèm giải thích nằm trong [.env.example](.env.example). Sửa tay file `.env` cũng có hiệu lực ngay khi app đang mở; nhớ xoá dấu `#` ở đầu dòng, vì dòng còn `#` chỉ là chú thích (app cảnh báo trên tab Cài đặt và trong nhật ký nếu thấy dòng như vậy). Trên tab Cài đặt, nút **Tải giọng & model từ tài khoản** liệt kê giọng và model của tài khoản ElevenLabs (model nào có tiếng Việt, còn bao nhiêu ký tự); nút **Nghe thử** đọc một câu bằng cài đặt đang lưu.
 
 Không có khóa Claude/OpenAI thì app vẫn chạy với **phân tích cơ bản** (dựng từ chapters/phụ đề, màu lấy từ khung hình).
 

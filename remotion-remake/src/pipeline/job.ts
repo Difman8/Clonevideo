@@ -12,6 +12,7 @@ import { generateStoryboardImages, hasImageKey, imageDir } from "./images";
 import { extractPostContent, postContentText, type PostContent } from "./metadata";
 import { renderSpec } from "./render";
 import { narrationCoverage, writeStoryboard } from "./storyboard-ai";
+import { commentedSettingWarnings, setting } from "../settings";
 import { OUT_DIR, readJsonSafe, writeFileAtomic, writeJsonAtomic } from "./tools";
 import { parseVtt, transcriptText, type Cue } from "./transcript";
 import { addStoryboardVoice, addVoiceover, narrationChars, voiceDir } from "./voiceover";
@@ -363,7 +364,11 @@ async function voiceStep<T extends AnySpec>(id: string, spec: T, emit: Emit, p: 
     async () => {
       if (!hasElevenLabsKey()) throw new Error("Chưa có ELEVENLABS_API_KEY: thêm ở tab ⚙️ Cài đặt, hoặc bỏ chọn Lồng tiếng.");
       const lines = parts(spec).map((x) => x.narration);
-      emit({ type: "log", message: `Lồng tiếng ${lines.filter((l) => l.trim()).length} cảnh · ${narrationChars(lines)} ký tự (câu đã tạo trước đó không tính lại).` });
+      for (const message of commentedSettingWarnings(["ELEVENLABS_MODEL_ID", "ELEVENLABS_VOICE_ID", "ELEVENLABS_LANGUAGE_CODE"])) emit({ type: "log", message });
+      emit({
+        type: "log",
+        message: `Lồng tiếng ${lines.filter((l) => l.trim()).length} cảnh · ${narrationChars(lines)} ký tự · model ${setting("ELEVENLABS_MODEL_ID")} (câu đã tạo trước đó không tính lại).`,
+      });
       const onProgress = (done: number, total: number, message: string) => {
         emit({ type: "progress", step: "voice", progress: done / total });
         emit({ type: "log", message });
