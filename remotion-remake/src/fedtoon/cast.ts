@@ -28,7 +28,7 @@ export const RECURRING_CAST_TEXT = [
   "man: a young man, short brown hair, round black glasses, blue sweater (drawn presenting with an open hand; has his own waving drawing)",
   "scientist: a woman in a white lab coat over a purple top, black hair in a bun (drawn standing with arms down, surprised; has her own pointing drawing)",
   "teen: a teenager, curly black hair, pink headphones, yellow hoodie, jeans (drawn standing with arms down, frowning; has his own walking drawing)",
-  "boy: a boy, green cap, green sweater, jeans",
+  "boy: a boy, green cap, green sweater, jeans (drawn standing with arms down, smiling; has his own drawing hopping with a finger on his chin, used for jump and think)",
   "kid: a kid, spiky blonde hair, red scarf, teal sweater (drawn thinking, finger on the temple)",
   "grandpa: a bald grandfather with white hair at the sides, round glasses, navy polo (drawn cheering, both fists up)",
 ].join("\n");
