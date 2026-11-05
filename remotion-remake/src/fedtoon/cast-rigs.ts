@@ -641,102 +641,111 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
   "woman": {
     "dir": "fedtoon/cast/woman",
     "units": 320,
-    "feetY": 1492,
-    "top": 51,
-    "centerX": 560,
+    "feetY": 1486,
+    "top": 50,
+    "centerX": 512,
     "parts": {
       "head": {
-        "x": 247,
-        "y": 50,
-        "w": 572,
-        "h": 511
+        "x": 253,
+        "y": 49,
+        "w": 516,
+        "h": 512
       },
-      "arm-l-lower": {
-        "x": 52,
-        "y": 569,
-        "w": 358,
-        "h": 264
-      },
-      "arm-l-upper": {
-        "x": 340,
-        "y": 621,
-        "w": 176,
-        "h": 212
+      "arm-l": {
+        "x": 239,
+        "y": 663,
+        "w": 164,
+        "h": 424
       },
       "arm-r": {
-        "x": 706,
-        "y": 642,
-        "w": 175,
-        "h": 447
+        "x": 615,
+        "y": 663,
+        "w": 168,
+        "h": 424
       },
       "hair-back": {
-        "x": 263,
+        "x": 274,
         "y": 557,
-        "w": 540,
-        "h": 359
+        "w": 467,
+        "h": 169
       },
       "body": {
-        "x": 248,
-        "y": 470,
-        "w": 548,
-        "h": 1024
+        "x": 270,
+        "y": 440,
+        "w": 476,
+        "h": 1048
+      },
+      "arm-l-seam": {
+        "x": 318,
+        "y": 704,
+        "w": 54,
+        "h": 287
+      },
+      "arm-r-seam": {
+        "x": 648,
+        "y": 705,
+        "w": 56,
+        "h": 287
       },
       "mouth": {
-        "x": 559,
-        "y": 400,
+        "x": 445,
+        "y": 408,
         "w": 134,
-        "h": 103
+        "h": 92
       },
       "brow-0": {
-        "x": 464,
-        "y": 244,
-        "w": 78,
-        "h": 48
+        "x": 389,
+        "y": 239,
+        "w": 81,
+        "h": 38
       },
       "brow-1": {
-        "x": 637,
-        "y": 219,
-        "w": 74,
-        "h": 29
+        "x": 555,
+        "y": 238,
+        "w": 82,
+        "h": 38
       }
     },
     "head": {
       "pivot": [
-        595,
-        560
+        512,
+        552
       ]
     },
     "arms": [
       {
         "side": "left",
-        "kind": "raised",
+        "kind": "hanging",
+        "trim": true,
         "segments": [
           {
-            "part": "arm-l-upper",
+            "part": "arm-l",
             "pivot": [
-              455,
-              705
-            ]
-          },
-          {
-            "part": "arm-l-lower",
-            "pivot": [
-              347,
-              764
-            ]
+              356,
+              710
+            ],
+            "seam": {
+              "part": "arm-l-seam",
+              "reach": 280
+            }
           }
         ]
       },
       {
         "side": "right",
         "kind": "hanging",
+        "trim": true,
         "segments": [
           {
             "part": "arm-r",
             "pivot": [
-              746,
-              718
-            ]
+              662,
+              710
+            ],
+            "seam": {
+              "part": "arm-r-seam",
+              "reach": 281
+            }
           }
         ]
       }
@@ -746,43 +755,50 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       "arm:0",
       "arm:1",
       "body",
+      "arm:0:seam",
+      "arm:1:seam",
       "head"
     ],
     "eyes": [
       {
-        "cx": 528,
-        "cy": 353,
-        "rx": 44,
-        "ry": 45
+        "cx": 432,
+        "cy": 344,
+        "rx": 41,
+        "ry": 44
       },
       {
-        "cx": 692,
-        "cy": 321,
-        "rx": 40,
-        "ry": 43
+        "cx": 592,
+        "cy": 344,
+        "rx": 41,
+        "ry": 44
       }
     ],
     "mouthTop": [
-      561,
-      420,
-      691,
-      402
+      452,
+      414,
+      572,
+      414
     ],
     "brows": [
       "brow-0",
       "brow-1"
     ],
     "colors": {
-      "skin": "#FDB98C",
-      "hair": "#101536",
-      "shirt": "#FD3263",
-      "mouth": "#8B0108",
-      "tongue": "#FD4A48",
-      "pupil": "#08080D"
+      "skin": "#FEBA8D",
+      "hair": "#13193D",
+      "shirt": "#FD2A64",
+      "mouth": "#8A0107",
+      "tongue": "#FE3946",
+      "pupil": "#0B0B0B"
     },
     "lid": {
       "margin": 3,
       "line": true
+    },
+    "poses": {
+      "point": "woman-present",
+      "wave": "woman-present",
+      "cheer": "woman-present"
     }
   },
   "man-wave": {
@@ -1108,6 +1124,176 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
     "elbowRange": [
       -6,
       20
+    ]
+  },
+  "woman-present": {
+    "dir": "fedtoon/cast/woman-present",
+    "units": 316,
+    "feetY": 1492,
+    "top": 51,
+    "centerX": 560,
+    "parts": {
+      "head": {
+        "x": 247,
+        "y": 50,
+        "w": 572,
+        "h": 511
+      },
+      "arm-l-lower": {
+        "x": 52,
+        "y": 569,
+        "w": 361,
+        "h": 264
+      },
+      "arm-l-upper": {
+        "x": 340,
+        "y": 625,
+        "w": 176,
+        "h": 208
+      },
+      "arm-r": {
+        "x": 706,
+        "y": 678,
+        "w": 175,
+        "h": 411
+      },
+      "hair-back": {
+        "x": 263,
+        "y": 557,
+        "w": 540,
+        "h": 359
+      },
+      "body": {
+        "x": 248,
+        "y": 470,
+        "w": 548,
+        "h": 1024
+      },
+      "arm-r-seam": {
+        "x": 737,
+        "y": 725,
+        "w": 56,
+        "h": 244
+      },
+      "mouth": {
+        "x": 559,
+        "y": 400,
+        "w": 134,
+        "h": 103
+      },
+      "brow-0": {
+        "x": 464,
+        "y": 244,
+        "w": 78,
+        "h": 48
+      },
+      "brow-1": {
+        "x": 637,
+        "y": 219,
+        "w": 74,
+        "h": 29
+      }
+    },
+    "head": {
+      "pivot": [
+        595,
+        560
+      ]
+    },
+    "arms": [
+      {
+        "side": "left",
+        "kind": "raised",
+        "segments": [
+          {
+            "part": "arm-l-upper",
+            "pivot": [
+              455,
+              705
+            ]
+          },
+          {
+            "part": "arm-l-lower",
+            "pivot": [
+              346,
+              766
+            ]
+          }
+        ],
+        "trim": true
+      },
+      {
+        "side": "right",
+        "kind": "hanging",
+        "segments": [
+          {
+            "part": "arm-r",
+            "pivot": [
+              746,
+              718
+            ],
+            "seam": {
+              "part": "arm-r-seam",
+              "reach": 251
+            }
+          }
+        ],
+        "trim": true
+      }
+    ],
+    "order": [
+      "hair-back",
+      "arm:0",
+      "arm:1",
+      "body",
+      "arm:1:seam",
+      "head"
+    ],
+    "eyes": [
+      {
+        "cx": 528,
+        "cy": 353,
+        "rx": 44,
+        "ry": 45
+      },
+      {
+        "cx": 692,
+        "cy": 321,
+        "rx": 40,
+        "ry": 43
+      }
+    ],
+    "mouthTop": [
+      561,
+      420,
+      691,
+      402
+    ],
+    "brows": [
+      "brow-0",
+      "brow-1"
+    ],
+    "colors": {
+      "skin": "#FDB98C",
+      "hair": "#101536",
+      "shirt": "#FD3263",
+      "mouth": "#8B0108",
+      "tongue": "#FD4A48",
+      "pupil": "#08080D"
+    },
+    "lid": {
+      "margin": 3,
+      "line": true
+    },
+    "drawnAction": [
+      "point",
+      "wave",
+      "cheer"
+    ],
+    "shoulderShare": 0,
+    "elbowRange": [
+      0,
+      16
     ]
   }
 };
