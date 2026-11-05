@@ -251,6 +251,18 @@ def split(cid: str, done: dict) -> dict:
             if "polygon" in f:  # chỉ trong vùng này (vd. phần tay áo, không viền quanh bàn tay)
                 where &= polygon(w, h, f["polygon"])
             paint(f["part"], where, f["color"])
+        elif f.get("aa"):
+            # Mảng lấp mép mượt (khử răng cưa), tô đè cả điểm ảnh đã có (vd. mẩu viền cổ tay áo còn dính):
+            # dùng cho sườn áo lộ ra khi tay dang.
+            k = 4
+            img = Image.new("L", (w * k, h * k), 0)
+            ImageDraw.Draw(img).polygon([(x * k, y * k) for x, y in f["polygon"]], fill=255)
+            cov = np.array(img.resize((w, h), Image.LANCZOS)).astype(float) / 255
+            inside = (cov > 0.98) & solid
+            arr = layers[f["part"]]
+            arr[inside, :3] = np.array(hex_rgb(f["color"]), dtype=float)
+            arr[inside, 3] = 255
+            paint(f["part"], (cov > 0) & ~inside & solid, f["color"], cov)
         else:
             where = polygon(w, h, f["polygon"]) & (layers[f["part"]][..., 3] < 250) & solid
             if "under" in f:
