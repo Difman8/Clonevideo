@@ -3,7 +3,7 @@
 ## Quyết định của chủ dự án (04/11/2026)
 
 - Hướng **A + C**: nền và đồ vật do AI vẽ (A), nhân vật Fedtoon dựng sẵn (C).
-- Tạo ảnh bằng **OpenAI** (dùng khóa đã có).
+- Tạo ảnh bằng **OpenAI** (dùng khóa đã có). 05/11: mỗi lần vẽ gửi kèm ảnh mẫu phong cách trong `remotion-remake/assets/style/` qua endpoint images.edit (mặc định chỉ có bảng nhân vật của kênh `fedtoon-characters.png`, ghép bằng `assets/style/board.py`) + `STYLE_REFERENCE_NOTE` dặn chỉ học nét vẽ, không vẽ lại nhân vật; mô tả phong cách mặc định viết lại theo video tham khảo (trời xanh lơ, đồi xanh mượt, đêm tím với điểm nhấn hồng/xanh chanh, đồ vật mặt cute mắt to). Không gửi khung hình của video tham khảo làm ảnh mẫu vì AI dễ chép nguyên nhân vật/đồ vật đặc trưng của kênh đó. Tắt bằng cài đặt `OPENAI_IMAGE_STYLE_REFS`; khoá cache ảnh gồm cả ảnh mẫu.
 - Phong cách hình ảnh tham khảo video Shorts `youtube.com/shorts/b1EMX3wyqCY`, bộ nhận diện theo phong cách kênh Kurzgesagt: đồ hoạ phẳng, màu rực trên nền xanh đậm, hình khối bo tròn, ánh sáng phát quang. Fedtoon **lấy cảm hứng từ phong cách** đó nhưng có linh vật, logo, nhân vật riêng; không dùng chim, logo hay nhân vật đặc trưng của Kurzgesagt (đó là nhận diện thương hiệu của họ).
 
 ## Đã làm (bản đầu tiên)

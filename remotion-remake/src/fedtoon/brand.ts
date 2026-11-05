@@ -71,8 +71,21 @@ export const BRAND_FONT = "Nunito" as const;
  * (FEDTOON_IMAGE_STYLE) to fine-tune the look without changing code.
  */
 export const DEFAULT_IMAGE_STYLE =
-  "Flat 2D vector illustration for an animated science explainer. Bold, vivid, saturated colors (magenta, violet, deep purple, cyan, lime green, " +
-  "yellow, orange, royal blue) filled as solid flat areas. Simple rounded geometric shapes, no outlines. Shading only as a few flat darker shapes " +
-  "inside objects. No drop shadows, no cast shadows, no glow, no bloom, no lens effects, no vignette, no texture or grain. Clean layered depth " +
-  "(foreground, middle, background) with each layer in its own flat color. " +
+  "Flat 2D vector illustration for a cute, playful animated science short. Clean geometric shapes with soft rounded corners, solid flat fills, " +
+  "no outlines; volume only from one slightly darker flat tone inside a shape. Bold, saturated, high-contrast colors: deep purple and violet " +
+  "night or abstract scenes with magenta, hot pink and lime-green accents; bright cyan skies over smooth rolling green hills with simple " +
+  "dark-green bushes and grass tufts; warm yellow and orange suns. Depth made of a few overlapping flat layers (foreground, middle, background), " +
+  "each in its own flat color, far layers softer and less saturated. Objects are simple bold shapes; when an object has a face it is cute and " +
+  "simple: large round white eyes with black pupils and a small white highlight, a small simple mouth, rosy cheeks optional. " +
+  "No drop shadows, no cast shadows, no glow, no bloom, no gradients, no lens effects, no vignette, no texture or grain, no photorealism, no 3D. " +
   "Absolutely no text, letters, numbers, logos or watermarks.";
+
+/**
+ * Sent with the style reference images (assets/style/: the channel's own characters by default) so
+ * the image model draws backgrounds and props in the same hand as the characters, without them.
+ */
+export const STYLE_REFERENCE_NOTE =
+  "The attached image(s) are a STYLE GUIDE only: the channel's own characters. Draw a completely new picture in exactly the same art style: " +
+  "the same flat colors and simple flat shading, the same soft rounded shapes and proportions, the same line work, the same cute face style " +
+  "and the same level of detail, so that these characters would look at home in it. Do not draw, copy or include any of these characters, " +
+  "do not reuse their poses, layout or plain background.";
