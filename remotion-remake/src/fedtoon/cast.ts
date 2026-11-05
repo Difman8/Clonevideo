@@ -26,7 +26,7 @@ export const castKey = (id: string) => LEGACY_IDS[id.toLowerCase()] ?? id.toLowe
 export const RECURRING_CAST_TEXT = [
   "woman: a cheerful young woman, long black hair with a white headband, pink sweater (drawn presenting with an open hand)",
   "man: a young man, short brown hair, round black glasses, blue sweater (drawn presenting with an open hand; has his own waving drawing)",
-  "scientist: a woman in a white lab coat over a purple top, black hair in a bun (drawn pointing)",
+  "scientist: a woman in a white lab coat over a purple top, black hair in a bun (drawn standing with arms down, surprised; has her own pointing drawing)",
   "teen: a teenager, curly black hair, pink headphones, yellow hoodie, jeans",
   "boy: a boy, green cap, green sweater, jeans",
   "kid: a kid, spiky blonde hair, red scarf, teal sweater (drawn thinking, finger on the temple)",
