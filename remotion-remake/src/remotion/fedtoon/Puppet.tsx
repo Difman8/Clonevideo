@@ -649,8 +649,10 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
   const unit = height / 380;
   const s = (unit * rig.units) / (rig.feetY - rig.top);
   const posed = rigPose(action, expression, t + seed * 0.37);
-  // For the action the drawing shows, keep it as drawn (just breathing), e.g. a finger on the temple.
-  const pose = action === rig.drawnAction ? { ...posed, head: wave(t, 0.4) * 1.2, raise: 0, bend: -wave(t + seed, 0.5) * 2 } : posed;
+  // For the action the drawing shows, keep it as drawn: only the hand waves (wave, cheer) or the
+  // character breathes (e.g. a finger on the temple).
+  const drawnBend = action === "wave" ? -wave(t, 2.2) * 16 : action === "cheer" ? -wave(t, 2.5) * 8 : -wave(t + seed, 0.5) * 2;
+  const pose = action === rig.drawnAction ? { ...posed, head: wave(t, 0.4) * 1.2, raise: 0, bend: drawnBend } : posed;
   const y = bob(action, t + seed * 0.37) * unit;
   const flip = facing === "left" ? -1 : 1;
   const firstRaised = rig.arms.findIndex((a) => a.kind === "raised");
@@ -663,7 +665,10 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
     const main = index === firstRaised;
     const drawn = !arm.rest || action === "cheer" || (main && (action === "wave" || action === rig.drawnAction));
     const pointing = !drawn && main && action === "point" && arm.point;
-    if (drawn) return { angles: n > 1 ? [pose.raise * dir, pose.bend * dir] : [(pose.raise + pose.bend) * dir], drawn };
+    if (drawn) {
+      const share = n > 1 ? (rig.shoulderShare ?? 1) : 1;
+      return { angles: n > 1 ? [pose.raise * share * dir, (pose.bend + pose.raise * (1 - share)) * dir] : [(pose.raise + pose.bend) * dir], drawn };
+    }
     const base = (pointing ? arm.point : arm.rest) ?? [];
     return { angles: Array.from({ length: n }, (_, i) => ((base[i] ?? 0) + (i === 0 ? (pointing ? wave(t, 0.5) * 1.5 : pose.hang) : 0)) * dir), drawn };
   };
@@ -717,7 +722,7 @@ export const Puppet: React.FC<PuppetProps> = (props) => {
   const y = bob(action, t + seed * 0.37);
   const flip = facing === "left" ? -1 : 1;
   const uid = `p${React.useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-  const rig = rigFor(member);
+  const rig = rigFor(member, action);
   if (rig) return <RigPuppet {...props} rig={rig} eyes={eyes} width={height * (200 / 380)} />;
   return (
     <svg width={height * (200 / 380)} height={height} viewBox="-100 -366 200 380" style={{ overflow: "visible" }}>

@@ -2,6 +2,10 @@
 
 GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào `main` (mới nhất ở trên).
 
+## 2026-11-05
+
+- **Làm lại nhân vật man (Tuấn) với ảnh mới: dáng đưa tay tự nhiên, dáng vẫy tay riêng, hết méo ở vai và khuỷu** — @Difman8 · 07:09 · nhánh `claude/youtube-video-discovery-29q6gg`
+
 ## 2026-11-04
 
 - **Thêm 4 nhân vật phụ từ ảnh (man, scientist, kid, grandpa); nhân vật phụ dùng tên tiếng Anh, chỉ minh hoạ, không nói, không gọi tên** — @Difman8 · 22:22 · nhánh `claude/youtube-video-discovery-29q6gg`

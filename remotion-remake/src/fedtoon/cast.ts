@@ -25,7 +25,7 @@ export const castKey = (id: string) => LEGACY_IDS[id.toLowerCase()] ?? id.toLowe
 /** One line per recurring character, for the storyboard prompt. */
 export const RECURRING_CAST_TEXT = [
   "woman: a cheerful young woman, long black hair with a white headband, pink sweater (drawn presenting with an open hand)",
-  "man: a young man, short brown hair, round black glasses, blue sweater (drawn waving)",
+  "man: a young man, short brown hair, round black glasses, blue sweater (drawn presenting with an open hand; has his own waving drawing)",
   "scientist: a woman in a white lab coat over a purple top, black hair in a bun (drawn pointing)",
   "teen: a teenager, curly black hair, pink headphones, yellow hoodie, jeans",
   "boy: a boy, green cap, green sweater, jeans",

@@ -31,11 +31,17 @@ export type CharacterRig = {
     segments: readonly { part: string; pivot: Pt; front?: boolean }[];
     rest?: readonly number[];
     point?: readonly number[];
+    /** Shoulder side of the first segment left to the body, outside its joint disc (assets/cast/split.py). */
+    trim?: boolean;
     /** Rounded shoulder [cx, cy, rx, ry] in the shirt color, shown while the arm is away from its drawn pose. */
     cap?: readonly number[];
   }[];
   /** The action the drawing shows (its raised arms keep the drawn pose for it). */
   drawnAction?: string;
+  /** Share of a raised arm's lift done at the shoulder (default 1); the rest goes to the elbow (fewer seams at the shoulder). */
+  shoulderShare?: number;
+  /** Other drawings of the same character for some actions, e.g. { wave: "man-wave" } (ids in CAST_RIGS). */
+  poses?: Record<string, string>;
   /** Drawing order, back to front: part names, "arm:<index>", "arm:<index>:front" or "head" (head, brows, mouth, eyelids). */
   order: readonly string[];
   /** The expression of the drawn mouth and whether it is open (an open mouth is reused for speech). Default: an open smile. */
@@ -69,7 +75,9 @@ export const FED_RIG: CharacterRig = {
   colors: MASCOT_RIG.colors,
 };
 
-/** The drawn rig of a cast member: Fed, or a recurring side character with a picture. */
-export function rigFor(member: { kind: string; id: string }): CharacterRig | undefined {
-  return member.kind === "mascot" ? FED_RIG : CAST_RIGS[castKey(member.id)];
+/** The drawn rig of a cast member (Fed, or a recurring side character with a picture), for `action` if it has its own drawing. */
+export function rigFor(member: { kind: string; id: string }, action?: string): CharacterRig | undefined {
+  const rig = member.kind === "mascot" ? FED_RIG : CAST_RIGS[castKey(member.id)];
+  const pose = action ? rig?.poses?.[action] : undefined;
+  return (pose && CAST_RIGS[pose]) || rig;
 }

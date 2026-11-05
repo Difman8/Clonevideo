@@ -80,7 +80,7 @@ def smooth_disc(w: int, h: int, x: float, y: float, r: float) -> np.ndarray:
     return np.array(img.resize((w, h), Image.LANCZOS)).astype(float) / 255
 
 
-def split(cid: str) -> dict:
+def split(cid: str, done: dict) -> dict:
     cfg = json.loads((HERE / cid / "rig.json").read_text(encoding="utf-8"))
     im = np.array(Image.open(HERE / cid / "source.png").convert("RGBA")).astype(float)
     h, w = im.shape[:2]
@@ -127,7 +127,7 @@ def split(cid: str) -> dict:
     # cho thân áo; nếu không, khi hạ tay phần gốc đó lòi ra thành gợn trên vai.
     xs_, ys_ = np.meshgrid(np.arange(w), np.arange(h))
     for arm in cfg["arms"]:
-        if "rest" not in arm:
+        if "rest" not in arm and not arm.get("trim"):
             continue
         seg = arm["segments"][0]
         disc = next((f["disc"] for f in cfg.get("fills", []) if f.get("part") == seg["part"] and "disc" in f), None)
@@ -197,6 +197,30 @@ def split(cid: str) -> dict:
         paint("head", dilate(m, 1) & inside, face["skin"], force=True)
 
     cut_feature("mouth", face["mouth"]["box"], face["mouth"]["seed"])
+    mouth_top = face["mouth"]["top"]
+    mf = cfg.get("mouthFrom")
+    if mf:
+        # Miệng lấy từ ảnh khác của cùng nhân vật (vd. miệng cười của ảnh chính cho ảnh vẫy tay):
+        # thu phóng, xoay theo góc mặt rồi đặt vào tâm `center`; miệng gốc của ảnh này đã bị xoá.
+        src = done[mf["rig"]]
+        sp = src["parts"]["mouth"]
+        k, ang = mf["scale"], mf["angle"]
+        mimg = Image.open(OUT / mf["rig"] / "mouth.png").convert("RGBA")
+        mimg = mimg.resize((round(mimg.width * k), round(mimg.height * k)), Image.LANCZOS).rotate(-ang, resample=Image.BICUBIC, expand=True)
+        cx, cy = mf["center"]
+        x0, y0 = round(cx - mimg.width / 2), round(cy - mimg.height / 2)
+        arr = np.zeros((h, w, 4))
+        arr[y0 : y0 + mimg.height, x0 : x0 + mimg.width] = np.array(mimg).astype(float)
+        layers["mouth"] = arr
+        scx, scy = sp["x"] + sp["w"] / 2, sp["y"] + sp["h"] / 2
+        th = np.radians(ang)
+
+        def tf(px: float, py: float) -> list[float]:
+            dx, dy = (px - scx) * k, (py - scy) * k
+            return [round(cx + dx * np.cos(th) - dy * np.sin(th), 1), round(cy + dx * np.sin(th) + dy * np.cos(th), 1)]
+
+        t = src["mouthTop"]
+        mouth_top = tf(t[0], t[1]) + tf(t[2], t[3])
     for i, b in enumerate(face["brows"]):
         cut_feature(f"brow-{i}", b["box"], b["seed"])
 
@@ -230,10 +254,10 @@ def split(cid: str) -> dict:
         "arms": cfg["arms"],
         "order": cfg["order"],
         "eyes": face["eyes"],
-        "mouthTop": face["mouth"]["top"],
+        "mouthTop": mouth_top,
         "brows": [f"brow-{i}" for i in range(len(face["brows"]))],
         "colors": cfg["colors"],
-        **{k: cfg[k] for k in ("lid", "drawnAction", "mouthStyle") if k in cfg},
+        **{k: cfg[k] for k in ("lid", "drawnAction", "mouthStyle", "poses", "shoulderShare") if k in cfg},
     }
 
 
@@ -245,7 +269,7 @@ def main() -> None:
         existing = json.loads(text[text.index("= {") + 2 : text.rindex("}") + 1])
     for cid in ids:
         print(cid)
-        existing[cid] = split(cid)
+        existing[cid] = split(cid, existing)
     RIGS.write_text(
         "// File sinh tự động bởi assets/cast/split.py — không sửa tay.\n"
         "// Tọa độ tính bằng pixel của ảnh gốc assets/cast/<id>/source.png.\n"
