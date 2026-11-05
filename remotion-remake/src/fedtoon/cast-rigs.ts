@@ -156,149 +156,145 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
   "kid": {
     "dir": "fedtoon/cast/kid",
     "units": 300,
-    "feetY": 1458,
-    "top": 90,
-    "centerX": 515,
+    "feetY": 1483,
+    "top": 52,
+    "centerX": 510,
     "parts": {
-      "arm-r-lower": {
-        "x": 668,
-        "y": 294,
-        "w": 223,
-        "h": 359
-      },
-      "arm-r-upper": {
-        "x": 662,
-        "y": 599,
-        "w": 229,
-        "h": 168
+      "head": {
+        "x": 266,
+        "y": 51,
+        "w": 491,
+        "h": 509
       },
       "arm-l": {
-        "x": 215,
-        "y": 652,
-        "w": 201,
-        "h": 455
+        "x": 250,
+        "y": 653,
+        "w": 163,
+        "h": 413
       },
-      "head": {
-        "x": 246,
-        "y": 89,
-        "w": 457,
-        "h": 500
+      "arm-r": {
+        "x": 613,
+        "y": 653,
+        "w": 157,
+        "h": 413
       },
       "body": {
-        "x": 299,
-        "y": 500,
-        "w": 491,
-        "h": 960
+        "x": 307,
+        "y": 512,
+        "w": 406,
+        "h": 974
+      },
+      "lines": {
+        "x": 330,
+        "y": 693,
+        "w": 371,
+        "h": 253
       },
       "mouth": {
-        "x": 526,
-        "y": 465,
-        "w": 87,
-        "h": 33
+        "x": 467,
+        "y": 443,
+        "w": 91,
+        "h": 24
       },
       "brow-0": {
-        "x": 405,
-        "y": 320,
-        "w": 76,
-        "h": 49
+        "x": 392,
+        "y": 275,
+        "w": 79,
+        "h": 35
       },
       "brow-1": {
-        "x": 572,
-        "y": 291,
-        "w": 72,
-        "h": 29
+        "x": 553,
+        "y": 275,
+        "w": 79,
+        "h": 35
       }
     },
     "head": {
       "pivot": [
-        530,
-        585
+        512,
+        548
       ]
     },
     "arms": [
       {
-        "side": "right",
-        "kind": "raised",
-        "segments": [
-          {
-            "part": "arm-r-upper",
-            "pivot": [
-              705,
-              700
-            ]
-          },
-          {
-            "part": "arm-r-lower",
-            "pivot": [
-              840,
-              605
-            ],
-            "front": true
-          }
-        ]
-      },
-      {
         "side": "left",
         "kind": "hanging",
+        "trim": true,
         "segments": [
           {
             "part": "arm-l",
             "pivot": [
               366,
-              736
+              700
+            ]
+          }
+        ]
+      },
+      {
+        "side": "right",
+        "kind": "hanging",
+        "trim": true,
+        "segments": [
+          {
+            "part": "arm-r",
+            "pivot": [
+              660,
+              700
             ]
           }
         ]
       }
     ],
     "order": [
+      "lines",
       "arm:0",
       "arm:1",
       "body",
-      "head",
-      "arm:0:front"
+      "head"
     ],
     "eyes": [
       {
-        "cx": 471,
-        "cy": 414,
-        "rx": 39,
-        "ry": 39
+        "cx": 436,
+        "cy": 375,
+        "rx": 38,
+        "ry": 38
       },
       {
-        "cx": 623,
-        "cy": 381,
-        "rx": 35,
-        "ry": 39
+        "cx": 590,
+        "cy": 375,
+        "rx": 38,
+        "ry": 38
       }
     ],
     "mouthTop": [
-      530,
       470,
-      610,
-      470
+      452,
+      556,
+      452
     ],
     "brows": [
       "brow-0",
       "brow-1"
     ],
     "colors": {
-      "skin": "#FDC59C",
-      "hair": "#FEBB06",
-      "shirt": "#01BDBC",
+      "skin": "#FDBE94",
+      "hair": "#935729",
+      "shirt": "#01C0C1",
       "mouth": "#7A0C14",
       "tongue": "#F04950",
-      "pupil": "#08070B",
-      "line": "#0A0B0E"
+      "pupil": "#050505",
+      "line": "#080605"
     },
     "lid": {
       "margin": 3,
       "line": true
     },
-    "drawnAction": "think",
     "mouthStyle": {
       "drawn": "neutral",
       "open": false
+    },
+    "poses": {
+      "think": "kid-think"
     }
   },
   "man": {
@@ -1810,6 +1806,107 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
     ],
     "mouthStyle": {
       "drawn": "thinking",
+      "open": false
+    }
+  },
+  "kid-think": {
+    "dir": "fedtoon/cast/kid-think",
+    "units": 297,
+    "feetY": 1458,
+    "top": 90,
+    "centerX": 515,
+    "parts": {
+      "hand": {
+        "x": 668,
+        "y": 294,
+        "w": 168,
+        "h": 222
+      },
+      "head": {
+        "x": 246,
+        "y": 89,
+        "w": 485,
+        "h": 497
+      },
+      "body": {
+        "x": 215,
+        "y": 445,
+        "w": 676,
+        "h": 1015
+      },
+      "mouth": {
+        "x": 526,
+        "y": 465,
+        "w": 87,
+        "h": 33
+      },
+      "brow-0": {
+        "x": 405,
+        "y": 320,
+        "w": 76,
+        "h": 49
+      },
+      "brow-1": {
+        "x": 572,
+        "y": 291,
+        "w": 72,
+        "h": 29
+      }
+    },
+    "head": {
+      "pivot": [
+        530,
+        585
+      ]
+    },
+    "arms": [],
+    "order": [
+      "body",
+      "head",
+      "hand"
+    ],
+    "eyes": [
+      {
+        "cx": 471,
+        "cy": 414,
+        "rx": 39,
+        "ry": 39
+      },
+      {
+        "cx": 623,
+        "cy": 381,
+        "rx": 35,
+        "ry": 39
+      }
+    ],
+    "mouthTop": [
+      530,
+      470,
+      610,
+      470
+    ],
+    "brows": [
+      "brow-0",
+      "brow-1"
+    ],
+    "colors": {
+      "skin": "#FDC59C",
+      "hair": "#FEBB06",
+      "shirt": "#01BDBC",
+      "mouth": "#7A0C14",
+      "tongue": "#F04950",
+      "pupil": "#08070B",
+      "line": "#0A0B0E"
+    },
+    "lid": {
+      "margin": 3,
+      "line": true
+    },
+    "drawnAction": [
+      "think"
+    ],
+    "mouthStyle": {
+      "drawn": "neutral",
       "open": false
     }
   }
