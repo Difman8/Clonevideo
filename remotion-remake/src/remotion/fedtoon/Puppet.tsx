@@ -581,11 +581,15 @@ const RigFace: React.FC<RigCtx & { expression: Expression; mouth: number; eyes: 
         : undefined;
   const vector: Expression | "talk" | undefined = open !== undefined ? undefined : talking ? "talk" : expression;
   const closed = eyes < 0.35;
-  const lid = closed ? 1 : Math.max(RIG_LIDS[expression], 1 - eyes);
+  // Faces drawn with another expression (e.g. angry brows): brows and lids move relative to it.
+  const base = (rig.faceBase ?? "neutral") as Expression;
+  const lid = closed ? 1 : Math.max(Math.max(0, RIG_LIDS[expression] - (RIG_LIDS[base] ?? 0)), 1 - eyes);
   return (
     <>
       {rig.brows.map((name, i) => {
-        const b = RIG_BROWS[expression][i];
+        const e = RIG_BROWS[expression][i];
+        const o = RIG_BROWS[base]?.[i] ?? { dy: 0, rot: 0 };
+        const b = e && { dy: e.dy - o.dy, rot: e.rot - o.rot };
         const p = rig.parts[name];
         if (!b || !p) return null;
         const side = i === 0 ? 1 : -1;

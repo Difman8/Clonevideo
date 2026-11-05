@@ -18,7 +18,8 @@ Cấu hình rig.json:
             | {part, color, dilate: px, into: part, polygon?}
   head      {pivot}; arms [{side, kind: raised|hanging, segments: [{part, pivot}]}] (đoạn sau nằm trong đoạn trước)
   order     thứ tự vẽ từ sau ra trước: tên bộ phận, "arm:<i>" hoặc "head"
-  face      {skin, mouth: {box, seed, top}, brows: [{box, seed}], eyes: [{cx, cy, rx, ry}]}
+  face      {skin, mouth: {box, seed, top}, brows: [{box, seed}], eyes: [{cx, cy, rx, ry}], browGap?}
+            browGap: px quanh mắt (tính cả viền) không thuộc lông mày, khi lông mày chạm viền mắt
 """
 from __future__ import annotations
 
@@ -275,13 +276,45 @@ def split(cid: str, done: dict) -> dict:
     xs, ys = np.meshgrid(np.arange(w), np.arange(h))
     head = masks["head"]
 
-    def cut_feature(name: str, box: list[int], seed: list[int]) -> None:
+    # Lông mày chạm viền mắt (vd. mày nhíu): bỏ phần nằm trong mắt + viền để mắt không bị cắt theo.
+    eyes_rim = np.zeros((h, w), bool)
+    for e in face.get("eyes", []):
+        g = face.get("browGap", 0)
+        if g:
+            eyes_rim |= ((xs - e["cx"]) / (e["rx"] + g)) ** 2 + ((ys - e["cy"]) / (e["ry"] + g)) ** 2 <= 1
+
+    def cut_feature(name: str, box: list[int], seed: list[int], avoid_eyes: bool = False) -> None:
         x0, y0, x1, y1 = box
         inside = (xs >= x0) & (xs < x1) & (ys >= y0) & (ys < y1)
+        if avoid_eyes:
+            inside &= ~eyes_rim
         m = fill_holes(component(inside & head & (dist(rgb, face["skin"]) > 34), seed))
         m = dilate(m, 1) & inside
         arr = rgba.copy()
         arr[..., 3] = np.where(m, alpha, 0)
+        if avoid_eyes and eyes_rim.any():
+            # Phần lông mày bị viền mắt cắt mất: lấp lại theo bao lồi để lông mày vẫn là một thanh trọn vẹn
+            # khi nhướn lên (phần chồng lên viền mắt vẫn giữ ở đầu, nên lúc đứng yên ảnh y như gốc).
+            core = m & (dist(rgb, face["skin"]) > 120)
+            color = np.median(rgb[core], axis=0)
+            pts = np.argwhere(m)[:, ::-1].astype(float)
+            pts = pts[np.lexsort((pts[:, 1], pts[:, 0]))]
+
+            def half(points: np.ndarray) -> list:
+                out: list = []
+                for p in points:
+                    while len(out) >= 2 and (out[-1][0] - out[-2][0]) * (p[1] - out[-2][1]) - (out[-1][1] - out[-2][1]) * (p[0] - out[-2][0]) <= 0:
+                        out.pop()
+                    out.append(tuple(p))
+                return out
+
+            hull = half(pts)[:-1] + half(pts[::-1])[:-1]
+            k = 4
+            img = Image.new("L", (w * k, h * k), 0)
+            ImageDraw.Draw(img).polygon([((x + 0.5) * k, (y + 0.5) * k) for x, y in hull], fill=255)
+            cov = np.array(img.resize((w, h), Image.LANCZOS)).astype(float) / 255
+            arr[..., :3] = np.where((cov > 0)[..., None], color, arr[..., :3])
+            arr[..., 3] = np.maximum(arr[..., 3], cov * 255 * (cov > 0.02))
         layers[name] = arr
         paint("head", dilate(m, 1) & inside, face["skin"], force=True)
 
@@ -324,7 +357,7 @@ def split(cid: str, done: dict) -> dict:
         t = src["mouthTop"]
         mouth_top = tf(t[0], t[1]) + tf(t[2], t[3])
     for i, b in enumerate(face["brows"]):
-        cut_feature(f"brow-{i}", b["box"], b["seed"])
+        cut_feature(f"brow-{i}", b["box"], b["seed"], avoid_eyes=True)
         soften(f"brow-{i}")
 
     out = OUT / cid
@@ -360,7 +393,7 @@ def split(cid: str, done: dict) -> dict:
         "mouthTop": mouth_top,
         "brows": [f"brow-{i}" for i in range(len(face["brows"]))],
         "colors": cfg["colors"],
-        **{k: cfg[k] for k in ("lid", "drawnAction", "mouthStyle", "poses", "shoulderShare", "elbowRange") if k in cfg},
+        **{k: cfg[k] for k in ("lid", "drawnAction", "mouthStyle", "poses", "shoulderShare", "elbowRange", "faceBase") if k in cfg},
     }
 
 

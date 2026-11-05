@@ -52,6 +52,8 @@ export type CharacterRig = {
   order: readonly string[];
   /** The expression of the drawn mouth and whether it is open (an open mouth is reused for speech). Default: an open smile. */
   mouthStyle?: { drawn: string; open: boolean };
+  /** Expression of the drawn brows and eyes (default "neutral"): other expressions move the brows/lids relative to it. */
+  faceBase?: string;
   eyes: readonly { cx: number; cy: number; rx: number; ry: number }[];
   /** Top lip of the open mouth (x0, y0, x1, y1): the mouth part closes toward it. */
   mouthTop: Pt;
