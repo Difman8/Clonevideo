@@ -81,8 +81,11 @@ const noContextModel = (modelId: string) => /^eleven_v3/i.test(modelId);
 /** Optional fields that can be dropped when a model rejects them, in the order they are dropped. */
 const OPTIONAL_FIELDS = ["previous_text", "next_text", "language_code", "seed", "apply_text_normalization"] as const;
 
-/** The optional fields an API error is about ("Providing previous_text or next_text is not yet supported…"). */
-const rejectedFields = (message: string, body: Record<string, unknown>) => OPTIONAL_FIELDS.filter((f) => f in body && message.includes(f));
+/**
+ * Fields each model has rejected while the app runs (every field the error names,
+ * e.g. "previous_text or next_text"): later lines leave them out instead of failing once more.
+ */
+const rejectedByModel = new Map<string, Set<string>>();
 
 /**
  * Text to speech. Uses the /with-timestamps endpoint (character timings, for
@@ -103,6 +106,8 @@ export async function synthesize(text: string, o: TtsOptions, context: { previou
     ...(withContext && context.previousText ? { previous_text: context.previousText } : {}),
     ...(withContext && context.nextText ? { next_text: context.nextText } : {}),
   };
+  const rejected = rejectedByModel.get(o.modelId) ?? new Set<string>();
+  for (const f of rejected) delete body[f];
   const query = `?output_format=${encodeURIComponent(o.outputFormat)}`;
   const voice = encodeURIComponent(o.voiceId);
   for (let attempt = 0; ; attempt++) {
@@ -110,9 +115,12 @@ export async function synthesize(text: string, o: TtsOptions, context: { previou
       return await request(voice, query, JSON.stringify(body), o);
     } catch (e) {
       const status = (e as { status?: number }).status;
-      const drop = status === 400 || status === 422 ? rejectedFields((e as Error).message, body) : [];
+      const named = status === 400 || status === 422 ? OPTIONAL_FIELDS.filter((f) => (e as Error).message.includes(f)) : [];
+      const drop = named.filter((f) => f in body);
       if (!drop.length || attempt >= OPTIONAL_FIELDS.length) throw e;
+      for (const f of named) rejected.add(f);
       for (const f of drop) delete body[f];
+      rejectedByModel.set(o.modelId, rejected);
     }
   }
 }

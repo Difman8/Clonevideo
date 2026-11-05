@@ -14,7 +14,7 @@ import { dismissJob, listJobs, loadJob, loadState, rerenderJob, runJob, STEPS, u
 import { composePost, defaultChannel, LIMITS, loadComposedPost, loadPostSource, parseWriterOptions, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
 import { OUT_DIR, ytDlp } from "../pipeline/tools";
 import { parseVideoId } from "../pipeline/youtube";
-import { numberSetting, publicSettings, saveSettings } from "../settings";
+import { commentedSettingWarnings, numberSetting, publicSettings, saveSettings } from "../settings";
 
 const PORT = numberSetting("PORT") || 3210;
 const HTML = path.join(path.dirname(fileURLToPath(import.meta.url)), "index.html");
@@ -306,5 +306,6 @@ server.on("error", (e: NodeJS.ErrnoException) => {
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`Remotion Remake đang chạy: ${APP_URL}`);
   for (const p of Object.values(providerStatus())) console.log(`${p.label} (${p.model}): ${p.ready ? "sẵn sàng" : `chưa có ${p.envKey}`}`);
+  for (const w of commentedSettingWarnings()) console.log(w);
   openBrowser();
 });

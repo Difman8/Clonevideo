@@ -1211,6 +1211,16 @@ async function loadSettings() {
               el("label", { htmlFor: "set-" + s.key, textContent: s.label }),
               settingInput(s),
               el("div", { className: "hint", textContent: [s.help, `(${s.key})`, s.restart ? "Cần khởi động lại." : ""].filter(Boolean).join(" ") }),
+              s.commented
+                ? el("div", {
+                    className: "hint",
+                    style: "color:var(--warn)",
+                    textContent:
+                      s.type === "secret"
+                        ? `⚠ Trong file .env, dòng ${s.key} còn dấu # ở đầu nên khóa chưa có tác dụng. Xoá dấu #, hoặc dán khóa vào đây rồi bấm Lưu.`
+                        : `⚠ Trong file .env, dòng "# ${s.key}=${s.commented}" còn dấu # ở đầu nên chưa có tác dụng; app đang dùng ${s.value}. Xoá dấu #, hoặc chọn giá trị ở đây rồi bấm Lưu.`,
+                  })
+                : null,
             ),
           ),
         ),
