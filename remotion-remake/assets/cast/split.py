@@ -216,6 +216,9 @@ def split(cid: str, done: dict) -> dict:
                 keep = np.clip(0.5 - d, 0, 1)
                 near = dilate(region, 6)
                 arm_layer[..., 3] = np.where(near, arm_layer[..., 3] * keep, arm_layer[..., 3])
+                # Thân áo phủ kín tới tâm đường viền (phần bù của tay), để khi viền ẩn không lộ khe.
+                body_cover = np.clip(0.5 + d, 0, 1)
+                paint("body", near & solid & (body_cover > 0) & (d > -12), cfg["colors"]["shirt"], body_cover, force=True)
                 px, py = seg["pivot"]
                 seg["seam"] = {"part": name, "reach": int(np.sqrt((xs_ - px) ** 2 + (ys_ - py) ** 2).max())}
             segs.append(seg)
@@ -301,7 +304,7 @@ def split(cid: str, done: dict) -> dict:
         "mouthTop": mouth_top,
         "brows": [f"brow-{i}" for i in range(len(face["brows"]))],
         "colors": cfg["colors"],
-        **{k: cfg[k] for k in ("lid", "drawnAction", "mouthStyle", "poses", "shoulderShare") if k in cfg},
+        **{k: cfg[k] for k in ("lid", "drawnAction", "mouthStyle", "poses", "shoulderShare", "elbowRange") if k in cfg},
     }
 
 

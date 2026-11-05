@@ -40,10 +40,12 @@ export type CharacterRig = {
     /** Rounded shoulder [cx, cy, rx, ry] in the shirt color, shown while the arm is away from its drawn pose. */
     cap?: readonly number[];
   }[];
-  /** The action the drawing shows (its raised arms keep the drawn pose for it). */
-  drawnAction?: string;
+  /** The action(s) the drawing shows (its raised arms keep the drawn pose for them). */
+  drawnAction?: string | readonly string[];
   /** Share of a raised arm's lift done at the shoulder (default 1); the rest goes to the elbow (fewer seams at the shoulder). */
   shoulderShare?: number;
+  /** Allowed lift (degrees) of a raised arm's elbow: lowering the forearm too far opens a notch at the elbow crease. */
+  elbowRange?: readonly number[];
   /** Other drawings of the same character for some actions, e.g. { wave: "man-wave" } (ids in CAST_RIGS). */
   poses?: Record<string, string>;
   /** Drawing order, back to front: part names, "arm:<index>", "arm:<index>:front", "arm:<index>:seam" or "head" (head, brows, mouth, eyelids). */
@@ -85,3 +87,7 @@ export function rigFor(member: { kind: string; id: string }, action?: string): C
   const pose = action ? rig?.poses?.[action] : undefined;
   return (pose && CAST_RIGS[pose]) || rig;
 }
+
+/** Whether `action` is one the drawing itself shows. */
+export const isDrawnAction = (rig: CharacterRig, action: string) =>
+  Array.isArray(rig.drawnAction) ? rig.drawnAction.includes(action) : rig.drawnAction === action;

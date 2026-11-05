@@ -465,11 +465,18 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       "margin": 2,
       "line": false
     },
+    "drawnAction": [
+      "shrug"
+    ],
     "poses": {
       "wave": "man-wave",
       "cheer": "man-wave"
     },
-    "shoulderShare": 0.25
+    "shoulderShare": 0,
+    "elbowRange": [
+      -2,
+      40
+    ]
   },
   "scientist": {
     "dir": "fedtoon/cast/scientist",
@@ -926,6 +933,9 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       "margin": 2,
       "line": false
     },
-    "drawnAction": "wave"
+    "drawnAction": [
+      "wave",
+      "cheer"
+    ]
   }
 };
