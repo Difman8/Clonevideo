@@ -75,24 +75,49 @@ export type Speech = { audio: Buffer; ext: "mp3" | "wav" | "opus"; alignment: Al
 
 const extOf = (format: string): Speech["ext"] => (format.startsWith("wav") ? "wav" : format.startsWith("opus") ? "opus" : "mp3");
 
+/** Models that reject previous_text / next_text ("not yet supported with the 'eleven_v3' model"). */
+const noContextModel = (modelId: string) => /^eleven_v3/i.test(modelId);
+
+/** Optional fields that can be dropped when a model rejects them, in the order they are dropped. */
+const OPTIONAL_FIELDS = ["previous_text", "next_text", "language_code", "seed", "apply_text_normalization"] as const;
+
+/** The optional fields an API error is about ("Providing previous_text or next_text is not yet supported…"). */
+const rejectedFields = (message: string, body: Record<string, unknown>) => OPTIONAL_FIELDS.filter((f) => f in body && message.includes(f));
+
 /**
  * Text to speech. Uses the /with-timestamps endpoint (character timings, for
  * syncing captions); if the chosen model rejects it, falls back to the plain endpoint.
+ * Context (previous/next sentence) is only sent to models that accept it, and an
+ * optional field the model rejects is dropped and the request sent again.
  */
 export async function synthesize(text: string, o: TtsOptions, context: { previousText?: string; nextText?: string } = {}): Promise<Speech> {
   if (!o.voiceId) throw new Error("Chưa chọn giọng đọc (ELEVENLABS_VOICE_ID). Chọn ở tab ⚙️ Cài đặt.");
-  const body = JSON.stringify({
+  const withContext = !noContextModel(o.modelId);
+  const body: Record<string, unknown> = {
     text,
     model_id: o.modelId,
     ...(o.languageCode ? { language_code: o.languageCode } : {}),
     voice_settings: o.voiceSettings,
     apply_text_normalization: o.textNormalization,
     ...(o.seed !== undefined ? { seed: o.seed } : {}),
-    ...(context.previousText ? { previous_text: context.previousText } : {}),
-    ...(context.nextText ? { next_text: context.nextText } : {}),
-  });
+    ...(withContext && context.previousText ? { previous_text: context.previousText } : {}),
+    ...(withContext && context.nextText ? { next_text: context.nextText } : {}),
+  };
   const query = `?output_format=${encodeURIComponent(o.outputFormat)}`;
   const voice = encodeURIComponent(o.voiceId);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await request(voice, query, JSON.stringify(body), o);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      const drop = status === 400 || status === 422 ? rejectedFields((e as Error).message, body) : [];
+      if (!drop.length || attempt >= OPTIONAL_FIELDS.length) throw e;
+      for (const f of drop) delete body[f];
+    }
+  }
+}
+
+async function request(voice: string, query: string, body: string, o: TtsOptions): Promise<Speech> {
   try {
     const res = await api(`/v1/text-to-speech/${voice}/with-timestamps${query}`, { method: "POST", body });
     const json = (await res.json()) as {
@@ -108,6 +133,8 @@ export async function synthesize(text: string, o: TtsOptions, context: { previou
   } catch (e) {
     const status = (e as { status?: number }).status;
     if (status !== 400 && status !== 404 && status !== 422) throw e;
+    // A rejected parameter is not a reason to switch endpoints: let synthesize() drop it.
+    if (OPTIONAL_FIELDS.some((f) => (e as Error).message.includes(f))) throw e;
     const res = await api(`/v1/text-to-speech/${voice}${query}`, { method: "POST", body, headers: { Accept: "audio/*" } });
     return { audio: Buffer.from(await res.arrayBuffer()), ext: extOf(o.outputFormat), alignment: null };
   }

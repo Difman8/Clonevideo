@@ -152,6 +152,15 @@ export async function generateStoryboardImages(
   let fatal: Error | null = null;
   await mapLimit([...wanted], 3, async ([ref, { kind, prompt, colors, avoid }]) => {
     if (fatal) return;
+    // A picture this video already has for the same description is kept, even if the style or the
+    // reference images changed since (continuing a job never pays twice; new descriptions use the new style).
+    const prior = sb.images[ref];
+    if (prior && fs.existsSync(path.join(dir, path.basename(prior)))) {
+      images[ref] = prior;
+      report.reused++;
+      onProgress(++done, wanted.size, `${kind === "bg" ? "Nền" : "Đồ vật"}: ${prompt.slice(0, 60)} (dùng lại)`);
+      return;
+    }
     const key = imageFileKey(kind, colors.length ? `${prompt} | ${colors.join(", ")}` : prompt, style);
     const existing = ["jpg", "png"].map((ext) => `${key}.${ext}`).find((f) => fs.existsSync(path.join(dir, f)));
     let file = existing;
