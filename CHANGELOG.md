@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-05
 
+- **Làm lại nhân vật grandpa (Ông) với ảnh mới: dáng đứng tự nhiên, dáng giơ hai tay riêng cho reo hò** — @Difman8 · 14:28 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **An: sửa viền tay áo bị lệch khi tay cử động** — @Difman8 · 13:59 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Làm lại nhân vật kid (An) với ảnh mới: dáng đứng tự nhiên, dáng tay chạm thái dương riêng cho suy nghĩ** — @Difman8 · 13:06 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Thêm nhân vật boy (Bảo) từ ảnh: dáng đứng và dáng nhảy tay chạm cằm cho nhảy, suy nghĩ** — @Difman8 · 12:37 · nhánh `claude/youtube-video-discovery-29q6gg`
