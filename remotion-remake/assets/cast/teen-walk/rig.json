@@ -1,0 +1,221 @@
+{
+  "units": 302,
+  "centerX": 555,
+  "seed": [
+    560,
+    800
+  ],
+  "colors": {
+    "skin": "#CE7343",
+    "hair": "#101123",
+    "shirt": "#FEB100",
+    "mouth": "#7A0C14",
+    "tongue": "#F04950",
+    "pupil": "#0D0D10",
+    "line": "#0E0C0D"
+  },
+  "classes": {
+    "yellow": [
+      "#FDB001"
+    ],
+    "crease": [
+      "#AF6B01"
+    ],
+    "skin": [
+      "#CE7343"
+    ],
+    "brownline": [
+      "#8F441F"
+    ],
+    "hair": [
+      "#101123"
+    ],
+    "pink": [
+      "#FA3E8F"
+    ],
+    "white": [
+      "#FEFDFE"
+    ],
+    "pants": [
+      "#142C71"
+    ]
+  },
+  "parts": [
+    {
+      "name": "head",
+      "regions": [
+        {
+          "polygon": [
+            [
+              250,
+              40
+            ],
+            [
+              880,
+              40
+            ],
+            [
+              880,
+              572
+            ],
+            [
+              250,
+              572
+            ]
+          ],
+          "classes": [
+            "skin",
+            "hair",
+            "pink",
+            "white"
+          ]
+        }
+      ]
+    }
+  ],
+  "fills": [
+    {
+      "part": "body",
+      "color": "#CE7343",
+      "polygon": [
+        [
+          560,
+          530
+        ],
+        [
+          680,
+          530
+        ],
+        [
+          680,
+          575
+        ],
+        [
+          560,
+          575
+        ]
+      ],
+      "under": "head"
+    },
+    {
+      "part": "body",
+      "color": "#FDB001",
+      "polygon": [
+        [
+          368,
+          610
+        ],
+        [
+          372,
+          575
+        ],
+        [
+          395,
+          540
+        ],
+        [
+          440,
+          522
+        ],
+        [
+          650,
+          530
+        ],
+        [
+          685,
+          555
+        ],
+        [
+          690,
+          600
+        ]
+      ],
+      "under": "head"
+    }
+  ],
+  "head": {
+    "pivot": [
+      630,
+      565
+    ]
+  },
+  "arms": [],
+  "order": [
+    "body",
+    "head"
+  ],
+  "drawnAction": [
+    "walk"
+  ],
+  "faceBase": "angry",
+  "mouthStyle": {
+    "drawn": "angry",
+    "open": false
+  },
+  "lid": {
+    "margin": 2,
+    "line": false
+  },
+  "face": {
+    "skin": "#CE7343",
+    "mouth": {
+      "box": [
+        592,
+        440,
+        702,
+        498
+      ],
+      "seed": [
+        647,
+        461
+      ],
+      "top": [
+        602,
+        476,
+        694,
+        476
+      ]
+    },
+    "brows": [
+      {
+        "box": [
+          495,
+          285,
+          625,
+          370
+        ],
+        "seed": [
+          548,
+          325
+        ]
+      },
+      {
+        "box": [
+          655,
+          265,
+          762,
+          360
+        ],
+        "seed": [
+          715,
+          309
+        ]
+      }
+    ],
+    "eyes": [
+      {
+        "cx": 557,
+        "cy": 383,
+        "rx": 35,
+        "ry": 35
+      },
+      {
+        "cx": 710,
+        "cy": 369,
+        "rx": 30,
+        "ry": 35
+      }
+    ],
+    "browGap": 11
+  }
+}

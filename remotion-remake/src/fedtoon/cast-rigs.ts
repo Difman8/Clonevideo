@@ -1295,5 +1295,260 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       0,
       16
     ]
+  },
+  "teen": {
+    "dir": "fedtoon/cast/teen",
+    "units": 320,
+    "feetY": 1463,
+    "top": 78,
+    "centerX": 508,
+    "parts": {
+      "head": {
+        "x": 239,
+        "y": 77,
+        "w": 538,
+        "h": 502
+      },
+      "arm-l": {
+        "x": 265,
+        "y": 665,
+        "w": 158,
+        "h": 406
+      },
+      "arm-r": {
+        "x": 601,
+        "y": 667,
+        "w": 151,
+        "h": 404
+      },
+      "body": {
+        "x": 259,
+        "y": 351,
+        "w": 499,
+        "h": 1114
+      },
+      "arm-l-seam": {
+        "x": 349,
+        "y": 701,
+        "w": 38,
+        "h": 222
+      },
+      "arm-r-seam": {
+        "x": 633,
+        "y": 701,
+        "w": 37,
+        "h": 222
+      },
+      "mouth": {
+        "x": 462,
+        "y": 477,
+        "w": 101,
+        "h": 36
+      },
+      "brow-0": {
+        "x": 386,
+        "y": 328,
+        "w": 100,
+        "h": 65
+      },
+      "brow-1": {
+        "x": 537,
+        "y": 327,
+        "w": 99,
+        "h": 67
+      }
+    },
+    "head": {
+      "pivot": [
+        512,
+        570
+      ]
+    },
+    "arms": [
+      {
+        "side": "left",
+        "kind": "hanging",
+        "trim": true,
+        "segments": [
+          {
+            "part": "arm-l",
+            "pivot": [
+              372,
+              716
+            ],
+            "seam": {
+              "part": "arm-l-seam",
+              "reach": 207
+            }
+          }
+        ]
+      },
+      {
+        "side": "right",
+        "kind": "hanging",
+        "trim": true,
+        "segments": [
+          {
+            "part": "arm-r",
+            "pivot": [
+              650,
+              716
+            ],
+            "seam": {
+              "part": "arm-r-seam",
+              "reach": 206
+            }
+          }
+        ]
+      }
+    ],
+    "order": [
+      "arm:0",
+      "arm:1",
+      "body",
+      "arm:0:seam",
+      "arm:1:seam",
+      "head"
+    ],
+    "eyes": [
+      {
+        "cx": 432,
+        "cy": 416,
+        "rx": 34,
+        "ry": 38
+      },
+      {
+        "cx": 592,
+        "cy": 416,
+        "rx": 33,
+        "ry": 38
+      }
+    ],
+    "mouthTop": [
+      466,
+      500,
+      558,
+      500
+    ],
+    "brows": [
+      "brow-0",
+      "brow-1"
+    ],
+    "colors": {
+      "skin": "#DA7943",
+      "hair": "#101123",
+      "shirt": "#FEB100",
+      "mouth": "#7A0C14",
+      "tongue": "#F04950",
+      "pupil": "#0D0D10",
+      "line": "#0E0C0D"
+    },
+    "lid": {
+      "margin": 2,
+      "line": false
+    },
+    "mouthStyle": {
+      "drawn": "angry",
+      "open": false
+    },
+    "poses": {
+      "walk": "teen-walk"
+    },
+    "faceBase": "angry"
+  },
+  "teen-walk": {
+    "dir": "fedtoon/cast/teen-walk",
+    "units": 302,
+    "feetY": 1392,
+    "top": 57,
+    "centerX": 555,
+    "parts": {
+      "head": {
+        "x": 275,
+        "y": 56,
+        "w": 554,
+        "h": 517
+      },
+      "body": {
+        "x": 177,
+        "y": 320,
+        "w": 710,
+        "h": 1074
+      },
+      "mouth": {
+        "x": 602,
+        "y": 450,
+        "w": 91,
+        "h": 38
+      },
+      "brow-0": {
+        "x": 505,
+        "y": 301,
+        "w": 105,
+        "h": 59
+      },
+      "brow-1": {
+        "x": 667,
+        "y": 284,
+        "w": 79,
+        "h": 63
+      }
+    },
+    "head": {
+      "pivot": [
+        630,
+        565
+      ]
+    },
+    "arms": [],
+    "order": [
+      "body",
+      "head"
+    ],
+    "eyes": [
+      {
+        "cx": 557,
+        "cy": 383,
+        "rx": 35,
+        "ry": 35
+      },
+      {
+        "cx": 710,
+        "cy": 369,
+        "rx": 30,
+        "ry": 35
+      }
+    ],
+    "mouthTop": [
+      602,
+      476,
+      694,
+      476
+    ],
+    "brows": [
+      "brow-0",
+      "brow-1"
+    ],
+    "colors": {
+      "skin": "#CE7343",
+      "hair": "#101123",
+      "shirt": "#FEB100",
+      "mouth": "#7A0C14",
+      "tongue": "#F04950",
+      "pupil": "#0D0D10",
+      "line": "#0E0C0D"
+    },
+    "lid": {
+      "margin": 2,
+      "line": false
+    },
+    "drawnAction": [
+      "walk"
+    ],
+    "mouthStyle": {
+      "drawn": "angry",
+      "open": false
+    },
+    "faceBase": "angry"
   }
 };
