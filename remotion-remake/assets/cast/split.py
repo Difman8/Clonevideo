@@ -15,7 +15,8 @@ Cấu hình rig.json:
   parts     bộ phận theo thứ tự ưu tiên: {name, regions: [{polygon, classes?}], seed?, open?}; phần còn lại là "body"
   erase     [{part, polygon}] vùng xoá khỏi một bộ phận (mẩu nhọn lộ ra khi cử động)
   fills     phần bị che (chỉ lộ ra khi bộ phận xoay): {part, color, disc: [x, y, r]} | {part, color, polygon, under}
-            | {part, color, dilate: px, into: part, polygon?} | {part, copy: polygon, classes} (chép điểm ảnh gốc)
+            | {part, color, dilate: px, into: part, polygon?}
+  cutOverlap px ảnh gốc của tay mà thân giữ thêm quanh đường cắt ở vai (nhân vật có nét viền)
   head      {pivot}; arms [{side, kind: raised|hanging, segments: [{part, pivot}]}] (đoạn sau nằm trong đoạn trước)
   order     thứ tự vẽ từ sau ra trước: tên bộ phận, "arm:<i>" hoặc "head"
   face      {skin, mouth: {box, seed, top}, brows: [{box, seed}], eyes: [{cx, cy, rx, ry}], browGap?}
@@ -160,6 +161,7 @@ def split(cid: str, done: dict) -> dict:
     # Tay có tư thế nghỉ (xoay nhiều quanh vai): phần gốc tay phía thân, ngoài vòng khớp, để lại
     # cho thân áo; nếu không, khi hạ tay phần gốc đó lòi ra thành gợn trên vai.
     xs_, ys_ = np.meshgrid(np.arange(w), np.arange(h))
+    trimmed: list = []
     for arm in cfg["arms"]:
         if "rest" not in arm and not arm.get("trim"):
             continue
@@ -177,6 +179,29 @@ def split(cid: str, done: dict) -> dict:
         moved = m & (proj < 0) & far
         masks[seg["part"]] = m & ~moved
         taken &= ~moved
+        trimmed.append((seg["part"], moved))
+    # Nhân vật có nét viền: tay kết thúc đúng ở mép nét viền giữa tay và thân (phần áo bên kia nét trả về
+    # thân), để khi tay rời thân không còn dải áo của thân dính theo mép tay.
+    for arm in cfg["arms"]:
+        for seg in arm["segments"]:
+            edge = seg.get("edgeLine")
+            if not edge or "body" not in edge:
+                continue
+            m = masks[seg["part"]]
+            region = polygon(w, h, edge["body"])
+            line = region & m & np.isin(cls, edge["classes"])
+            toward = np.sign(np.argwhere(visible & ~taken).mean(0)[1] - np.argwhere(m).mean(0)[1])
+            edge["_toward"] = int(toward)
+            cut = np.zeros((h, w), bool)
+            for y in np.unique(np.nonzero(line)[0]):
+                xs_row = np.nonzero(line[y])[0]
+                if toward > 0:
+                    cut[y, xs_row.max() + 1 :] = True
+                else:
+                    cut[y, : xs_row.min()] = True
+            moved = cut & region & m
+            masks[seg["part"]] = m & ~moved
+            taken &= ~moved
     masks["body"] = visible & ~taken
 
     rgba = np.dstack([rgb, alpha])
@@ -192,6 +217,14 @@ def split(cid: str, done: dict) -> dict:
             arr[bnd, :3] = palette[nearest[bnd]]
         layers[name] = arr
 
+    # Nhân vật có nét viền: thân giữ thêm vài pixel ảnh gốc của tay quanh đường cắt ở vai (thân vẽ trước tay),
+    # để mép cắt không thành khấc sáng trên nét viền khi tay nhích.
+    ov = cfg.get("cutOverlap", 0)
+    for part, moved in trimmed:
+        if ov:
+            extra = dilate(moved, ov) & masks[part]
+            layers["body"][extra] = rgba[extra]
+
     def paint(name: str, where: np.ndarray, color: str, cover: np.ndarray | float = 1.0, force: bool = False) -> None:
         """Tô màu vào chỗ trống của bộ phận (force: tô đè cả chỗ đã có hình)."""
         arr = layers[name]
@@ -203,17 +236,7 @@ def split(cid: str, done: dict) -> dict:
         arr[..., 3] = new_a * 255
 
     for f in cfg.get("fills", []):
-        if "copy" in f:
-            # Chép nguyên điểm ảnh gốc (vd. đường viền giữa tay và thân) vào bộ phận này: nhân vật có nét viền
-            # thì cả thân lẫn tay đều giữ viền khi tay đưa ra.
-            # Một lớp riêng (vd. "lines") vẽ dưới hai tay: chỉ lộ ra ở khe giữa tay và thân khi tay đưa ra,
-            # nên không thành đường đôi khi tay còn chồng lên thân.
-            region = polygon(w, h, f["copy"]) & visible
-            where = dilate(region & np.isin(cls, f["classes"]), 1) & region
-            if f["part"] not in layers:
-                layers[f["part"]] = np.zeros_like(rgba)
-            layers[f["part"]][where] = rgba[where]
-        elif "disc" in f:
+        if "disc" in f:
             x, y, r = f["disc"]
             d = smooth_disc(w, h, x, y, r)
             # Lúc đứng yên, vòng khớp phải nằm gọn sau (hoặc trùng) các bộ phận trong "within".
@@ -242,7 +265,58 @@ def split(cid: str, done: dict) -> dict:
         segs = []
         for seg in arm["segments"]:
             seam = seg.get("seam")
-            seg = {k: v for k, v in seg.items() if k != "seam"}
+            edge = seg.get("edgeLine")
+            seg = {k: v for k, v in seg.items() if k not in ("seam", "edgeLine")}
+            if edge:
+                # Nhân vật có nét viền: đường viền giữa tay và thân thuộc về tay. Khi tay rời thân, thân cần viền
+                # riêng ("<đoạn>-bodyline", đứng yên, chép từ nét gốc) và tay cần viền ở chỗ nét gốc bị khăn/áo che
+                # ("<đoạn>-edge", vẽ thêm theo mép tay); cả hai chỉ hiện khi tay đã rời thân.
+                line_rgb = np.array(hex_rgb(edge["color"]), dtype=float)
+                base_rgb = np.array(hex_rgb(edge.get("fill", cfg["colors"]["shirt"])), dtype=float)
+                span = max(1.0, float(np.sqrt(((line_rgb - base_rgb) ** 2).sum())))
+                away = {}
+                src_line = np.zeros((h, w), bool)
+                if "body" in edge:
+                    region = polygon(w, h, edge["body"]) & visible
+                    src_line = region & np.isin(cls, edge["classes"])
+                    # Chỉ nét chạy dọc mép thân (bỏ nét ngang của cổ tay áo chạm vào nó).
+                    keep = np.zeros((h, w), bool)
+                    band = edge.get("band", 8)
+                    for y in np.unique(np.nonzero(src_line)[0]):
+                        xs_row = np.nonzero(src_line[y])[0]
+                        if edge.get("_toward", 1) > 0:
+                            keep[y, max(0, xs_row.max() - band) : xs_row.max() + 1] = True
+                        else:
+                            keep[y, xs_row.min() : xs_row.min() + band + 1] = True
+                    src_line &= keep
+                    near = dilate(src_line, 1) & region & dilate(keep, 1)
+                    lineness = np.clip(1 - dist(rgb, edge["color"]) / span, 0, 1)
+                    arr = np.zeros_like(rgba)
+                    arr[near, :3] = line_rgb
+                    arr[..., 3] = np.where(near, lineness * alpha, 0)
+                    layers[f"{seg['part']}-bodyline"] = arr
+                    away["body"] = f"{seg['part']}-bodyline"
+                if "synth" in edge:
+                    region = polygon(w, h, edge["synth"])
+                    in_arm = layers[seg["part"]][..., 3] > 127  # sau các fill (tay có thể được nối dài dưới khăn)
+                    arm_m = in_arm & region
+                    other = ~in_arm & dilate(region, 8)
+                    dist_px = np.full((h, w), 99.0)
+                    grown = other.copy()
+                    for k in range(1, edge.get("width", 5) + 2):
+                        grown = dilate(grown, 1)
+                        dist_px = np.where(grown & (dist_px == 99.0), k, dist_px)
+                    a = np.clip(edge.get("width", 5) + 0.5 - dist_px, 0, 1) * arm_m
+                    arr = np.zeros_like(rgba)
+                    arr[a > 0, :3] = line_rgb
+                    arr[..., 3] = a * 255
+                    layers[f"{seg['part']}-edge"] = arr
+                    away["arm"] = f"{seg['part']}-edge"
+                    src_line |= a > 0
+                ys_l, xs_l = np.nonzero(src_line)
+                px, py = seg["pivot"]
+                away["reach"] = int(np.sqrt((xs_l - px) ** 2 + (ys_l - py) ** 2).max()) if len(xs_l) else 0
+                seg["away"] = away
             if seam:
                 region = polygon(w, h, seam["polygon"]) & visible
                 line = region & (dist(rgb, seam["color"]) < 70)
@@ -276,15 +350,6 @@ def split(cid: str, done: dict) -> dict:
                 seg["seam"] = {"part": name, "reach": int(np.sqrt((xs_ - px) ** 2 + (ys_ - py) ** 2).max())}
             segs.append(seg)
         arms_out.append({**arm, "segments": segs})
-
-    # Nhân vật có nét viền: mép thân giáp tay không giữ mẩu viền (viền nằm ở lớp "lines" bên dưới tay),
-    # tránh thành đường chấm chấm trên tay khi tay đưa ra.
-    be = cfg.get("bodyEdge")
-    if be:
-        arm_parts = [sg["part"] for a in cfg["arms"] for sg in a["segments"]]
-        near_arm = np.any([dilate(masks[p], be.get("px", 3)) for p in arm_parts], axis=0)
-        fix = near_arm & masks["body"] & np.isin(cls, be["classes"]) & (layers["body"][..., 3] > 0)
-        layers["body"][fix, :3] = np.array(hex_rgb(be["color"]), dtype=float)
 
     # Xoá tay những mẩu nhỏ không đẹp khi bộ phận cử động (vd. góc nhọn của tay áo).
     for e in cfg.get("erase", []):
