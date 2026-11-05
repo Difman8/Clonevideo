@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-05
 
+- **Sửa lỗi lồng tiếng ElevenLabs với model eleven_v3; tiếp tục video không vẽ lại ảnh đã có** — @Difman8 · 21:58 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Ảnh OpenAI vẽ cùng phong cách với nhân vật và video tham khảo: gửi kèm bảng nhân vật của kênh làm ảnh mẫu** — @Difman8 · 18:12 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **Làm lại nhân vật grandpa (Ông) với ảnh mới: dáng đứng tự nhiên, dáng giơ hai tay riêng cho reo hò** — @Difman8 · 14:28 · nhánh `claude/youtube-video-discovery-29q6gg`
 - **An: sửa viền tay áo bị lệch khi tay cử động** — @Difman8 · 13:59 · nhánh `claude/youtube-video-discovery-29q6gg`
