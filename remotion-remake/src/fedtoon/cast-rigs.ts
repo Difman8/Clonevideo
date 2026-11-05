@@ -338,6 +338,18 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
         "w": 391,
         "h": 992
       },
+      "arm-r-upper-seam": {
+        "x": 595,
+        "y": 690,
+        "w": 19,
+        "h": 92
+      },
+      "arm-l-seam": {
+        "x": 316,
+        "y": 690,
+        "w": 54,
+        "h": 271
+      },
       "mouth": {
         "x": 447,
         "y": 471,
@@ -374,7 +386,11 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
             "pivot": [
               600,
               672
-            ]
+            ],
+            "seam": {
+              "part": "arm-r-upper-seam",
+              "reach": 107
+            }
           },
           {
             "part": "arm-r-lower",
@@ -395,7 +411,11 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
             "pivot": [
               355,
               670
-            ]
+            ],
+            "seam": {
+              "part": "arm-l-seam",
+              "reach": 292
+            }
           }
         ]
       }
@@ -404,6 +424,8 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       "arm:0",
       "arm:1",
       "body",
+      "arm:0:seam",
+      "arm:1:seam",
       "head"
     ],
     "eyes": [
@@ -788,6 +810,12 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
         "w": 445,
         "h": 948
       },
+      "arm-l-seam": {
+        "x": 318,
+        "y": 665,
+        "w": 96,
+        "h": 271
+      },
       "mouth": {
         "x": 517,
         "y": 400,
@@ -844,7 +872,11 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
             "pivot": [
               377,
               644
-            ]
+            ],
+            "seam": {
+              "part": "arm-l-seam",
+              "reach": 295
+            }
           }
         ],
         "trim": true
@@ -854,6 +886,7 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       "arm:0",
       "arm:1",
       "body",
+      "arm:1:seam",
       "head"
     ],
     "eyes": [

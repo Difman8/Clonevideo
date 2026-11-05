@@ -17,7 +17,7 @@
     { "name": "head", "regions": [{ "polygon": [[230, 60], [740, 60], [740, 557], [230, 557]], "classes": ["skin", "hair", "dark", "white", "mouth"] }] },
     { "name": "arm-r-lower", "seed": [880, 690], "regions": [{ "polygon": [[686, 600], [1000, 560], [1000, 780], [830, 760], [700, 814], [652, 810], [686, 692]], "classes": ["blue", "darkblue", "skin"] }] },
     { "name": "arm-r-upper", "seed": [640, 720], "regions": [{ "polygon": [[568, 590], [640, 598], [702, 690], [686, 692], [652, 810], [612, 792], [595, 760], [595, 690], [575, 645]], "classes": ["blue", "darkblue"] }, { "polygon": [[590, 686], [608, 686], [620, 790], [602, 794]], "classes": ["darkblue"] }] },
-    { "name": "arm-l", "seed": [290, 800], "regions": [{ "polygon": [[200, 590], [396, 590], [373, 690], [337, 962], [342, 1095], [200, 1095]], "classes": ["blue", "darkblue", "skin"] }] }
+    { "name": "arm-l", "seed": [290, 800], "regions": [{ "polygon": [[200, 590], [396, 590], [366, 690], [331, 948], [326, 962], [333, 1000], [342, 1095], [200, 1095]], "classes": ["blue", "darkblue", "skin"] }] }
   ],
   "fills": [
     { "part": "body", "color": "#FEBD90", "polygon": [[420, 480], [560, 480], [560, 562], [420, 562]], "under": "head" },
@@ -30,10 +30,10 @@
   ],
   "head": { "pivot": [485, 557] },
   "arms": [
-    { "side": "right", "kind": "raised", "trim": true, "segments": [{ "part": "arm-r-upper", "pivot": [600, 672] }, { "part": "arm-r-lower", "pivot": [668, 752] }] },
-    { "side": "left", "kind": "hanging", "trim": true, "segments": [{ "part": "arm-l", "pivot": [355, 670] }] }
+    { "side": "right", "kind": "raised", "trim": true, "segments": [{ "part": "arm-r-upper", "pivot": [600, 672], "seam": { "polygon": [[590, 684], [610, 684], [622, 792], [600, 796]], "color": "#012365" } }, { "part": "arm-r-lower", "pivot": [668, 752] }] },
+    { "side": "left", "kind": "hanging", "trim": true, "segments": [{ "part": "arm-l", "pivot": [355, 670], "seam": { "polygon": [[352, 680], [374, 680], [340, 946], [333, 960], [316, 960], [318, 946]], "color": "#012365" } }] }
   ],
-  "order": ["arm:0", "arm:1", "body", "head"],
+  "order": ["arm:0", "arm:1", "body", "arm:0:seam", "arm:1:seam", "head"],
   "poses": { "wave": "man-wave", "cheer": "man-wave" },
   "shoulderShare": 0.25,
   "lid": { "margin": 2, "line": false },

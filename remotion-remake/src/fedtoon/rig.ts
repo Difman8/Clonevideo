@@ -28,7 +28,11 @@ export type CharacterRig = {
   arms: readonly {
     side: "left" | "right";
     kind: "raised" | "hanging";
-    segments: readonly { part: string; pivot: Pt; front?: boolean }[];
+    /**
+     * `seam`: the dark line where the sleeve meets the body, drawn by "arm:<i>:seam" over the body and
+     * only while the sleeve stays against the body (`reach` = its farthest pixel from the pivot).
+     */
+    segments: readonly { part: string; pivot: Pt; front?: boolean; seam?: { part: string; reach: number } }[];
     rest?: readonly number[];
     point?: readonly number[];
     /** Shoulder side of the first segment left to the body, outside its joint disc (assets/cast/split.py). */
@@ -42,7 +46,7 @@ export type CharacterRig = {
   shoulderShare?: number;
   /** Other drawings of the same character for some actions, e.g. { wave: "man-wave" } (ids in CAST_RIGS). */
   poses?: Record<string, string>;
-  /** Drawing order, back to front: part names, "arm:<index>", "arm:<index>:front" or "head" (head, brows, mouth, eyelids). */
+  /** Drawing order, back to front: part names, "arm:<index>", "arm:<index>:front", "arm:<index>:seam" or "head" (head, brows, mouth, eyelids). */
   order: readonly string[];
   /** The expression of the drawn mouth and whether it is open (an open mouth is reused for speech). Default: an open smile. */
   mouthStyle?: { drawn: string; open: boolean };

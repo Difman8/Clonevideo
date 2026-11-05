@@ -13,6 +13,7 @@ Kết quả:
 Cấu hình rig.json:
   classes   nhóm màu {tên: [mã màu, ...]}; mỗi pixel thuộc nhóm có màu gần nó nhất
   parts     bộ phận theo thứ tự ưu tiên: {name, regions: [{polygon, classes?}]}; phần còn lại là "body"
+  erase     [{part, polygon}] vùng xoá khỏi một bộ phận (mẩu nhọn lộ ra khi cử động)
   fills     phần bị che (chỉ lộ ra khi bộ phận xoay): {part, color, disc: [x, y, r]} | {part, color, polygon, under}
             | {part, color, dilate: px, into: part}
   head      {pivot}; arms [{side, kind: raised|hanging, segments: [{part, pivot}]}] (đoạn sau nằm trong đoạn trước)
@@ -181,6 +182,49 @@ def split(cid: str, done: dict) -> dict:
                 where &= masks[f["under"]] | dilate(masks[f["under"]], 2)
             paint(f["part"], where, f["color"])
 
+    # Đường viền giữa tay áo và thân áo: tách thành lớp riêng "<đoạn tay>-seam" để chỉ hiện khi tay
+    # nép sát thân (Remotion ẩn nó khi tay đưa ra); chỗ cũ trên tay và thân tô màu áo.
+    xs, ys = np.meshgrid(np.arange(w), np.arange(h))
+    arms_out = []
+    for arm in cfg["arms"]:
+        segs = []
+        for seg in arm["segments"]:
+            seam = seg.get("seam")
+            seg = {k: v for k, v in seg.items() if k != "seam"}
+            if seam:
+                region = polygon(w, h, seam["polygon"]) & visible
+                line = region & (dist(rgb, seam["color"]) < 70)
+                cut = dilate(line, 2) & region
+                arr = rgba.copy()
+                arr[..., 3] = np.where(cut, alpha, 0)
+                name = f"{seg['part']}-seam"
+                layers[name] = arr
+                for other in list(layers):
+                    if other != name and other != "head" and not other.endswith("-seam"):
+                        paint(other, cut & (layers[other][..., 3] > 0), cfg["colors"]["shirt"], force=True)
+                # Mép trong của tay áo khi tay đưa ra: thẳng và mượt theo tâm đường viền (khử răng cưa),
+                # không còn mẩu viền hay mẩu thân áo dính theo tay.
+                ys_, xs_ = np.nonzero(line)
+                rows = np.unique(ys_)
+                spans = np.array([np.ptp(xs_[ys_ == r]) + 1 for r in rows])
+                centers = np.array([xs_[ys_ == r].mean() for r in rows])
+                straight = spans <= 1.5 * np.median(spans)
+                slope, icpt = np.polyfit(rows[straight], centers[straight], 1)
+                arm_layer = layers[seg["part"]]
+                side = 1 if np.argwhere(masks["body"]).mean(0)[1] > np.argwhere(masks[seg["part"]]).mean(0)[1] else -1
+                d = (xs - (slope * ys + icpt)) * side / np.sqrt(1 + slope * slope)
+                keep = np.clip(0.5 - d, 0, 1)
+                near = dilate(region, 6)
+                arm_layer[..., 3] = np.where(near, arm_layer[..., 3] * keep, arm_layer[..., 3])
+                px, py = seg["pivot"]
+                seg["seam"] = {"part": name, "reach": int(np.sqrt((xs_ - px) ** 2 + (ys_ - py) ** 2).max())}
+            segs.append(seg)
+        arms_out.append({**arm, "segments": segs})
+
+    # Xoá tay những mẩu nhỏ không đẹp khi bộ phận cử động (vd. góc nhọn của tay áo).
+    for e in cfg.get("erase", []):
+        layers[e["part"]][..., 3] = np.where(polygon(w, h, e["polygon"]), 0, layers[e["part"]][..., 3])
+
     # Miệng và lông mày tách khỏi đầu để đổi biểu cảm; chỗ cũ tô màu da.
     face = cfg["face"]
     xs, ys = np.meshgrid(np.arange(w), np.arange(h))
@@ -251,7 +295,7 @@ def split(cid: str, done: dict) -> dict:
         "centerX": cfg["centerX"],
         "parts": parts,
         "head": cfg["head"],
-        "arms": cfg["arms"],
+        "arms": arms_out,
         "order": cfg["order"],
         "eyes": face["eyes"],
         "mouthTop": mouth_top,
