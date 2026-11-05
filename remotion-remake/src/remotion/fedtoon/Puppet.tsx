@@ -424,13 +424,13 @@ function rigPose(action: Action, expression: Expression, t: number) {
   const pose = (() => {
     switch (action) {
       case "wave":
-        return { head: 3 + wave(t, 1.1) * 2, raise: 0, bend: -wave(t, 2.2) * 16, hang: 2, sway: 0 };
+        return { head: 3 + wave(t, 1.1) * 2, raise: 0, bend: -wave(t, 2.2) * 16, hang: 0.3, sway: 0 };
       case "point":
-        return { head: 2, raise: 6 - wave(t, 0.5) * 1.5, bend: 0, hang: 1, sway: 0 };
+        return { head: 2, raise: 6 - wave(t, 0.5) * 1.5, bend: 0, hang: 0.3, sway: 0 };
       case "walk":
         return { head: wave(t, 1.8) * 1.5, raise: -wave(t, 1.8) * 6, bend: 0, hang: wave(t, 1.8) * 9, sway: wave(t, 1.8) * 1.5 };
       case "think":
-        return { head: -6, raise: 20, bend: 14 - wave(t, 0.4) * 1.5, hang: 1, sway: 0 };
+        return { head: -6, raise: 20, bend: 14 - wave(t, 0.4) * 1.5, hang: 0.3, sway: 0 };
       case "cheer":
         return { head: wave(t, 2.5) * 3, raise: 12, bend: 6 - wave(t, 2.5) * 10, hang: 10 + wave(t, 2.5) * 5, sway: 0 };
       case "shrug": {
@@ -440,9 +440,9 @@ function rigPose(action: Action, expression: Expression, t: number) {
       case "jump":
         return { head: wave(t, 1.1) * 2, raise: 8, bend: 4, hang: 8, sway: 0 };
       case "talk":
-        return { head: wave(t, 0.7) * 3, raise: 3, bend: -wave(t, 0.8) * 9, hang: 1 + wave(t, 0.8, 0.3) * 2, sway: 0 };
+        return { head: wave(t, 0.7) * 3, raise: 3, bend: -wave(t, 0.8) * 9, hang: 0.3 + wave(t, 0.8, 0.3) * 0.3, sway: 0 };
       default:
-        return { head: wave(t, 0.4) * 1.5, raise: 0, bend: -wave(t, 0.5) * 3, hang: 1 + wave(t, 0.5) * 1.5, sway: 0 };
+        return { head: wave(t, 0.4) * 1.5, raise: 0, bend: -wave(t, 0.5) * 3, hang: 0.2 + wave(t, 0.5) * 0.2, sway: 0 };
     }
   })();
   return { ...pose, head: pose.head + tilt };
@@ -498,13 +498,27 @@ const Joint: React.FC<RigCtx & { pivot: readonly number[]; deg: number; children
  * An arm: each segment turns around its pivot, inside the previous one; later segments sit behind
  * earlier ones. Only the segments on the requested layer (`front` or not) are drawn.
  */
-const RigArm: React.FC<RigCtx & { segments: CharacterRig["arms"][number]["segments"]; angles: number[]; front: boolean }> = ({ rig, s, segments, angles, front }) => {
+type ArmLayer = "back" | "front" | "seam";
+
+/**
+ * Opacity of a sleeve seam: 1 while the sleeve stays against the body (its farthest point moved less
+ * than ~4 source px), fading out by ~10 px: an arm held out in the air has no seam line.
+ */
+/** Actions where the arms stay against the body (other actions swing them out: no seams at all). */
+const SNUG_ACTIONS: readonly Action[] = ["idle", "talk", "wave", "point", "think"];
+
+const seamOpacity = (reach: number, deg: number) => Math.min(1, Math.max(0, (10 - reach * Math.sin((Math.abs(deg) * Math.PI) / 180)) / 6));
+
+const RigArm: React.FC<RigCtx & { segments: CharacterRig["arms"][number]["segments"]; angles: number[]; layer: ArmLayer; turned?: number }> = ({ rig, s, segments, angles, layer, turned = 0 }) => {
   const [first, ...rest] = segments;
   if (!first) return null;
+  const deg = angles[0] ?? 0;
+  const seam = layer === "seam" && first.seam ? seamOpacity(first.seam.reach, turned + deg) : 0;
   return (
-    <Joint rig={rig} s={s} pivot={first.pivot} deg={angles[0] ?? 0}>
-      {rest.length > 0 && <RigArm rig={rig} s={s} segments={rest} angles={angles.slice(1)} front={front} />}
-      {!!first.front === front && <RigImg rig={rig} s={s} name={first.part} />}
+    <Joint rig={rig} s={s} pivot={first.pivot} deg={deg}>
+      {rest.length > 0 && <RigArm rig={rig} s={s} segments={rest} angles={angles.slice(1)} layer={layer} turned={turned + deg} />}
+      {layer !== "seam" && !!first.front === (layer === "front") && <RigImg rig={rig} s={s} name={first.part} />}
+      {seam > 0 && first.seam && <RigImg rig={rig} s={s} name={first.seam.part} style={{ opacity: seam }} />}
     </Joint>
   );
 };
@@ -688,10 +702,11 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
             const arm = rig.arms[Number(i)];
             if (!arm) return null;
             const state = armAngles(arm, Number(i));
-            const cap = !state.drawn && layer !== "front" ? arm.cap : undefined;
+            if (layer === "seam" && !SNUG_ACTIONS.includes(action)) return null;
+            const cap = !state.drawn && !layer ? arm.cap : undefined;
             return (
               <React.Fragment key={item}>
-                <RigArm rig={rig} s={s} segments={arm.segments} angles={state.angles} front={layer === "front"} />
+                <RigArm rig={rig} s={s} segments={arm.segments} angles={state.angles} layer={layer === "front" || layer === "seam" ? layer : "back"} />
                 {cap && (
                   <div
                     style={{
