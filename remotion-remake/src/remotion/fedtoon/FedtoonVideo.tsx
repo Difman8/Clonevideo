@@ -8,23 +8,18 @@ import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
 import { BRAND_FONT, BRAND_NAME, PALETTE, type ColorName } from "../../fedtoon/brand";
 import { deltaE } from "../../fedtoon/contrast";
+import { characterBox, propBox } from "../../fedtoon/layout";
 import { MASCOT_RIG } from "../../fedtoon/mascot-rig";
 import type { VoiceClip } from "../../spec/schema";
 import { bgRef, imageRef, storyboardTimeline, type Prop, type Shot, type ShotCharacter, type Storyboard } from "../../spec/storyboard";
 import { useFontFamily } from "../fonts";
 import { mouthAt, Puppet } from "./Puppet";
 
-const POS_X: Record<string, number> = { "far-left": 0.14, left: 0.3, center: 0.5, right: 0.7, "far-right": 0.86, top: 0.5, bottom: 0.5 };
 const hex = (names: readonly ColorName[]) => names.map((n) => PALETTE[n] ?? PALETTE.plum);
 
 /** whoosh.wav is full-scale noise and plays on every transition, so it stays far below the voice. */
 const WHOOSH_VOLUME = 0.06;
 const SFX_VOLUME = 0.5;
-/** Character box height as a share of the frame height. */
-const CHARACTER_HEIGHT = {
-  vertical: { small: 0.29, medium: 0.39, large: 0.52 },
-  horizontal: { small: 0.36, medium: 0.5, large: 0.66 },
-};
 
 function useBox() {
   const { width, height } = useVideoConfig();
@@ -153,9 +148,7 @@ const PropView: React.FC<{ prop: Prop; src?: string; index: number; bgColor: str
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { width, height } = useBox();
-  const size = { small: 0.2, medium: 0.3, large: 0.42 }[prop.scale] * width;
-  const x = POS_X[prop.position] * width;
-  const y = (prop.position === "top" ? 0.24 : prop.position === "bottom" ? 0.62 : 0.4) * height;
+  const { x, y, size } = propBox(prop, width, height);
   const enter = spring({ frame: frame - 4 - index * 5, fps, config: { damping: 12, stiffness: 120 } });
   const t = frame / fps;
   const motion =
@@ -183,15 +176,10 @@ const PropView: React.FC<{ prop: Prop; src?: string; index: number; bgColor: str
 const CharacterView: React.FC<{ sb: Storyboard; ch: ShotCharacter; index: number; mouth: number; speaking: boolean }> = ({ sb, ch, index, mouth, speaking }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { width, height, vertical } = useBox();
+  const { width, height } = useBox();
   const member = sb.cast.find((c) => c.id === ch.castId);
   if (!member) return null;
-  const h = CHARACTER_HEIGHT[vertical ? "vertical" : "horizontal"][ch.scale] * height;
-  // Puppet width is h * 200/380: keep the whole figure inside the frame.
-  const halfWidth = h * (100 / 380);
-  const x = Math.min(width - halfWidth, Math.max(halfWidth, POS_X[ch.position] * width));
-  // Subjects sit around the middle of the frame; subtitles go below their feet.
-  const feet = height * (vertical ? 0.8 : 0.9);
+  const { x, feet, h } = characterBox(ch, width, height);
   const pop = spring({ frame: frame - index * 4, fps, config: { damping: 11, stiffness: 140 } });
   const slideIn = interpolate(spring({ frame: frame - index * 4, fps, config: { damping: 200 } }), [0, 1], [x < width / 2 ? -width * 0.4 : width * 0.4, 0]);
   const opacity = ch.enter === "fade" ? interpolate(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" }) : 1;

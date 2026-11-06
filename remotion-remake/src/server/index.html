@@ -123,6 +123,35 @@
   .unfinished-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
   .unfinished-row:first-of-type { border-top: 0; }
   .unfinished-row .what { flex: 1 1 320px; min-width: 0; }
+  .ed-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 10px; margin-top: 12px; }
+  .ed-thumb { position: relative; flex: 0 0 auto; width: 62px; aspect-ratio: 9 / 16; padding: 0; border-radius: 8px; overflow: hidden; background: var(--chip) center / cover no-repeat; border: 2px solid transparent; }
+  .ed-thumb.landscape { width: 110px; aspect-ratio: 16 / 9; }
+  .ed-thumb.active { border-color: var(--brand); }
+  .ed-thumb span { position: absolute; left: 3px; top: 3px; min-width: 18px; padding: 0 4px; font-size: 11px; font-weight: 700; color: #fff; background: rgba(0,0,0,.6); border-radius: 5px; }
+  .ed-thumb.changed::after { content: ""; position: absolute; right: 4px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 0 2px #fff; }
+  .ed-main { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .ed-main { grid-template-columns: 1fr; } }
+  .ed-stage { position: relative; border-radius: 12px; overflow: hidden; background: var(--chip); }
+  .ed-stage img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .ed-stage.loading img { opacity: .55; }
+  .ed-wait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 6px 12px; font-size: 13px; color: #fff; background: rgba(0,0,0,.65); border-radius: 8px; white-space: nowrap; }
+  .ed-box { position: absolute; padding: 0; background: none; border: 2px dashed transparent; border-radius: 10px; }
+  .ed-box:hover { border-color: rgba(255,255,255,.9); background: rgba(255,255,255,.12); }
+  .ed-box.selected { border: 3px solid #ef4444; background: rgba(239,68,68,.12); }
+  .ed-group { margin-bottom: 16px; }
+  .ed-group > b { display: block; margin-bottom: 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .ed-layer { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; padding: 10px; margin-bottom: 8px; border: 2px solid var(--line); border-radius: 10px; cursor: pointer; }
+  .ed-layer.selected { border-color: #ef4444; }
+  .ed-layer > img, .ed-pic { width: 56px; height: 56px; object-fit: contain; border-radius: 8px; background: repeating-conic-gradient(#d9dbe4 0 25%, #fff 0 50%) 0 0 / 14px 14px; }
+  .ed-layer .ed-avatar { width: 56px; height: 56px; display: grid; place-items: center; font-size: 26px; border-radius: 8px; background: var(--chip); }
+  .ed-layer .desc { font-size: 12px; color: var(--muted); margin-bottom: 6px; word-break: break-word; }
+  .ed-layer select, .ed-group select, .ed-group input[type=text] { padding: 6px 8px; font-size: 13px; }
+  .ed-group input[type=text] { width: 100%; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  .ed-opts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .ed-del { padding: 6px 10px; font-size: 13px; color: var(--err); }
+  .ed-lib { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .ed-lib button { padding: 0; line-height: 0; border-radius: 8px; overflow: hidden; }
+  .ed-bar { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px -20px -20px; padding: 12px 20px; background: var(--card); border-top: 1px solid var(--line); border-radius: 0 0 14px 14px; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -225,13 +254,35 @@
         <div class="empty" id="no-video" hidden>Chưa có video.</div>
         <div class="links" id="links"></div>
         <div id="render-saved-box" hidden style="margin-top:12px">
-          <button class="primary" id="render-saved" type="button">🎬 Render lại (không tốn AI)</button>
+          <div class="row">
+            <button class="primary" id="render-saved" type="button">🎬 Render lại (không tốn AI)</button>
+            <button id="edit-here" type="button" hidden>✏️ Sửa cảnh đang xem</button>
+          </div>
           <div class="hint" style="margin-top:6px">Dựng lại video bằng kịch bản, ảnh và giọng đã lưu, không gọi OpenAI, Claude hay ElevenLabs. Video hiện tại sẽ được thay bằng bản mới.</div>
         </div>
       </div>
       <div class="card">
         <h2>Nội dung đăng video gốc</h2>
         <div id="post"></div>
+      </div>
+    </div>
+    <div class="card" id="editor" hidden style="margin-top:20px">
+      <h2>✏️ Sửa từng cảnh</h2>
+      <div class="hint">Chọn một cảnh ở dải dưới đây, hoặc tạm dừng video rồi bấm <b>Sửa cảnh đang xem</b>. Bấm thẳng vào đồ vật hay nhân vật trên ảnh để chọn. Xoá, đổi chỗ, đổi cỡ và dùng lại ảnh sẵn có đều miễn phí; chỉ nút vẽ ảnh mới mới tốn phí OpenAI. Chi tiết nằm trong ảnh nền thì không tách riêng để xoá được.</div>
+      <div class="ed-strip" id="ed-strip"></div>
+      <div class="ed-main">
+        <div class="ed-stage" id="ed-stage">
+          <img id="ed-img" alt="Xem trước cảnh" />
+          <div id="ed-boxes"></div>
+          <div class="ed-wait" id="ed-wait" hidden>Đang vẽ xem trước…</div>
+        </div>
+        <div id="ed-panel"></div>
+      </div>
+      <div class="ed-bar">
+        <span class="hint" id="ed-status"></span>
+        <span style="flex:1"></span>
+        <button type="button" id="ed-reset" disabled>↩ Bỏ thay đổi</button>
+        <button type="button" class="primary" id="ed-save" disabled>🎬 Lưu &amp; render lại (không tốn AI)</button>
       </div>
     </div>
     <div class="card" id="remix-card" hidden style="margin-top:20px">
@@ -385,6 +436,7 @@
 <script>
 const $ = (id) => document.getElementById(id);
 let STEPS = [];
+let FEDTOON_CAST = [];
 let current = null;
 
 function el(tag, props = {}, ...children) {
@@ -427,6 +479,7 @@ document.querySelectorAll(".sw-label").forEach((l) =>
 
 async function loadStatus() {
   const s = await api("/api/status");
+  FEDTOON_CAST = s.fedtoonCast ?? [];
   STEPS = s.steps;
   PROVIDERS = s.providers;
   try {
@@ -519,6 +572,8 @@ function busy(on) {
   $("go").disabled = on;
   $("rerender").disabled = on;
   $("render-saved").disabled = on;
+  ed.busy = on;
+  edStatus();
 }
 
 function copyButton(text, label = "Sao chép") {
@@ -561,6 +616,8 @@ function renderResult(job) {
   $("result").hidden = false;
   const v = $("video");
   $("render-saved-box").hidden = !job.video;
+  $("edit-here").hidden = job.spec.kind !== "fedtoon";
+  edLoad(job);
   if (job.video) {
     v.hidden = false;
     v.src = `/media/${job.id}/remake.mp4?t=${Date.now()}`;
@@ -606,6 +663,7 @@ function renderResult(job) {
 }
 
 async function showJob(id) {
+  if (edDirty() && !confirm("Bỏ các thay đổi chưa lưu ở phần Sửa từng cảnh?")) return;
   const job = await api(`/api/jobs/${encodeURIComponent(id)}`);
   renderResult(job);
   if (job.running) {
@@ -661,8 +719,7 @@ $("rerender").addEventListener("click", async () => {
   }
 });
 
-$("render-saved").addEventListener("click", async () => {
-  if (!current) return;
+async function renderSaved() {
   try {
     busy(true);
     resetSteps(["render"]);
@@ -673,6 +730,343 @@ $("render-saved").addEventListener("click", async () => {
   } catch (e) {
     onEvent({ type: "error", message: e.message });
   }
+}
+
+$("render-saved").addEventListener("click", () => {
+  if (!current) return;
+  if (edDirty() && !confirm("Bạn có thay đổi chưa lưu ở phần Sửa từng cảnh. Nút này chỉ render bản đã lưu. Vẫn tiếp tục?")) return;
+  renderSaved();
+});
+
+// ---------- Sửa từng cảnh (Fedtoon) ----------
+// Works on a draft of the storyboard. Everything here is free except "Vẽ ảnh mới".
+const ED_LABELS = {
+  position: { "far-left": "Sát trái", left: "Trái", center: "Giữa", right: "Phải", "far-right": "Sát phải" },
+  propPosition: { "far-left": "Sát trái", left: "Trái", center: "Giữa", right: "Phải", "far-right": "Sát phải", top: "Trên cao", bottom: "Thấp" },
+  scale: { small: "Nhỏ", medium: "Vừa", large: "Lớn" },
+  motion: { float: "Lơ lửng", pop: "Bật ra", spin: "Xoay", pulse: "Phập phồng", none: "Đứng yên" },
+  action: { idle: "Đứng yên", talk: "Nói", wave: "Vẫy tay", point: "Chỉ tay", walk: "Đi", jump: "Nhảy", think: "Suy nghĩ", cheer: "Reo hò", shrug: "Nhún vai" },
+  expression: { neutral: "Bình thường", happy: "Vui", sad: "Buồn", surprised: "Ngạc nhiên", angry: "Giận", thinking: "Suy tư" },
+  facing: { front: "Nhìn thẳng", left: "Nhìn trái", right: "Nhìn phải" },
+  textStyle: { none: "Không có chữ", title: "Tiêu đề", label: "Nhãn", "big-number": "Số lớn", caption: "Chú thích" },
+  textPosition: { top: "Trên", center: "Giữa", bottom: "Dưới" },
+};
+
+const ed = { id: null, saved: null, draft: null, shot: 0, selected: null, previews: new Map(), asking: false, busy: false, drawing: false };
+const clone = (x) => JSON.parse(JSON.stringify(x));
+const edDirty = () => !!ed.draft && JSON.stringify(ed.draft.shots) !== JSON.stringify(ed.saved.shots);
+const edChanged = (i) => JSON.stringify(ed.draft.shots[i]) !== JSON.stringify(ed.saved.shots[i]);
+const edShot = () => ed.draft.shots[ed.shot];
+const edPicture = (src) => `/media/${encodeURIComponent(ed.id)}/img/${encodeURIComponent(src.split("/").pop())}`;
+const edPropImage = (prompt) => ed.draft.images[`prop:${prompt.trim()}`];
+const edBgImage = (shot) => {
+  const bg = shot.background;
+  return ed.draft.images[`bg:${bg.colors.length ? `${bg.prompt.trim()} | ${bg.colors.join(", ")}` : bg.prompt.trim()}`];
+};
+
+function edLoad(job) {
+  const isFedtoon = job.spec.kind === "fedtoon";
+  $("editor").hidden = !isFedtoon;
+  if (!isFedtoon) {
+    ed.id = ed.draft = ed.saved = null;
+    return;
+  }
+  const sameJob = ed.id === job.id;
+  ed.saved = clone(job.spec);
+  ed.draft = clone(job.spec);
+  ed.previews.clear();
+  ed.selected = null;
+  ed.id = job.id;
+  ed.shot = sameJob ? Math.min(ed.shot, ed.draft.shots.length - 1) : 0;
+  const { width, height } = ed.draft.meta;
+  $("ed-stage").style.aspectRatio = `${width} / ${height}`;
+  edRender();
+  edPreview();
+}
+
+function edChoice(labels, value, onChange) {
+  const s = el("select", { onchange: (e) => onChange(e.target.value), onclick: (e) => e.stopPropagation() });
+  for (const [v, label] of Object.entries(labels)) s.append(el("option", { value: v, textContent: label, selected: v === value }));
+  return s;
+}
+
+/** Applies a change to the draft, redraws the panel and refreshes the preview. */
+function edEdit(change, { refresh = true } = {}) {
+  change();
+  edRender();
+  if (refresh) edPreview();
+}
+
+function edSelect(selected) {
+  ed.selected = selected;
+  edRender();
+  edBoxes(ed.previews.get(edKey())?.layers);
+  document.querySelector(".ed-layer.selected")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function edGo(shot) {
+  ed.shot = shot;
+  ed.selected = null;
+  edRender();
+  edPreview();
+}
+
+function edRender() {
+  if (!ed.draft) return;
+  const landscape = ed.draft.meta.width > ed.draft.meta.height;
+  $("ed-strip").replaceChildren(
+    ...ed.draft.shots.map((shot, i) => {
+      const src = edBgImage(shot);
+      const b = el("button", {
+        type: "button",
+        className: `ed-thumb${landscape ? " landscape" : ""}${i === ed.shot ? " active" : ""}${edChanged(i) ? " changed" : ""}`,
+        title: shot.narration,
+        onclick: () => edGo(i),
+      }, el("span", { textContent: i + 1 }));
+      if (src) b.style.backgroundImage = `url("${edPicture(src)}")`;
+      return b;
+    }),
+  );
+  $("ed-strip").children[ed.shot]?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  $("ed-panel").replaceChildren(
+    el("div", { className: "hint", style: "margin-bottom:12px", textContent: `Cảnh ${ed.shot + 1}/${ed.draft.shots.length}${edShot().narration ? ` · “${edShot().narration}”` : ""}` }),
+    edPropsGroup(),
+    edCharactersGroup(),
+    edTextGroup(),
+  );
+  edStatus();
+}
+
+function edLayer(kind, index, picture, title, options) {
+  const selected = ed.selected?.kind === kind && ed.selected.index === index;
+  return el(
+    "div",
+    { className: `ed-layer${selected ? " selected" : ""}`, onclick: () => edSelect({ kind, index }) },
+    picture,
+    el("div", {}, el("div", { className: "desc", textContent: title }), el("div", { className: "ed-opts" }, ...options)),
+  );
+}
+
+function edDelete(label, onclick) {
+  return el("button", {
+    type: "button",
+    className: "ed-del",
+    textContent: label,
+    onclick: (e) => {
+      e.stopPropagation();
+      edEdit(() => {
+        onclick();
+        ed.selected = null;
+      });
+    },
+  });
+}
+
+function edPropsGroup() {
+  const shot = edShot();
+  const rows = shot.props.map((p, i) => {
+    const uses = ed.draft.shots.filter((s) => s.props.some((o) => o.prompt === p.prompt)).length;
+    const src = edPropImage(p.prompt);
+    return edLayer(
+      "prop",
+      i,
+      src ? el("img", { src: edPicture(src), alt: "" }) : el("div", { className: "ed-avatar", textContent: "?" }),
+      p.prompt,
+      [
+        edChoice(ED_LABELS.propPosition, p.position, (v) => edEdit(() => (p.position = v))),
+        edChoice(ED_LABELS.scale, p.scale, (v) => edEdit(() => (p.scale = v))),
+        edChoice(ED_LABELS.motion, p.motion, (v) => edEdit(() => (p.motion = v))),
+        edDelete("🗑 Xoá", () => shot.props.splice(i, 1)),
+        uses > 1 ? edDelete(`🗑 Xoá ở cả ${uses} cảnh`, () => ed.draft.shots.forEach((s) => (s.props = s.props.filter((o) => o.prompt !== p.prompt)))) : null,
+      ].filter(Boolean),
+    );
+  });
+  return el("div", { className: "ed-group" }, el("b", { textContent: "Đồ vật" }), ...rows, edAddProp());
+}
+
+function edAddProp() {
+  const add = (prompt) => edEdit(() => {
+    edShot().props.push({ prompt, position: "center", scale: "medium", motion: "float" });
+    ed.selected = { kind: "prop", index: edShot().props.length - 1 };
+  });
+  const seen = new Set();
+  const library = Object.entries(ed.draft.images).filter(([ref, src]) => ref.startsWith("prop:") && !seen.has(src) && seen.add(src));
+  const details = el("details", { open: ed.drawing }, el("summary", { textContent: `➕ Thêm đồ vật (${library.length} ảnh sẵn có, miễn phí)`, style: "cursor:pointer;margin-bottom:8px;font-size:14px" }));
+  details.append(
+    el(
+      "div",
+      { className: "ed-lib" },
+      ...library.map(([ref, src]) =>
+        el("button", { type: "button", title: ref.slice(5), onclick: () => add(ref.slice(5)) }, el("img", { className: "ed-pic", src: edPicture(src), alt: ref.slice(5) })),
+      ),
+    ),
+  );
+  const prompt = el("input", { type: "text", placeholder: "Hoặc mô tả đồ vật mới bằng tiếng Anh, ví dụ: a curly brown hair strand" });
+  const draw = el("button", {
+    type: "button",
+    style: "margin-top:6px",
+    textContent: ed.drawing ? "Đang vẽ, chờ khoảng 1 phút…" : "🎨 Vẽ ảnh mới (tốn phí OpenAI)",
+    disabled: ed.drawing,
+    onclick: async () => {
+      if (!prompt.value.trim()) return prompt.focus();
+      const shot = ed.shot;
+      ed.drawing = true;
+      draw.disabled = true;
+      draw.textContent = "Đang vẽ, chờ khoảng 1 phút…";
+      try {
+        const r = await api(`/api/jobs/${encodeURIComponent(ed.id)}/draw-prop`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: prompt.value.trim() }) });
+        ed.saved.images[r.ref] = ed.draft.images[r.ref] = r.src;
+        ed.shot = shot;
+        add(r.ref.slice(5));
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        ed.drawing = false;
+        edRender();
+      }
+    },
+  });
+  details.append(prompt, draw);
+  return details;
+}
+
+function edCharactersGroup() {
+  const shot = edShot();
+  const rows = shot.characters.map((c, i) =>
+    edLayer("character", i, el("div", { className: "ed-avatar", textContent: "🧑" }), ed.draft.cast.find((m) => m.id === c.castId)?.name ?? c.castId, [
+      edChoice(ED_LABELS.position, c.position, (v) => edEdit(() => (c.position = v))),
+      edChoice(ED_LABELS.scale, c.scale, (v) => edEdit(() => (c.scale = v))),
+      edChoice(ED_LABELS.action, c.action, (v) => edEdit(() => (c.action = v))),
+      edChoice(ED_LABELS.expression, c.expression, (v) => edEdit(() => (c.expression = v))),
+      edChoice(ED_LABELS.facing, c.facing, (v) => edEdit(() => (c.facing = v))),
+      edDelete("🗑 Xoá", () => shot.characters.splice(i, 1)),
+    ]),
+  );
+  const choices = {};
+  for (const m of [...ed.draft.cast, ...FEDTOON_CAST]) if (!shot.characters.some((c) => c.castId === m.id)) choices[m.id] ??= m.name;
+  const add = Object.keys(choices).length
+    ? el("div", { className: "ed-opts" }, edChoice({ "": "➕ Thêm nhân vật…", ...choices }, "", (id) => {
+        if (!id) return;
+        edEdit(() => {
+          if (!ed.draft.cast.some((m) => m.id === id)) ed.draft.cast.push(clone(FEDTOON_CAST.find((m) => m.id === id)));
+          shot.characters.push({ castId: id, position: "center", scale: "medium", action: "idle", expression: "neutral", facing: "front", enter: "none" });
+          ed.selected = { kind: "character", index: shot.characters.length - 1 };
+        });
+      }))
+    : null;
+  return el("div", { className: "ed-group" }, el("b", { textContent: "Nhân vật" }), ...rows, add);
+}
+
+function edTextGroup() {
+  const text = edShot().text;
+  const input = el("input", { type: "text", value: text.content, placeholder: "Chữ hiện trên màn hình (tối đa khoảng 6 từ)" });
+  input.onchange = () => edEdit(() => {
+    text.content = input.value;
+    if (input.value.trim() && text.style === "none") text.style = "label";
+  });
+  return el(
+    "div",
+    { className: "ed-group" },
+    el("b", { textContent: "Chữ trên màn hình" }),
+    input,
+    el(
+      "div",
+      { className: "ed-opts", style: "margin-top:6px" },
+      edChoice(ED_LABELS.textStyle, text.style, (v) => edEdit(() => (text.style = v))),
+      edChoice(ED_LABELS.textPosition, text.position, (v) => edEdit(() => (text.position = v))),
+    ),
+  );
+}
+
+const edKey = () => `${ed.shot}|${JSON.stringify(edShot())}|${JSON.stringify(ed.draft.cast)}`;
+
+function edBoxes(layers) {
+  const boxes = [];
+  const add = (kind, list) =>
+    (list ?? []).forEach((b, index) => {
+      const selected = ed.selected?.kind === kind && ed.selected.index === index;
+      const box = el("button", {
+        type: "button",
+        className: `ed-box${selected ? " selected" : ""}`,
+        title: kind === "prop" ? edShot().props[index]?.prompt : ed.draft.cast.find((m) => m.id === edShot().characters[index]?.castId)?.name,
+        onclick: () => edSelect({ kind, index }),
+      });
+      box.style.cssText += `left:${b.left * 100}%;top:${b.top * 100}%;width:${b.width * 100}%;height:${b.height * 100}%`;
+      boxes.push(box);
+    });
+  add("prop", layers?.props);
+  add("character", layers?.characters);
+  $("ed-boxes").replaceChildren(...boxes);
+}
+
+/** Shows the current shot. One request at a time; a newer change is picked up when it returns. */
+async function edPreview() {
+  if (!ed.draft) return;
+  const key = edKey();
+  const cached = ed.previews.get(key);
+  if (cached) {
+    $("ed-img").src = cached.image;
+    $("ed-stage").classList.remove("loading");
+    $("ed-wait").hidden = true;
+    edBoxes(cached.layers);
+    return;
+  }
+  edBoxes(null);
+  $("ed-stage").classList.add("loading");
+  $("ed-wait").hidden = false;
+  $("ed-wait").textContent = "Đang vẽ xem trước…";
+  if (ed.asking) return;
+  ed.asking = true;
+  try {
+    const r = await api(`/api/jobs/${encodeURIComponent(ed.id)}/preview`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ spec: ed.draft, shot: ed.shot }) });
+    ed.previews.set(key, r);
+  } catch (e) {
+    $("ed-wait").textContent = e.message;
+    ed.asking = false;
+    return;
+  }
+  ed.asking = false;
+  edPreview();
+}
+
+function edStatus() {
+  if (!ed.draft) return;
+  const changed = ed.draft.shots.filter((_, i) => edChanged(i)).length;
+  $("ed-status").textContent = changed ? `Đã sửa ${changed} cảnh, chưa lưu.` : "Chưa có thay đổi nào.";
+  $("ed-reset").disabled = !changed || ed.busy;
+  $("ed-save").disabled = !changed || ed.busy;
+}
+
+$("edit-here").addEventListener("click", () => {
+  const v = $("video");
+  v.pause();
+  const starts = current.shotStarts ?? [];
+  edGo(Math.max(0, starts.findLastIndex((s) => s <= v.currentTime + 0.01)));
+  $("editor").scrollIntoView({ behavior: "smooth" });
+});
+
+$("ed-reset").addEventListener("click", () => {
+  ed.draft = clone(ed.saved);
+  ed.selected = null;
+  edRender();
+  edPreview();
+});
+
+$("ed-save").addEventListener("click", async () => {
+  try {
+    const { spec } = await api(`/api/jobs/${encodeURIComponent(ed.id)}/spec`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ spec: ed.draft }) });
+    ed.saved = clone(spec);
+    current.spec = spec;
+    $("spec").value = JSON.stringify(spec, null, 2);
+    edStatus();
+    renderSaved();
+  } catch (e) {
+    alert(e.message);
+  }
+});
+
+addEventListener("beforeunload", (e) => {
+  if (edDirty()) e.preventDefault();
 });
 
 // ---------- Kiểu video ----------

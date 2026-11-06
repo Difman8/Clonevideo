@@ -2,15 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { finalizeSpec, normalizeMeta } from "../spec/normalize";
 import { VideoSpecSchema, type VideoSpec } from "../spec/schema";
-import { finalizeStoryboard, isStoryboard, StoryboardSchema, type Storyboard } from "../spec/storyboard";
+import { finalizeStoryboard, isStoryboard, storyboardTimeline, StoryboardSchema, type Storyboard } from "../spec/storyboard";
+import { shotLayers } from "../fedtoon/layout";
 import { PROVIDERS, type Provider } from "./ai";
 import type { AiOutput, RemakeMode } from "./ai-common";
 import { analyzeBasic } from "./analyze-basic";
 import { hasElevenLabsKey } from "./elevenlabs";
 import { extractFrames, type Frame } from "./frames";
-import { generateStoryboardImages, hasImageKey, imageDir } from "./images";
+import { drawProp, generateStoryboardImages, hasImageKey, imageDir } from "./images";
 import { extractPostContent, postContentText, type PostContent } from "./metadata";
-import { renderSpec } from "./render";
+import { renderShotPreview, renderSpec } from "./render";
 import { narrationCoverage, writeStoryboard } from "./storyboard-ai";
 import { commentedSettingWarnings, setting } from "../settings";
 import { OUT_DIR, readJsonSafe, writeFileAtomic, writeJsonAtomic } from "./tools";
@@ -67,6 +68,8 @@ export type JobResult = {
   mode: RemakeMode;
   remixPost: AiOutput["remixPost"] | null;
   video: string | null;
+  /** Start of each Fedtoon shot in seconds: tells which shot the paused video is on. */
+  shotStarts: number[];
   updatedAt: string;
 };
 
@@ -388,14 +391,16 @@ export async function renderJobVideo(id: string, spec: AnySpec, emit: Emit, p?: 
     emit,
     progress,
     "render",
-    () =>
-      renderSpec(spec, path.join(dir, "remake.mp4"), (x) => emit({ type: "progress", step: "render", progress: x }), [
-        { from: voiceDir(id), to: `voice/${id}` },
-        { from: imageDir(id), to: `img/${id}` },
-      ]),
+    () => renderSpec(spec, path.join(dir, "remake.mp4"), (x) => emit({ type: "progress", step: "render", progress: x }), jobFiles(id)),
     () => "remake.mp4",
   );
 }
+
+/** The job's pictures and voice clips, as staticFile() expects them in the render bundle. */
+const jobFiles = (id: string) => [
+  { from: voiceDir(id), to: `voice/${id}` },
+  { from: imageDir(id), to: `img/${id}` },
+];
 
 /** State for jobs made before state.json existed (re-render from the page). */
 function newState(id: string): JobState {
@@ -409,6 +414,37 @@ function parseSpec(raw: unknown): AnySpec {
   const parsed = isStoryboard(raw) ? StoryboardSchema.safeParse(raw) : VideoSpecSchema.safeParse(raw);
   if (!parsed.success) throw new Error(`Kịch bản không hợp lệ: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
   return parsed.data;
+}
+
+const specFile = (id: string) => path.join(OUT_DIR, id, "spec.json");
+
+/** Saves the scene editor's changes. Nothing is drawn, voiced or rendered. */
+export function saveSpec(id: string, raw: unknown): AnySpec {
+  if (!fs.existsSync(specFile(id))) throw new Error(`Không có kịch bản đã lưu của job ${id}`);
+  const spec = parseSpec(raw);
+  writeJsonAtomic(specFile(id), spec);
+  return spec;
+}
+
+/** One frame of a shot of a storyboard being edited (not saved yet), and where its layers are. */
+export async function previewShot(id: string, raw: unknown, shot: number) {
+  const sb = parseSpec(raw);
+  if (!isStoryboard(sb) || !sb.shots[shot]) throw new Error("Không có cảnh này.");
+  const image = await renderShotPreview(sb, shot, jobFiles(id));
+  return { image: `data:image/jpeg;base64,${image.toString("base64")}`, layers: shotLayers(sb.shots[shot], sb.meta.width, sb.meta.height) };
+}
+
+/** Draws a new object (paid). Recorded at once, so a paid picture stays available even if the edit is discarded. */
+export async function drawPropForJob(id: string, prompt: string) {
+  if (!prompt.trim()) throw new Error("Hãy mô tả đồ vật muốn vẽ.");
+  if (!hasImageKey()) throw new Error("Chưa có OPENAI_API_KEY: thêm ở tab ⚙️ Cài đặt để vẽ ảnh mới.");
+  const before = parseSpec(readJson(specFile(id)));
+  if (!isStoryboard(before)) throw new Error("Chỉ video Fedtoon mới có đồ vật để thêm.");
+  const result = await drawProp(id, before, prompt);
+  // Read again: the editor may have saved while the picture was being drawn.
+  const now = parseSpec(readJson(specFile(id))) as Storyboard;
+  writeJsonAtomic(specFile(id), { ...now, images: { ...now.images, [result.ref]: result.src } });
+  return result;
 }
 
 /**
@@ -499,6 +535,7 @@ export function loadJob(id: string): JobResult | null {
     mode: job?.options.mode ?? "clone",
     remixPost: job?.remixPost ?? null,
     video: hasVideo ? video : null,
+    shotStarts: isStoryboard(spec) ? storyboardTimeline(spec).start.map((f) => f / spec.meta.fps) : [],
     updatedAt: (hasVideo ? fs.statSync(video) : fs.statSync(path.join(dir, "spec.json"))).mtime.toISOString(),
   };
 }
