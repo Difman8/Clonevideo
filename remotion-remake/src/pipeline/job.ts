@@ -9,7 +9,7 @@ import type { AiOutput, RemakeMode } from "./ai-common";
 import { analyzeBasic } from "./analyze-basic";
 import { hasElevenLabsKey } from "./elevenlabs";
 import { extractFrames, type Frame } from "./frames";
-import { drawProp, generateStoryboardImages, hasImageKey, imageDir } from "./images";
+import { drawProp, generateStoryboardImages, hasImageKey, imageDir, imageSettingsText } from "./images";
 import { extractPostContent, postContentText, type PostContent } from "./metadata";
 import { renderShotPreview, renderSpec } from "./render";
 import { narrationCoverage, writeStoryboard } from "./storyboard-ai";
@@ -345,6 +345,7 @@ async function assetsStep(id: string, sb: Storyboard, emit: Emit, p: Progress): 
     p,
     "assets",
     async () => {
+      emit({ type: "log", message: imageSettingsText(sb.meta) });
       const { storyboard, report } = await generateStoryboardImages(id, sb, (done, total, message) => {
         emit({ type: "progress", step: "assets", progress: done / total });
         emit({ type: "log", message });
