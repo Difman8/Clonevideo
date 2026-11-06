@@ -405,6 +405,32 @@ function newState(id: string): JobState {
   return { options, status: "running", step: "render", done: ["info", "download", "subtitles", "frames", "analyze"], title: "", error: "", startedAt: now, updatedAt: now };
 }
 
+function parseSpec(raw: unknown): AnySpec {
+  const parsed = isStoryboard(raw) ? StoryboardSchema.safeParse(raw) : VideoSpecSchema.safeParse(raw);
+  if (!parsed.success) throw new Error(`Kịch bản không hợp lệ: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
+  return parsed.data;
+}
+
+/**
+ * Renders the saved spec again with the current templates, using only the
+ * pictures and voice clips already on disk: no AI or voice API is called.
+ */
+export async function renderSavedJob(id: string, emit: Emit): Promise<JobResult> {
+  const dir = path.join(OUT_DIR, id);
+  if (!fs.existsSync(path.join(dir, "spec.json"))) throw new Error(`Không có kịch bản đã lưu của job ${id}`);
+  const spec = parseSpec(readJson(path.join(dir, "spec.json")));
+  const p = new Progress(id, loadState(id) ?? newState(id));
+  emit({ type: "log", message: "Dùng kịch bản, ảnh và giọng đã lưu: không gọi AI, không tốn phí API." });
+  try {
+    await renderJobVideo(id, spec, emit, p);
+    p.save({ status: "done" });
+  } catch (e) {
+    p.save({ status: "error", error: (e as Error).message.split("\n")[0] });
+    throw e;
+  }
+  return loadJob(id)!;
+}
+
 /**
  * Saves an edited spec (classic or Fedtoon), draws the pictures of new or
  * changed prompts, refreshes the voice-over if the job uses one, and renders.
@@ -412,10 +438,7 @@ function newState(id: string): JobState {
 export async function rerenderJob(id: string, rawSpec: unknown, emit: Emit): Promise<JobResult> {
   const dir = path.join(OUT_DIR, id);
   if (!fs.existsSync(dir)) throw new Error(`Không có job ${id}`);
-  const raw = rawSpec ?? readJson(path.join(dir, "spec.json"));
-  const parsed = isStoryboard(raw) ? StoryboardSchema.safeParse(raw) : VideoSpecSchema.safeParse(raw);
-  if (!parsed.success) throw new Error(`Kịch bản không hợp lệ: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
-  let spec: AnySpec = parsed.data;
+  let spec = parseSpec(rawSpec ?? readJson(path.join(dir, "spec.json")));
   writeJsonAtomic(path.join(dir, "spec.json"), spec);
   const p = new Progress(id, loadState(id) ?? newState(id));
   // The storyboard has been reviewed: from now on the job goes all the way to the video.
