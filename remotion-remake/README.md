@@ -47,6 +47,8 @@ Tích **🎙️ Lồng tiếng (ElevenLabs)** để AI viết lời thoại (`na
 
 Sau khi render, có thể sửa `spec.json` ngay trên trang (chữ, màu, thời lượng, lời thoại, thêm/bớt cảnh) rồi bấm **Lưu & render lại**; chỉ câu thoại đã sửa mới được tạo giọng lại.
 
+Nút **🎬 Render lại (không tốn AI)** dưới video dựng lại bằng đúng kịch bản, ảnh và giọng đã lưu, không gọi API nào. Dùng nút này sau khi cập nhật app để áp dụng thay đổi về dựng hình, âm thanh (ví dụ cỡ nhân vật, âm lượng) cho video đã làm. Video hiện tại sẽ được thay bằng bản mới. Khác với **Lưu & render lại**: nút đó có thể tạo lại giọng hoặc ảnh nếu kịch bản hay cài đặt đã đổi.
+
 **Tắt máy giữa chừng:** app lưu tiến trình sau mỗi bước. Lần mở app sau sẽ hiện thẻ **⏸ Việc đang dở từ lần trước**; bấm **Tiếp tục** để làm nốt. Các bước đã xong không phải làm lại: video đang tải dở được tải tiếp, phân tích AI và giọng đọc đã trả tiền được dùng lại, các trang tìm kiếm YouTube đã tốn quota không bị tìm lại. Việc bị lỗi (ví dụ hết quota, khóa sai) cũng hiện ở đây để thử lại sau khi sửa.
 
 **Dòng lệnh:**

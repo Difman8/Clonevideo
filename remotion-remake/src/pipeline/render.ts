@@ -64,5 +64,20 @@ export async function renderSpec(
       }
     },
   });
-  fs.renameSync(partial, outputLocation);
+  await replaceFile(partial, outputLocation);
+}
+
+/** Windows refuses to replace a file another program has open, so a brief hold is waited out. */
+async function replaceFile(from: string, to: string) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code !== "EPERM" && code !== "EBUSY" && code !== "EACCES") throw e;
+      if (attempt === 20) throw new Error(`Đã render xong nhưng không thay được ${path.basename(to)} vì file đang mở ở chương trình khác (trình phát video, trình tải xuống…). Đóng chương trình đó rồi render lại. Bản mới đang nằm ở ${path.basename(from)}.`);
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
 }

@@ -224,6 +224,10 @@
         <video id="video" controls playsinline hidden></video>
         <div class="empty" id="no-video" hidden>Chưa có video.</div>
         <div class="links" id="links"></div>
+        <div id="render-saved-box" hidden style="margin-top:12px">
+          <button class="primary" id="render-saved" type="button">🎬 Render lại (không tốn AI)</button>
+          <div class="hint" style="margin-top:6px">Dựng lại video bằng kịch bản, ảnh và giọng đã lưu, không gọi OpenAI, Claude hay ElevenLabs. Video hiện tại sẽ được thay bằng bản mới.</div>
+        </div>
       </div>
       <div class="card">
         <h2>Nội dung đăng video gốc</h2>
@@ -514,6 +518,7 @@ function follow(id) {
 function busy(on) {
   $("go").disabled = on;
   $("rerender").disabled = on;
+  $("render-saved").disabled = on;
 }
 
 function copyButton(text, label = "Sao chép") {
@@ -555,6 +560,7 @@ function renderResult(job) {
   current = job;
   $("result").hidden = false;
   const v = $("video");
+  $("render-saved-box").hidden = !job.video;
   if (job.video) {
     v.hidden = false;
     v.src = `/media/${job.id}/remake.mp4?t=${Date.now()}`;
@@ -649,6 +655,20 @@ $("rerender").addEventListener("click", async () => {
     resetSteps(["render"]);
     $("progress-title").textContent = "Render lại";
     await api(`/api/jobs/${encodeURIComponent(current.id)}/render`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ spec }) });
+    follow(current.id);
+  } catch (e) {
+    onEvent({ type: "error", message: e.message });
+  }
+});
+
+$("render-saved").addEventListener("click", async () => {
+  if (!current) return;
+  try {
+    busy(true);
+    resetSteps(["render"]);
+    $("progress-title").textContent = "Render lại (không tốn AI)";
+    $("progress").scrollIntoView({ behavior: "smooth" });
+    await api(`/api/jobs/${encodeURIComponent(current.id)}/render-saved`, { method: "POST" });
     follow(current.id);
   } catch (e) {
     onEvent({ type: "error", message: e.message });

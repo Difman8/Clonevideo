@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { pipeline } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { dismissDiscovery, DISCOVER_STEPS, listDiscoveries, loadDiscovery, newDiscoverId, runDiscover, unfinishedDiscoveries } from "../discover/discover";
 import { LANGUAGE_NAMES } from "../discover/language";
@@ -10,7 +11,7 @@ import { COUNTRIES, CATEGORIES, DEFAULT_OPTIONS, estimateQuota, PERIODS, SORTS }
 import { hasYoutubeKey, KEY_HELP_URL, YoutubeApi } from "../discover/youtube-api";
 import { parseProvider, providerStatus } from "../pipeline/ai";
 import { catalog, hasElevenLabsKey, previewVoice } from "../pipeline/elevenlabs";
-import { dismissJob, listJobs, loadJob, loadState, rerenderJob, runJob, STEPS, unfinishedJobs, type JobOptions } from "../pipeline/job";
+import { dismissJob, listJobs, loadJob, loadState, renderSavedJob, rerenderJob, runJob, STEPS, unfinishedJobs, type JobOptions } from "../pipeline/job";
 import { composePost, defaultChannel, LIMITS, loadComposedPost, loadPostSource, parseWriterOptions, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
 import { OUT_DIR, ytDlp } from "../pipeline/tools";
 import { parseVideoId } from "../pipeline/youtube";
@@ -78,6 +79,8 @@ const TYPES: Record<string, string> = {
 };
 
 /** Serves a file from out/<id>/ with Range support so the video can be scrubbed. */
+const MEDIA_CHUNK = 2 * 1024 * 1024;
+
 function serveMedia(req: http.IncomingMessage, res: http.ServerResponse, id: string, file: string) {
   const full = path.resolve(OUT_DIR, id, file);
   if (!full.startsWith(path.resolve(OUT_DIR, id) + path.sep) || !fs.existsSync(full)) return json(res, 404, { error: "Không tìm thấy file" });
@@ -88,12 +91,21 @@ function serveMedia(req: http.IncomingMessage, res: http.ServerResponse, id: str
   const range = req.headers.range?.match(/bytes=(\d*)-(\d*)/);
   if (range) {
     const start = range[1] ? Number(range[1]) : size - Number(range[2]);
-    const end = range[1] && range[2] ? Number(range[2]) : size - 1;
-    res.writeHead(206, { ...headers, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": end - start + 1 });
-    fs.createReadStream(full, { start, end }).pipe(res);
+    const end = Math.min(range[1] && range[2] ? Number(range[2]) : size - 1, start + MEDIA_CHUNK - 1);
+    // Read a chunk and close the file at once. A stream would stay open while the browser
+    // pauses buffering, and Windows then refuses to replace remake.mp4 after the next render.
+    const chunk = Buffer.alloc(end - start + 1);
+    const fd = fs.openSync(full, "r");
+    try {
+      fs.readSync(fd, chunk, 0, chunk.length, start);
+    } finally {
+      fs.closeSync(fd);
+    }
+    res.writeHead(206, { ...headers, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": chunk.length });
+    res.end(chunk);
   } else {
     res.writeHead(200, { ...headers, "Content-Length": size });
-    fs.createReadStream(full).pipe(res);
+    pipeline(fs.createReadStream(full), res, () => {});
   }
 }
 
@@ -164,6 +176,12 @@ const server = http.createServer(async (req, res) => {
       if (running.get(id)?.done === false) return json(res, 409, { error: "Video này đang được xử lý." });
       const body = (await readBody(req)) as { spec?: unknown };
       startTask(id, (emit) => rerenderJob(id, body.spec ?? null, emit));
+      return json(res, 202, { id });
+    }
+
+    if (req.method === "POST" && parts[3] === "render-saved") {
+      if (running.get(id)?.done === false) return json(res, 409, { error: "Video này đang được xử lý." });
+      startTask(id, (emit) => renderSavedJob(id, emit));
       return json(res, 202, { id });
     }
 

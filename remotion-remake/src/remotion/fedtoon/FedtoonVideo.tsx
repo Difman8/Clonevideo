@@ -17,6 +17,15 @@ import { mouthAt, Puppet } from "./Puppet";
 const POS_X: Record<string, number> = { "far-left": 0.14, left: 0.3, center: 0.5, right: 0.7, "far-right": 0.86, top: 0.5, bottom: 0.5 };
 const hex = (names: readonly ColorName[]) => names.map((n) => PALETTE[n] ?? PALETTE.plum);
 
+/** whoosh.wav is full-scale noise and plays on every transition, so it stays far below the voice. */
+const WHOOSH_VOLUME = 0.06;
+const SFX_VOLUME = 0.5;
+/** Character box height as a share of the frame height. */
+const CHARACTER_HEIGHT = {
+  vertical: { small: 0.29, medium: 0.39, large: 0.52 },
+  horizontal: { small: 0.36, medium: 0.5, large: 0.66 },
+};
+
 function useBox() {
   const { width, height } = useVideoConfig();
   return { width, height, vertical: height >= width, u: Math.min(width, height) / 1080 };
@@ -177,8 +186,10 @@ const CharacterView: React.FC<{ sb: Storyboard; ch: ShotCharacter; index: number
   const { width, height, vertical } = useBox();
   const member = sb.cast.find((c) => c.id === ch.castId);
   if (!member) return null;
-  const h = (vertical ? { small: 0.22, medium: 0.3, large: 0.4 } : { small: 0.36, medium: 0.5, large: 0.66 })[ch.scale] * height;
-  const x = POS_X[ch.position] * width;
+  const h = CHARACTER_HEIGHT[vertical ? "vertical" : "horizontal"][ch.scale] * height;
+  // Puppet width is h * 200/380: keep the whole figure inside the frame.
+  const halfWidth = h * (100 / 380);
+  const x = Math.min(width - halfWidth, Math.max(halfWidth, POS_X[ch.position] * width));
   // Subjects sit around the middle of the frame; subtitles go below their feet.
   const feet = height * (vertical ? 0.8 : 0.9);
   const pop = spring({ frame: frame - index * 4, fps, config: { damping: 11, stiffness: 140 } });
@@ -368,7 +379,7 @@ export const FedtoonVideo: React.FC<Storyboard> = (sb) => {
             )}
             {[...shot.sfx, ...(i > 0 && tl.trans[i] > 0 ? ["whoosh" as const] : [])].map((name, k) => (
               <Sequence key={k} from={Math.max(0, tl.start[i] - (name === "whoosh" ? tl.trans[i] : 0))} durationInFrames={Math.round(sb.meta.fps * 1.5)} layout="none">
-                <Html5Audio src={staticFile(`sfx/${name}.wav`)} volume={name === "whoosh" ? 0.25 : 0.5} />
+                <Html5Audio src={staticFile(`sfx/${name}.wav`)} volume={name === "whoosh" ? WHOOSH_VOLUME : SFX_VOLUME} />
               </Sequence>
             ))}
           </React.Fragment>

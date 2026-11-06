@@ -2,6 +2,10 @@
 
 GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào `main` (mới nhất ở trên).
 
+## 2026-11-06
+
+- **Giảm tiếng chuyển cảnh, tăng cỡ nhân vật và thêm nút Render lại không tốn AI** — @Difman8 · 22:10 · nhánh `claude/giam-tieng-chuyen-canh-tang-co-nhan-vat`
+
 ## 2026-11-05
 
 - **Lồng tiếng dùng đúng model trong .env (sửa tay có hiệu lực ngay, cảnh báo dòng còn dấu #); ghi model vào nhật ký** — @Difman8 · 22:08 · nhánh `claude/youtube-video-discovery-29q6gg`
