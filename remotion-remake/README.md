@@ -47,6 +47,8 @@ Tích **🎙️ Lồng tiếng (ElevenLabs)** để AI viết lời thoại (`na
 
 Sau khi render, có thể sửa `spec.json` ngay trên trang (chữ, màu, thời lượng, lời thoại, thêm/bớt cảnh) rồi bấm **Lưu & render lại**; chỉ câu thoại đã sửa mới được tạo giọng lại.
 
+Muốn sửa chi tiết trong video Fedtoon: tạm dừng video ở chỗ chưa ưng, bấm **✏️ Sửa cảnh đang xem**. Bấm thẳng vào đồ vật hay nhân vật trên ảnh để chọn, rồi xoá, đổi vị trí, đổi cỡ, đổi động tác, biểu cảm hay sửa chữ trên màn hình; ảnh xem trước cập nhật sau khoảng 3 giây. **Thêm đồ vật** lấy từ ảnh sẵn có của video (miễn phí) hoặc mô tả để OpenAI vẽ ảnh mới (tốn phí 1 ảnh, chỉ khi bấm nút vẽ). Bấm **Lưu & render lại (không tốn AI)** khi xong. Chi tiết nằm trong ảnh nền không tách riêng để xoá được; lời thoại sửa ở ô Kịch bản vì cần tạo lại giọng.
+
 Nút **🎬 Render lại (không tốn AI)** dưới video dựng lại bằng đúng kịch bản, ảnh và giọng đã lưu, không gọi API nào. Dùng nút này sau khi cập nhật app để áp dụng thay đổi về dựng hình, âm thanh (ví dụ cỡ nhân vật, âm lượng) cho video đã làm. Video hiện tại sẽ được thay bằng bản mới. Khác với **Lưu & render lại**: nút đó có thể tạo lại giọng hoặc ảnh nếu kịch bản hay cài đặt đã đổi.
 
 **Tắt máy giữa chừng:** app lưu tiến trình sau mỗi bước. Lần mở app sau sẽ hiện thẻ **⏸ Việc đang dở từ lần trước**; bấm **Tiếp tục** để làm nốt. Các bước đã xong không phải làm lại: video đang tải dở được tải tiếp, phân tích AI và giọng đọc đã trả tiền được dùng lại, các trang tìm kiếm YouTube đã tốn quota không bị tìm lại. Việc bị lỗi (ví dụ hết quota, khóa sai) cũng hiện ở đây để thử lại sau khi sửa.

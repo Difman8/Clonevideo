@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { bundle } from "@remotion/bundler";
-import { renderMedia, selectComposition } from "@remotion/renderer";
+import { renderMedia, renderStill, selectComposition } from "@remotion/renderer";
 import type { VideoSpec } from "../spec/schema";
-import { isStoryboard, type Storyboard } from "../spec/storyboard";
+import { isStoryboard, storyboardTimeline, type Storyboard } from "../spec/storyboard";
 import { ensureSfx } from "./sfx";
 import { browserExecutable, PUBLIC_DIR, ROOT } from "./tools";
 
@@ -65,6 +65,24 @@ export async function renderSpec(
     },
   });
   await replaceFile(partial, outputLocation);
+}
+
+/**
+ * One frame of a shot, with the storyboard as edited so far. Late in the shot, when
+ * everything has entered. No AI is involved: this is the same drawing as the video.
+ */
+export async function renderShotPreview(sb: Storyboard, shot: number, publicFiles: { from: string; to: string }[]): Promise<Buffer> {
+  const serveUrl = await getBundle();
+  // Only adds what is new (a picture just drawn), so previews stay fast and never disturb each other.
+  for (const f of publicFiles) if (fs.existsSync(f.from)) fs.cpSync(f.from, path.join(serveUrl, "public", f.to), { recursive: true, force: false });
+  const browser = await browserExecutable();
+  const inputProps = sb as unknown as Record<string, unknown>;
+  const composition = await selectComposition({ serveUrl, id: "Fedtoon", inputProps, browserExecutable: browser });
+  const tl = storyboardTimeline(sb);
+  const frame = Math.min(tl.start[shot] + Math.round(tl.base[shot] * 0.7), composition.durationInFrames - 1);
+  const { buffer } = await renderStill({ composition, serveUrl, inputProps, frame, imageFormat: "jpeg", jpegQuality: 85, scale: 0.5, browserExecutable: browser });
+  if (!buffer) throw new Error("Không tạo được ảnh xem trước.");
+  return buffer;
 }
 
 /** Windows refuses to replace a file another program has open, so a brief hold is waited out. */

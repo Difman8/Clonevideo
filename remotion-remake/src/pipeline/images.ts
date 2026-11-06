@@ -120,6 +120,33 @@ export async function generateImage(
 
 export type ImageReport = { generated: number; reused: number; skipped: string[] };
 
+/** Cache key input: the style text and the reference images, so changing either draws new pictures. */
+function styleSignature() {
+  const refs = styleRefs();
+  return refs.length ? `${setting("FEDTOON_IMAGE_STYLE")}\nrefs:${refsSignature(refs)}` : setting("FEDTOON_IMAGE_STYLE");
+}
+
+/**
+ * Draws one new object for the scene editor (paid, only on an explicit click).
+ * A description this video already has a picture for is reused instead.
+ */
+export async function drawProp(id: string, sb: Storyboard, prompt: string): Promise<{ ref: string; src: string; drawn: boolean }> {
+  const ref = imageRef("prop", prompt);
+  const dir = imageDir(id);
+  const prior = sb.images[ref];
+  if (prior && fs.existsSync(path.join(dir, path.basename(prior)))) return { ref, src: prior, drawn: false };
+  const key = imageFileKey("prop", prompt, styleSignature());
+  fs.mkdirSync(dir, { recursive: true });
+  if (fs.existsSync(path.join(dir, `${key}.png`))) return { ref, src: `img/${id}/${key}.png`, drawn: false };
+  try {
+    const img = await generateImage("prop", prompt.trim(), sb.meta);
+    writeFileAtomic(path.join(dir, `${key}.png`), img.data);
+    return { ref, src: `img/${id}/${key}.png`, drawn: true };
+  } catch (e) {
+    throw new Error(isPerImageRefusal(e) ? "OpenAI từ chối vẽ mô tả này, hãy thử viết khác đi." : explain(e));
+  }
+}
+
 /**
  * Makes sure every background and prop of the storyboard has a picture and
  * returns the storyboard with `images` filled in. Pictures OpenAI refuses are
@@ -130,9 +157,7 @@ export async function generateStoryboardImages(
   sb: Storyboard,
   onProgress: (done: number, total: number, message: string) => void,
 ): Promise<{ storyboard: Storyboard; report: ImageReport }> {
-  // The cache key covers the style text and the reference images: changing either draws new pictures.
-  const refs = styleRefs();
-  const style = refs.length ? `${setting("FEDTOON_IMAGE_STYLE")}\nrefs:${refsSignature(refs)}` : setting("FEDTOON_IMAGE_STYLE");
+  const style = styleSignature();
   type Want = { kind: Kind; prompt: string; colors: ColorName[]; avoid: ColorName[] };
   const wanted = new Map<string, Want>();
   const outfitsOf = (shot: Shot) => [...new Set(shot.characters.map((c) => sb.cast.find((m) => m.id === c.castId)?.outfit).filter((x): x is ColorName => !!x))];
@@ -184,5 +209,6 @@ export async function generateStoryboardImages(
   writeJsonAtomic(refusedFile, [...refused]);
   // Images already made are kept even when a later one fails: continuing the job won't pay for them again.
   if (fatal) throw fatal;
-  return { storyboard: { ...sb, images }, report };
+  // Pictures no shot uses right now stay listed: the scene editor can put them back for free.
+  return { storyboard: { ...sb, images: { ...sb.images, ...images } }, report };
 }

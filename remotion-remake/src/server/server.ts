@@ -9,9 +9,10 @@ import { dismissDiscovery, DISCOVER_STEPS, listDiscoveries, loadDiscovery, newDi
 import { LANGUAGE_NAMES } from "../discover/language";
 import { COUNTRIES, CATEGORIES, DEFAULT_OPTIONS, estimateQuota, PERIODS, SORTS } from "../discover/options";
 import { hasYoutubeKey, KEY_HELP_URL, YoutubeApi } from "../discover/youtube-api";
+import { FED, RECURRING_CAST } from "../fedtoon/cast";
 import { parseProvider, providerStatus } from "../pipeline/ai";
 import { catalog, hasElevenLabsKey, previewVoice } from "../pipeline/elevenlabs";
-import { dismissJob, listJobs, loadJob, loadState, renderSavedJob, rerenderJob, runJob, STEPS, unfinishedJobs, type JobOptions } from "../pipeline/job";
+import { dismissJob, drawPropForJob, listJobs, loadJob, loadState, previewShot, renderSavedJob, rerenderJob, runJob, saveSpec, STEPS, unfinishedJobs, type JobOptions } from "../pipeline/job";
 import { composePost, defaultChannel, LIMITS, loadComposedPost, loadPostSource, parseWriterOptions, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
 import { OUT_DIR, ytDlp } from "../pipeline/tools";
 import { parseVideoId } from "../pipeline/youtube";
@@ -75,10 +76,10 @@ const TYPES: Record<string, string> = {
   ".txt": "text/plain; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".csv": "text/csv; charset=utf-8",
-  ".jpg": "image/jpeg",
+  ".jpg": "image/jpeg", ".png": "image/png",
 };
 
-/** Serves a file from out/<id>/ with Range support so the video can be scrubbed. */
+/** Serves a file from out/<id>/ with Range support so the video can be scrubbed. Pictures are named after their content, so the browser may keep them. */
 const MEDIA_CHUNK = 2 * 1024 * 1024;
 
 function serveMedia(req: http.IncomingMessage, res: http.ServerResponse, id: string, file: string) {
@@ -86,7 +87,7 @@ function serveMedia(req: http.IncomingMessage, res: http.ServerResponse, id: str
   if (!full.startsWith(path.resolve(OUT_DIR, id) + path.sep) || !fs.existsSync(full)) return json(res, 404, { error: "Không tìm thấy file" });
   const size = fs.statSync(full).size;
   const type = TYPES[path.extname(full)] ?? "application/octet-stream";
-  const headers: http.OutgoingHttpHeaders = { "Content-Type": type, "Accept-Ranges": "bytes", "Cache-Control": "no-store" };
+  const headers: http.OutgoingHttpHeaders = { "Content-Type": type, "Accept-Ranges": "bytes", "Cache-Control": file.startsWith("img/") ? "max-age=86400" : "no-store" };
   if (new URL(req.url!, "http://x").searchParams.has("download")) headers["Content-Disposition"] = `attachment; filename="${id}-${file}"`;
   const range = req.headers.range?.match(/bytes=(\d*)-(\d*)/);
   if (range) {
@@ -117,7 +118,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return fs.createReadStream(HTML).pipe(res);
     }
-    if (parts[0] === "media" && parts.length === 3) return serveMedia(req, res, parts[1], parts[2]);
+    if (parts[0] === "media" && parts.length >= 3) return serveMedia(req, res, parts[1], parts.slice(2).join("/"));
     if (parts[0] !== "api") return json(res, 404, { error: "Not found" });
 
     if (req.method === "GET" && parts[1] === "status") {
@@ -127,7 +128,7 @@ const server = http.createServer(async (req, res) => {
       } catch {
         ytdlp = false;
       }
-      return json(res, 200, { providers: providerStatus(), ytdlp, steps: STEPS, youtubeApi: hasYoutubeKey(), elevenlabs: hasElevenLabsKey() });
+      return json(res, 200, { providers: providerStatus(), ytdlp, steps: STEPS, youtubeApi: hasYoutubeKey(), elevenlabs: hasElevenLabsKey(), fedtoonCast: [FED, ...RECURRING_CAST] });
     }
     if (parts[1] === "settings" && parts.length === 2) return await settingsRoutes(req, res);
     if (parts[1] === "elevenlabs") return await elevenLabsRoutes(req, res, parts[2]);
@@ -183,6 +184,18 @@ const server = http.createServer(async (req, res) => {
       if (running.get(id)?.done === false) return json(res, 409, { error: "Video này đang được xử lý." });
       startTask(id, (emit) => renderSavedJob(id, emit));
       return json(res, 202, { id });
+    }
+
+    // Scene editor: saving, previewing and reusing pictures never call an AI; draw-prop does, on an explicit click.
+    if (req.method === "POST" && (parts[3] === "spec" || parts[3] === "preview")) {
+      if (running.get(id)?.done === false) return json(res, 409, { error: "Video này đang được render, chờ xong rồi thử lại." });
+      const body = (await readBody(req)) as { spec?: unknown; shot?: number };
+      return json(res, 200, parts[3] === "spec" ? { spec: saveSpec(id, body.spec) } : await previewShot(id, body.spec, Number(body.shot)));
+    }
+
+    if (req.method === "POST" && parts[3] === "draw-prop") {
+      const body = (await readBody(req)) as { prompt?: string };
+      return json(res, 200, await drawPropForJob(id, String(body.prompt ?? "")));
     }
 
     if (req.method === "GET" && parts[3] === "events") return streamEvents(req, res, id);

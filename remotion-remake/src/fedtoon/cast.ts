@@ -16,6 +16,9 @@ export const RECURRING_CAST: CastMember[] = [
   { id: "grandpa", name: "Grandpa", kind: "human", skin: "light", hair: "bald", hairColor: "gray", outfit: "navy", top: "polo", pants: "dark", accessory: "glasses" },
 ];
 
+/** The host, for adding him to a video that has no Fed yet. */
+export const FED: CastMember = { id: "fed", name: "Fed", kind: "mascot", skin: "light", hair: "short", hairColor: "black", outfit: "teal", top: "polo", pants: "dark", accessory: "glasses" };
+
 /** Ids used before the channel went international (old storyboards still render). */
 const LEGACY_IDS: Record<string, string> = { mai: "woman", tuan: "man", lan: "scientist", khoa: "teen", bao: "boy", an: "kid", ong: "grandpa" };
 
