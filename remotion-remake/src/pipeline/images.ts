@@ -39,12 +39,22 @@ export function styleRefs(): string[] {
 const refsSignature = (refs: string[]) => refs.map((f) => `${path.basename(f)}:${fs.statSync(f).size}`).join(",");
 
 const mimeOf = (file: string) => (/\.png$/i.test(file) ? "image/png" : /\.webp$/i.test(file) ? "image/webp" : "image/jpeg");
-/** Exact 9:16 / 16:9 frames for gpt-image-2+, the closest standard size otherwise. */
+/**
+ * Background size from the settings for gpt-image-2+ (any size whose sides divide by 16), the
+ * closest standard size otherwise. Props stay square: they are shown at most 454 px wide.
+ */
 function sizeFor(model: string, kind: Kind, meta: Storyboard["meta"]): string {
   if (kind === "prop") return "1024x1024";
   const portrait = meta.height >= meta.width;
-  if (/^gpt-image-[2-9]/.test(model)) return portrait ? "864x1536" : "1536x864";
-  return portrait ? "1024x1536" : "1536x1024";
+  if (!/^gpt-image-[2-9]/.test(model)) return portrait ? "1024x1536" : "1536x1024";
+  const [long, short] = setting("OPENAI_IMAGE_BG_SIZE").split("x");
+  return portrait ? `${short}x${long}` : `${long}x${short}`;
+}
+
+/** For the job log: what pictures drawn now will look like. */
+export function imageSettingsText(meta: Storyboard["meta"]) {
+  const model = setting("OPENAI_IMAGE_MODEL");
+  return `Ảnh vẽ mới: ${model}, chất lượng ${setting("OPENAI_IMAGE_QUALITY")}, ảnh nền ${sizeFor(model, "bg", meta)}.`;
 }
 
 const named = (names: readonly ColorName[]) => names.map((n) => `${n} (${PALETTE[n]})`).join(", ");
@@ -94,7 +104,6 @@ export async function generateImage(
     size: sizeFor(model, kind, meta),
     background: kind === "prop" ? ("transparent" as const) : ("opaque" as const),
     output_format: kind === "prop" ? ("png" as const) : ("jpeg" as const),
-    ...(kind === "bg" ? { output_compression: 90 } : {}),
     n: 1,
   };
   const refs = styleRefs();

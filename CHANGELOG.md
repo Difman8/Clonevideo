@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-06
 
+- **Ảnh nền Full HD 1088×1920 và khung hình nét hơn để video bớt mờ** — @Difman8 · 23:14 · nhánh `claude/anh-nen-full-hd`
 - **Thêm trình sửa từng cảnh ngay trên app: bấm vào hình để xoá, đổi chỗ, thêm đồ vật và nhân vật rồi render lại** — @Difman8 · 22:44 · nhánh `claude/sua-canh-tren-app`
 - **Giảm tiếng chuyển cảnh, tăng cỡ nhân vật và thêm nút Render lại không tốn AI** — @Difman8 · 22:10 · nhánh `claude/giam-tieng-chuyen-canh-tang-co-nhan-vat`
 

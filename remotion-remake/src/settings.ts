@@ -100,6 +100,19 @@ export const SETTINGS: Setting[] = [
   },
   { key: "OPENAI_IMAGE_QUALITY", group: "images", label: "Chất lượng ảnh (quality)", help: "Càng cao càng đẹp và càng tốn tiền. xhigh/max chỉ có ở gpt-image-2.5.", type: "select", default: "medium", options: opts("low", "medium", "high", "xhigh", "max", "auto") },
   {
+    key: "OPENAI_IMAGE_BG_SIZE",
+    group: "images",
+    label: "Kích thước ảnh nền",
+    help: "Cạnh dài x cạnh ngắn, tự xoay theo video dọc hoặc ngang. Ảnh càng lớn càng nét và càng tốn tiền. Mỗi cạnh phải chia hết cho 16 nên Full HD là 1920x1088 (dư 8px được cắt khi dựng). Chỉ áp dụng cho model gpt-image-2 trở lên và cho ảnh vẽ mới.",
+    type: "select",
+    default: "1920x1088",
+    options: [
+      { value: "1536x864", label: "1536×864 (nhỏ, rẻ nhất, hơi mờ ở video 1080p)" },
+      { value: "1920x1088", label: "1920×1088 (Full HD)" },
+      { value: "2560x1440", label: "2560×1440 (2K, nét cả khi máy quay zoom)" },
+    ],
+  },
+  {
     key: "OPENAI_IMAGE_STYLE_REFS",
     group: "images",
     label: "Vẽ theo ảnh mẫu phong cách",

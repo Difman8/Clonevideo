@@ -52,7 +52,7 @@ export async function renderSpec(
     codec: "h264",
     crf: 18,
     imageFormat: "jpeg",
-    jpegQuality: 90,
+    jpegQuality: 100,
     outputLocation: partial,
     inputProps,
     browserExecutable: browser,
