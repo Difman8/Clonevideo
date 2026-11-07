@@ -11,7 +11,7 @@ export const AiOutputSchema = AnalyzedSpecSchema.extend({
   suggestedKeywords: z.array(z.string()).describe("10-15 search keywords for this video, in the video's language."),
   remixPost: z
     .object({ title: z.string(), description: z.string(), hashtags: z.array(z.string()) })
-    .describe("Remix mode only: a new title, description and hashtags for the remake. Clone mode: empty strings and empty array."),
+    .describe("Publishing post for this video. title and description: no hashtags. hashtags: about 8 short search terms."),
 });
 export type AiOutput = z.infer<typeof AiOutputSchema>;
 
@@ -52,7 +52,7 @@ Rules:
 
 export const MODE_TEXT: Record<RemakeMode, string> = {
   clone:
-    "Mode: CLONE. Rebuild the video as faithfully as the templates allow: same text, same order, same timing, same look. Leave remixPost empty.",
+    "Mode: CLONE. Rebuild the video as faithfully as the templates allow: same text, same order, same timing, same look. Fill remixPost with a title, description and hashtags written for this video.",
   remix:
     "Mode: REMIX. Keep the structure, pacing, scene types, timing and visual style, but write new original wording on the same topic: do not reuse the source's sentences, questions or list items verbatim (facts may stay correct). Fill remixPost with a new title, description and hashtags for this new version.",
 };

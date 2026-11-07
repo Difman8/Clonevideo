@@ -2,6 +2,10 @@
 
 GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào `main` (mới nhất ở trên).
 
+## 2026-11-07
+
+- **Mọi video có sẵn nội dung đăng chính thức: tiêu đề #shorts, keywords theo dấu phẩy, mô tả kèm hashtag kênh** — @Difman8 · 13:29 · nhánh `claude/noi-dung-dang-chinh-thuc`
+
 ## 2026-11-06
 
 - **Ảnh nền Full HD 1088×1920 và khung hình nét hơn để video bớt mờ** — @Difman8 · 23:14 · nhánh `claude/anh-nen-full-hd`
