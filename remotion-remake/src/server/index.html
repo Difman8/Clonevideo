@@ -748,11 +748,8 @@ async function checkOutdated() {
 async function okToRun() {
   if (!(await checkOutdated())) return true;
   return confirm(
-    "App đang chạy bản cũ: code trên máy đã được cập nhật nhưng app chưa được mở lại, nên video sẽ dựng theo cách cũ.
-
-" +
-      "Nên bấm Huỷ, đóng cửa sổ đen Remotion Remake rồi mở lại bằng nút Khởi động.
-Bấm OK nếu vẫn muốn chạy bằng bản cũ.",
+    "App đang chạy bản cũ: code trên máy đã được cập nhật nhưng app chưa được mở lại, nên video sẽ dựng theo cách cũ.\n\n" +
+      "Nên bấm Huỷ, đóng cửa sổ đen Remotion Remake rồi mở lại bằng nút Khởi động.\nBấm OK nếu vẫn muốn chạy bằng bản cũ.",
   );
 }
 setInterval(checkOutdated, 60_000);
