@@ -1,6 +1,6 @@
 import "./env";
 import path from "node:path";
-import { loadState, rerenderJob, runJob, STEPS, type JobEvent } from "./pipeline/job";
+import { loadState, rerenderJob, runJob, stepsNow, type JobEvent } from "./pipeline/job";
 import { ROOT } from "./pipeline/tools";
 
 const args = process.argv.slice(2);
@@ -19,7 +19,7 @@ if (!target) {
   process.exit(1);
 }
 
-const label = (id: string) => STEPS.find((s) => s.id === id)?.label ?? id;
+const label = (id: string) => stepsNow().find((s) => s.id === id)?.label ?? id;
 let lastPct = -10;
 const print = (e: JobEvent) => {
   if (e.type === "step") {

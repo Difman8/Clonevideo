@@ -13,7 +13,8 @@ import { hasYoutubeKey, KEY_HELP_URL, YoutubeApi } from "../discover/youtube-api
 import { FED, RECURRING_CAST } from "../fedtoon/cast";
 import { parseProvider, providerStatus } from "../pipeline/ai";
 import { catalog, hasElevenLabsKey, previewVoice } from "../pipeline/elevenlabs";
-import { dismissJob, drawPropForJob, listJobs, loadJob, loadState, previewShot, renderSavedJob, rerenderJob, runJob, saveSpec, STEPS, unfinishedJobs, type JobOptions } from "../pipeline/job";
+import { dismissJob, drawPropForJob, listJobs, loadJob, loadState, previewShot, renderSavedJob, rerenderJob, runJob, saveSpec, stepsNow, unfinishedJobs, type JobOptions } from "../pipeline/job";
+import { imageToolNames } from "../pipeline/images";
 import { composePost, defaultChannel, LIMITS, loadComposedPost, loadPostSource, parseWriterOptions, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
 import { OUT_DIR, ytDlp } from "../pipeline/tools";
 import { parseVideoId } from "../pipeline/youtube";
@@ -129,7 +130,7 @@ const server = http.createServer(async (req, res) => {
       } catch {
         ytdlp = false;
       }
-      return json(res, 200, { providers: providerStatus(), ytdlp, steps: STEPS, youtubeApi: hasYoutubeKey(), elevenlabs: hasElevenLabsKey(), fedtoonCast: [FED, ...RECURRING_CAST] });
+      return json(res, 200, { providers: providerStatus(), ytdlp, steps: stepsNow(), imageTools: imageToolNames(), youtubeApi: hasYoutubeKey(), elevenlabs: hasElevenLabsKey(), fedtoonCast: [FED, ...RECURRING_CAST] });
     }
     if (parts[1] === "settings" && parts.length === 2) return await settingsRoutes(req, res);
     if (parts[1] === "elevenlabs") return await elevenLabsRoutes(req, res, parts[2]);

@@ -9,7 +9,7 @@ import type { AiOutput, RemakeMode } from "./ai-common";
 import { analyzeBasic } from "./analyze-basic";
 import { hasElevenLabsKey } from "./elevenlabs";
 import { extractFrames, type Frame } from "./frames";
-import { drawProp, generateStoryboardImages, imageDir, imageSettingsText, missingImageKeys } from "./images";
+import { drawProp, generateStoryboardImages, imageDir, imageSettingsText, imageToolNames, missingImageKeys } from "./images";
 import { extractPostContent, postContentText, type PostContent } from "./metadata";
 import { officialPost, type OfficialPost } from "./official-post";
 import { renderShotPreview, renderSpec } from "./render";
@@ -26,11 +26,14 @@ export const STEPS = [
   { id: "subtitles", label: "Lấy phụ đề" },
   { id: "frames", label: "Cắt khung hình chính" },
   { id: "analyze", label: "Phân tích & viết kịch bản" },
-  { id: "assets", label: "Vẽ hình ảnh (OpenAI)" },
+  { id: "assets", label: "Vẽ hình ảnh" },
   { id: "voice", label: "Lồng tiếng (ElevenLabs)" },
   { id: "render", label: "Render bằng Remotion" },
 ] as const;
 export type StepId = (typeof STEPS)[number]["id"];
+
+/** The steps as shown on screen: the picture step names the image tools chosen in the settings. */
+export const stepsNow = () => STEPS.map((s) => (s.id === "assets" ? { ...s, label: `Vẽ hình ảnh (${imageToolNames().label})` } : { ...s }));
 
 export type JobEvent =
   | { type: "step"; step: StepId; status: "start" | "done" | "skip"; message?: string }
@@ -48,7 +51,7 @@ export type JobOptions = {
   provider: Provider;
   render: boolean;
   voice: boolean;
-  /** "fedtoon": animated storyboard (OpenAI images + code-drawn characters); "classic": text & graphics templates. */
+  /** "fedtoon": animated storyboard (AI-drawn images + code-drawn characters); "classic": text & graphics templates. */
   style: VideoStyle;
   /** Stop after the storyboard so it can be reviewed before paying for images and voice. */
   review: boolean;
@@ -509,7 +512,7 @@ export function unfinishedJobs(isRunningNow: (id: string) => boolean) {
       title: state.title || id,
       interrupted: state.status === "running",
       step: state.step,
-      stepLabel: STEPS.find((s) => s.id === state.step)?.label ?? state.step,
+      stepLabel: stepsNow().find((s) => s.id === state.step)?.label ?? state.step,
       done: state.done.length,
       total: STEPS.length,
       error: state.error,

@@ -191,7 +191,7 @@
       </div>
       <div class="row">
         <select id="style" aria-label="Kiểu video">
-          <option value="fedtoon">🎨 Hoạt hình Fedtoon (ảnh OpenAI + nhân vật Fedtoon)</option>
+          <option value="fedtoon">🎨 Hoạt hình Fedtoon (ảnh AI + nhân vật Fedtoon)</option>
           <option value="classic">🔤 Chữ &amp; đồ hoạ (kiểu cũ)</option>
         </select>
         <label class="check" style="color:var(--text)" title="Dừng sau khi AI viết kịch bản: bạn sửa kịch bản rồi mới tốn tiền vẽ ảnh và lồng tiếng"><input type="checkbox" id="review" /> ✋ Dừng để duyệt kịch bản trước khi vẽ ảnh</label>
@@ -265,7 +265,7 @@
             <button class="primary" id="render-saved" type="button">🎬 Render lại (không tốn AI)</button>
             <button id="edit-here" type="button" hidden>✏️ Sửa cảnh đang xem</button>
           </div>
-          <div class="hint" style="margin-top:6px">Dựng lại video bằng kịch bản, ảnh và giọng đã lưu, không gọi OpenAI, Claude hay ElevenLabs. Video hiện tại sẽ được thay bằng bản mới.</div>
+          <div class="hint" style="margin-top:6px">Dựng lại video bằng kịch bản, ảnh và giọng đã lưu, không gọi Claude, OpenAI, Google, Recraft hay ElevenLabs. Video hiện tại sẽ được thay bằng bản mới.</div>
         </div>
       </div>
       <div class="card">
@@ -483,6 +483,7 @@
 <script>
 const $ = (id) => document.getElementById(id);
 let STEPS = [];
+let IMAGE_TOOLS = { bg: "OpenAI", prop: "OpenAI", label: "OpenAI" };
 let FEDTOON_CAST = [];
 let current = null;
 
@@ -528,6 +529,8 @@ async function loadStatus() {
   const s = await api("/api/status");
   FEDTOON_CAST = s.fedtoonCast ?? [];
   STEPS = s.steps;
+  IMAGE_TOOLS = s.imageTools ?? IMAGE_TOOLS;
+  syncStyle();
   PROVIDERS = s.providers;
   try {
     $("provider").checked = localStorage.getItem("provider") === "openai";
@@ -958,7 +961,7 @@ function edAddProp() {
   const draw = el("button", {
     type: "button",
     style: "margin-top:6px",
-    textContent: ed.drawing ? "Đang vẽ, chờ khoảng 1 phút…" : "🎨 Vẽ ảnh mới (tốn phí OpenAI)",
+    textContent: ed.drawing ? "Đang vẽ, chờ khoảng 1 phút…" : `🎨 Vẽ ảnh mới (tốn phí ${IMAGE_TOOLS.prop})`,
     disabled: ed.drawing,
     onclick: async () => {
       if (!prompt.value.trim()) return prompt.focus();
@@ -1130,12 +1133,14 @@ function syncStyle() {
   if (!fedtoon) $("review").checked = false;
   // With Fedtoon, "Bản sao" copies what the video says; the pictures are always Fedtoon's.
   $("mode-clone").textContent = fedtoon ? "Bản sao (giữ nguyên nội dung)" : "Bản sao (y hệt)";
-  const look = "Hình ảnh làm lại theo phong cách Fedtoon: OpenAI vẽ nền và đồ vật (phong cách ở tab Cài đặt), Fed thay người dẫn, nhân vật Fedtoon thay người trong video.";
+  const { bg, prop } = IMAGE_TOOLS;
+  const drawers = bg === prop ? `${bg} vẽ nền và đồ vật` : `${bg} vẽ nền, ${prop} vẽ đồ vật`;
+  const look = `Hình ảnh làm lại theo phong cách Fedtoon: ${drawers} (đổi công cụ và phong cách ở tab Cài đặt), Fed thay người dẫn, nhân vật Fedtoon thay người trong video.`;
   $("style-hint").textContent = !fedtoon
     ? "Phù hợp nhất với video chữ + đồ hoạ chuyển động: quiz, top list, sự thật thú vị, trích dẫn, số liệu, timeline."
     : clone
-      ? `Giữ nguyên nội dung video gốc: lời thoại chép đúng từng câu theo phụ đề (cùng thứ tự, cùng nhịp), chữ trên hình giữ nguyên. ${look} Bật 🎙️ Lồng tiếng để đọc lời thoại bằng ElevenLabs. Video gốc không có phụ đề thì không chép được lời thoại. Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa OpenAI thì dùng nền vẽ sẵn.`
-      : `Cùng chủ đề, bố cục và nhịp với video gốc nhưng AI viết lời thoại mới bằng từ ngữ riêng (ví dụ, câu chữ mới), kèm tiêu đề, mô tả, hashtag mới. ${look} Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa OpenAI thì dùng nền vẽ sẵn.`;
+      ? `Giữ nguyên nội dung video gốc: lời thoại chép đúng từng câu theo phụ đề (cùng thứ tự, cùng nhịp), chữ trên hình giữ nguyên. ${look} Bật 🎙️ Lồng tiếng để đọc lời thoại bằng ElevenLabs. Video gốc không có phụ đề thì không chép được lời thoại. Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa của công cụ vẽ ảnh thì dùng nền vẽ sẵn.`
+      : `Cùng chủ đề, bố cục và nhịp với video gốc nhưng AI viết lời thoại mới bằng từ ngữ riêng (ví dụ, câu chữ mới), kèm tiêu đề, mô tả, hashtag mới. ${look} Cần khóa Claude hoặc OpenAI để viết kịch bản; thiếu khóa của công cụ vẽ ảnh thì dùng nền vẽ sẵn.`;
   try {
     localStorage.setItem("remake-style", JSON.stringify({ style: $("style").value, review: $("review").checked }));
   } catch {}
