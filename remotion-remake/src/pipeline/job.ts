@@ -9,7 +9,7 @@ import type { AiOutput, RemakeMode } from "./ai-common";
 import { analyzeBasic } from "./analyze-basic";
 import { hasElevenLabsKey } from "./elevenlabs";
 import { extractFrames, type Frame } from "./frames";
-import { drawProp, generateStoryboardImages, hasImageKey, imageDir, imageSettingsText } from "./images";
+import { drawProp, generateStoryboardImages, imageDir, imageSettingsText, missingImageKeys } from "./images";
 import { extractPostContent, postContentText, type PostContent } from "./metadata";
 import { officialPost, type OfficialPost } from "./official-post";
 import { renderShotPreview, renderSpec } from "./render";
@@ -335,11 +335,12 @@ function describeSpec(spec: AnySpec): string {
   return isStoryboard(spec) ? `${spec.shots.length} cảnh · ${spec.cast.length} nhân vật` : `${spec.scenes.length} cảnh · thể loại ${spec.genre}`;
 }
 
-/** Fedtoon pictures: generated once per (style, prompt), then reused. Without an OpenAI key the backdrops drawn in code are used. */
+/** Fedtoon pictures: generated once per (style, prompt), then reused. Without the image tools' keys the backdrops drawn in code are used. */
 async function assetsStep(id: string, sb: Storyboard, emit: Emit, p: Progress): Promise<Storyboard> {
-  if (!hasImageKey()) {
+  const missing = missingImageKeys();
+  if (missing.length) {
     p.finish("assets");
-    emit({ type: "step", step: "assets", status: "skip", message: "Chưa có OPENAI_API_KEY: dùng nền và đồ vật vẽ sẵn bằng code" });
+    emit({ type: "step", step: "assets", status: "skip", message: `Chưa có ${missing.join(", ")}: dùng nền và đồ vật vẽ sẵn bằng code` });
     return sb;
   }
   return step(
@@ -352,7 +353,7 @@ async function assetsStep(id: string, sb: Storyboard, emit: Emit, p: Progress): 
         emit({ type: "progress", step: "assets", progress: done / total });
         emit({ type: "log", message });
       });
-      if (report.skipped.length) emit({ type: "log", message: `OpenAI từ chối ${report.skipped.length} ảnh (dùng hình vẽ sẵn): ${report.skipped.join("; ")}` });
+      if (report.skipped.length) emit({ type: "log", message: `Công cụ vẽ ảnh từ chối ${report.skipped.length} ảnh (dùng hình vẽ sẵn): ${report.skipped.join("; ")}` });
       writeJsonAtomic(path.join(OUT_DIR, id, "spec.json"), storyboard);
       emit({ type: "log", message: `Ảnh: ${report.generated} tạo mới, ${report.reused} dùng lại, ${report.skipped.length} bị từ chối.` });
       return storyboard;
@@ -440,7 +441,8 @@ export async function previewShot(id: string, raw: unknown, shot: number) {
 /** Draws a new object (paid). Recorded at once, so a paid picture stays available even if the edit is discarded. */
 export async function drawPropForJob(id: string, prompt: string) {
   if (!prompt.trim()) throw new Error("Hãy mô tả đồ vật muốn vẽ.");
-  if (!hasImageKey()) throw new Error("Chưa có OPENAI_API_KEY: thêm ở tab ⚙️ Cài đặt để vẽ ảnh mới.");
+  const missing = missingImageKeys(["prop"]);
+  if (missing.length) throw new Error(`Chưa có ${missing.join(", ")}: thêm ở tab ⚙️ Cài đặt để vẽ ảnh mới.`);
   const before = parseSpec(readJson(specFile(id)));
   if (!isStoryboard(before)) throw new Error("Chỉ video Fedtoon mới có đồ vật để thêm.");
   const result = await drawProp(id, before, prompt);

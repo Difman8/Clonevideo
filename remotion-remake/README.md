@@ -89,6 +89,15 @@ npm run post -- "https://www.youtube.com/shorts/XXXXXXXXXXX" --openai   # viết
 npm run post -- "<link>" --channel "Fedtoon" --no-brand-tags            # đổi tên kênh, không thêm #Fedtoon
 ```
 
+## Công cụ vẽ ảnh Fedtoon
+
+Tab **⚙️ Cài đặt → Hình ảnh Fedtoon** chọn công cụ cho từng loại ảnh (mặc định OpenAI):
+
+- **Ảnh nền: Google Nano Banana** (`gemini-nano-banana-2.1`). Vẽ ở 2K rồi app thu về đúng khung video 1080x1920. Bật **Vẽ ảnh nền theo lô (Batch API)** để rẻ hơn 50%: cả loạt ảnh nền gửi trong một lần, Google trả trong tối đa 24 giờ (thường vài phút); có thể đóng app rồi bấm **Tiếp tục** để lấy ảnh mà không bị tính tiền lần nữa.
+- **Đồ vật: Recraft** (`recraftv4_1`). Vẽ theo phong cách tạo từ ảnh mẫu trong `assets/style/` (tạo một lần, mã lưu ở `out/_images/`), rồi tách nền thành PNG trong suốt. Recraft không có Batch API.
+
+Cần khóa ở mục **Google Gemini** (bật thanh toán, model ảnh không có gói miễn phí) và **Recraft** (nạp API units).
+
 ## Kênh theo dõi
 
 Trong tab **🔥 Tìm video hot**, dán link kênh, @tên kênh hoặc link một video của kênh, mỗi dòng một kênh, rồi bấm **Thêm kênh**. Danh sách được lưu lại, thêm hoặc xoá kênh lúc nào cũng được. Chọn định dạng và khoảng thời gian rồi bấm **Quét & xếp hạng**: app trả về lượt xem, lượt thích, bình luận, tỉ lệ tương tác của từng video, xếp từ điểm tổng hợp cao đến thấp.
