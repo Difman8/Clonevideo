@@ -99,8 +99,9 @@ export const GEMINI_FLAT_STYLE =
   "Art direction: a flat vector illustration built only from solid-color shapes, like shapes cut from colored paper and laid side by side. " +
   "Neighbouring shapes touch directly and are told apart only by their colors, so the picture has no line art at all: no outline strokes, " +
   "not even thin dark edges around trees, bushes, hills, furniture, clouds or buildings. Every shape is filled with one even color from edge to edge. " +
-  "Where an object needs volume it gets a single slightly darker flat shape of the same hue, with a crisp hard edge. Light from lamps, the sun or " +
-  "windows is drawn as flat lighter shapes with crisp edges, never as a soft glow, airbrush, gradient or shadow.";
+  "Where an object needs volume it gets a single slightly darker flat shape of the same hue, with a crisp hard edge. A lamp, the sun or a window " +
+  "is simply a bright flat shape; the light around it is at most a small flat lighter ring with a crisp edge, never a beam or cone of light, " +
+  "a soft glow, airbrush, gradient or shadow.";
 
 /** Sent with the style reference images to Google instead of STYLE_REFERENCE_NOTE. */
 export const GEMINI_STYLE_REFERENCE_NOTE =

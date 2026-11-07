@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-07
 
+- **Nền vẽ bằng Google không còn luồng sáng hình khối quanh đèn, mặt trời** — @Difman8 · 21:56 · nhánh `claude/nen-google-bo-luong-sang`
 - **Ảnh nền vẽ bằng Google giữ đúng phong cách phẳng của kênh: không viền, không đổ bóng** — @Difman8 · 21:03 · nhánh `claude/nen-google-dung-phong-cach`
 - **Sửa góc vạt áo nhân vật teen bị gấp khúc, nhọn khi dang tay** — @Difman8 · 20:28 · nhánh `claude/lap-goc-vat-ao-teen`
 - **Sửa bàn tay nhân vật teen rời khỏi tay áo khi nhún vai; app ghi đúng công cụ vẽ ảnh đang chọn** — @Difman8 · 20:02 · nhánh `claude/sua-nhun-vai-va-nhan-cong-cu-ve`
