@@ -216,8 +216,8 @@ function styleSignature(kind: Kind) {
   const refs = styleRefs();
   const base = refs.length ? `${setting("FEDTOON_IMAGE_STYLE")}\nrefs:${refsSignature(refs)}` : setting("FEDTOON_IMAGE_STYLE");
   const tool = toolFor(kind);
-  // ":flat2": the wording for Google changed (GEMINI_FLAT_STYLE), pictures drawn with the old one are not reused.
-  if (tool === "gemini") return `gemini:${setting("GEMINI_IMAGE_MODEL")}:${setting("GEMINI_IMAGE_SIZE")}:flat2\n${base}`;
+  // ":flat3": version of the wording for Google (GEMINI_FLAT_STYLE); pictures drawn with an older one are not reused.
+  if (tool === "gemini") return `gemini:${setting("GEMINI_IMAGE_MODEL")}:${setting("GEMINI_IMAGE_SIZE")}:flat3\n${base}`;
   if (tool === "recraft") return `recraft:${setting("RECRAFT_MODEL")}\n${base}`;
   return base;
 }
