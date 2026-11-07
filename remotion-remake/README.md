@@ -89,6 +89,12 @@ npm run post -- "https://www.youtube.com/shorts/XXXXXXXXXXX" --openai   # viết
 npm run post -- "<link>" --channel "Fedtoon" --no-brand-tags            # đổi tên kênh, không thêm #Fedtoon
 ```
 
+## Kênh theo dõi
+
+Trong tab **🔥 Tìm video hot**, dán link kênh, @tên kênh hoặc link một video của kênh, mỗi dòng một kênh, rồi bấm **Thêm kênh**. Danh sách được lưu lại, thêm hoặc xoá kênh lúc nào cũng được. Chọn định dạng và khoảng thời gian rồi bấm **Quét & xếp hạng**: app trả về lượt xem, lượt thích, bình luận, tỉ lệ tương tác của từng video, xếp từ điểm tổng hợp cao đến thấp.
+
+Điểm tổng hợp 0–100 so các video trong lần quét với nhau: lượt xem 20, lượt thích 10, bình luận 10, tỉ lệ tương tác 20, tốc độ xem 20, mức vượt trung bình của chính kênh 20. Quét lại sau ít nhất 1 giờ sẽ có thêm số 🚀 (lượt xem mỗi giờ từ lần quét trước), và số này thay cho tốc độ trung bình khi tính điểm. Không dùng AI, mỗi lần quét chỉ tốn vài đơn vị quota.
+
 ## Tìm video hot
 
 Tab **🔥 Tìm video hot** dùng [YouTube Data API v3](https://developers.google.com/youtube/v3) (miễn phí) để tìm video có nhiều lượt xem, lượt thích và bình luận nhất trong một khoảng thời gian. Mỗi video trả về kèm **link, chủ đề, keywords và hashtag**, ngôn ngữ, lượt xem/thích/bình luận, tỉ lệ tương tác, và nút **🎬 Dựng lại video này** để chuyển sang tab dựng lại.

@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-07
 
+- **Thêm Kênh theo dõi: lưu danh sách kênh, quét video và xếp hạng theo điểm tổng hợp** — @Difman8 · 14:35 · nhánh `claude/theo-doi-kenh-youtube`
 - **Mọi video có sẵn nội dung đăng chính thức: tiêu đề #shorts, keywords theo dấu phẩy, mô tả kèm hashtag kênh** — @Difman8 · 13:29 · nhánh `claude/noi-dung-dang-chinh-thuc`
 
 ## 2026-11-06

@@ -92,6 +92,13 @@
   .check { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); cursor: pointer; }
   code { background: var(--chip); padding: 1px 6px; border-radius: 6px; font-size: 13px; }
   a { color: var(--brand); }
+  .clist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 8px; margin-top: 12px; }
+  .crow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+  .crow img { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; background: var(--chip); }
+  .crow > div { flex: 1; min-width: 0; }
+  .crow a { display: block; font-weight: 600; color: var(--text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .crow .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .crow button { flex-shrink: 0; padding: 6px 10px; font-size: 13px; color: var(--err); }
   .vlist { display: grid; gap: 14px; margin-top: 14px; }
   .vcard { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
   @media (max-width: 720px) { .vcard { grid-template-columns: 1fr; } }
@@ -343,6 +350,46 @@
   </section>
 
   <section class="card">
+    <h2>📌 Kênh theo dõi</h2>
+    <div class="hint" style="margin:-8px 0 12px">Dán các kênh bạn quan tâm: link kênh, @tên kênh, hoặc link một video của kênh, mỗi dòng một kênh. App lưu lại để lần sau chỉ cần bấm quét. Rất ít tốn quota và không dùng AI.</div>
+    <textarea id="c-input" rows="3" style="min-height:0" aria-label="Dán kênh muốn theo dõi" placeholder="https://www.youtube.com/@tenkenh&#10;@kenhkhac"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button type="button" id="c-add">➕ Thêm kênh</button>
+      <span class="hint" id="c-add-msg"></span>
+    </div>
+    <div class="clist" id="c-list"></div>
+    <div class="filters" style="margin-top:16px">
+      <div class="f">
+        <label>Định dạng</label>
+        <div class="seg" role="radiogroup" aria-label="Định dạng">
+          <label><input type="radio" name="c-format" value="shorts" checked /><span>Shorts</span></label>
+          <label><input type="radio" name="c-format" value="long" /><span>Video dài</span></label>
+          <label><input type="radio" name="c-format" value="all" /><span>Cả hai</span></label>
+        </div>
+      </div>
+      <div class="f">
+        <label for="c-period">Khoảng thời gian đăng</label>
+        <select id="c-period"></select>
+        <div class="row" id="c-custom" hidden>
+          <input type="date" id="c-from" aria-label="Từ ngày" style="flex:1" /> → <input type="date" id="c-to" aria-label="Đến ngày" style="flex:1" />
+        </div>
+      </div>
+      <div class="f">
+        <label for="c-limit">Số video trả về</label>
+        <select id="c-limit">
+          <option value="10">Top 10</option>
+          <option value="20" selected>Top 20</option>
+          <option value="50">Top 50</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button type="button" class="primary" id="c-go">🏆 Quét &amp; xếp hạng</button>
+      <span class="hint">Xếp từ điểm tổng hợp cao đến thấp. Quét lại sau ít nhất 1 giờ để thấy video nào đang tăng.</span>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>🔥 Tìm video có nhiều lượt xem, lượt thích và bình luận nhất</h2>
     <div class="hint" style="margin:-8px 0 14px">Không dùng AI: chỉ tốn quota miễn phí của YouTube Data API.</div>
     <form id="d-form">
@@ -500,6 +547,7 @@ function setYoutubeReady(ready) {
   $("yt-key-card").hidden = ready;
   $("d-go").disabled = !ready;
   $("d-go").title = ready ? "" : "Cần khóa YouTube Data API (xem phía trên)";
+  $("c-go").disabled = $("c-add").disabled = !ready;
 }
 
 async function loadHistory() {
@@ -1193,8 +1241,22 @@ async function initDiscover() {
     if (saved) writeForm(saved);
   } catch {}
   syncForm();
+  $("c-period").replaceChildren(...DOPT.periods.map((p) => option(p.id, p.label)), option("custom", "Tuỳ chọn ngày…"));
+  $("c-period").value = "7d";
+  try {
+    const saved = JSON.parse(localStorage.getItem("channel-form") || "null");
+    if (saved) {
+      document.querySelector(`input[name=c-format][value="${saved.format}"]`)?.click();
+      $("c-period").value = saved.period;
+      $("c-from").value = saved.from;
+      $("c-to").value = saved.to;
+      $("c-limit").value = saved.limit;
+    }
+  } catch {}
+  $("c-custom").hidden = $("c-period").value !== "custom";
   setYoutubeReady(DOPT.youtubeApi);
   loadDiscoverHistory();
+  renderChannels(await api("/api/discover/channels"));
 }
 
 ["d-period", "d-country", "d-pages"].forEach((id) => $(id).addEventListener("change", syncForm));
@@ -1225,10 +1287,10 @@ function dOnEvent(e) {
     $("d-progress").hidden = false;
     $("d-error").hidden = false;
     $("d-error").textContent = "Lỗi: " + e.message;
-    $("d-go").disabled = false;
+    $("d-go").disabled = $("c-go").disabled = false;
     loadUnfinished();
   } else if (e.type === "result") {
-    $("d-go").disabled = false;
+    $("d-go").disabled = $("c-go").disabled = false;
     showDiscovery(e.result);
     loadDiscoverHistory();
     loadUnfinished();
@@ -1250,13 +1312,82 @@ $("d-form").addEventListener("submit", async (ev) => {
   }
 });
 
-function dResetProgress() {
-  $("d-go").disabled = true;
+function dResetProgress(steps = DOPT.steps) {
+  $("d-go").disabled = $("c-go").disabled = true;
   $("d-progress").hidden = false;
   $("d-error").hidden = true;
   $("d-log").textContent = "";
-  $("d-steps").replaceChildren(...stepItems(DOPT.steps, "dstep-"));
+  $("d-steps").replaceChildren(...stepItems(steps, "dstep-"));
 }
+
+// ---------- Kênh theo dõi ----------
+function renderChannels(channels) {
+  $("c-list").replaceChildren(
+    ...(channels.length
+      ? channels.map((c) =>
+          el(
+            "div",
+            { className: "crow" },
+            el("img", { src: c.thumbnail, alt: "", loading: "lazy" }),
+            el(
+              "div",
+              {},
+              el("a", { href: c.url, target: "_blank", rel: "noreferrer", textContent: c.title, title: c.title }),
+              el("div", { className: "hint", textContent: [c.handle, c.subscribers == null ? "" : `${compact.format(c.subscribers)} người đăng ký`].filter(Boolean).join(" · ") }),
+            ),
+            el("button", {
+              type: "button",
+              textContent: "🗑 Xoá",
+              onclick: async () => {
+                if (!confirm(`Xoá kênh "${c.title}" khỏi danh sách theo dõi?`)) return;
+                renderChannels(await api(`/api/discover/channels/${encodeURIComponent(c.id)}`, { method: "DELETE" }));
+              },
+            }),
+          ),
+        )
+      : [el("div", { className: "empty", textContent: "Chưa có kênh nào." })]),
+  );
+}
+
+$("c-add").addEventListener("click", async () => {
+  const msg = $("c-add-msg");
+  $("c-add").disabled = true;
+  msg.textContent = "Đang tìm kênh…";
+  try {
+    const r = await api("/api/discover/channels", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: $("c-input").value }) });
+    renderChannels(r.channels);
+    // What could not be found stays in the box, to be corrected.
+    $("c-input").value = r.failed.join("\n");
+    msg.textContent = [
+      r.added.length ? `Đã thêm ${r.added.length} kênh.` : "",
+      r.already.length ? `Đã có sẵn: ${r.already.join(", ")}.` : "",
+      r.failed.length ? `Không tìm thấy ${r.failed.length} kênh, còn để trong ô trên để bạn sửa.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  } catch (e) {
+    msg.textContent = e.message;
+  } finally {
+    $("c-add").disabled = false;
+  }
+});
+
+$("c-period").addEventListener("change", () => ($("c-custom").hidden = $("c-period").value !== "custom"));
+
+$("c-go").addEventListener("click", async () => {
+  const opts = { format: radio("c-format"), period: $("c-period").value, from: $("c-from").value, to: $("c-to").value, limit: Number($("c-limit").value) };
+  try {
+    localStorage.setItem("channel-form", JSON.stringify(opts));
+  } catch {}
+  dResetProgress(DOPT.channelSteps);
+  $("d-progress").scrollIntoView({ behavior: "smooth" });
+  try {
+    const { task } = await api("/api/discover/channels/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts) });
+    dFollow(task);
+  } catch (e) {
+    dOnEvent({ type: "error", message: e.message });
+  }
+});
 
 function dFollow(task) {
   const es = new EventSource(`/api/discover/${encodeURIComponent(task)}/events`);
@@ -1314,7 +1445,10 @@ function videoCard(v, pos) {
         stat("👍", v.likes, "lượt thích"),
         stat("💬", v.comments, "bình luận"),
         el("span", { title: "(Lượt thích + bình luận) / lượt xem", textContent: `⚡ ${v.engagementRate.toLocaleString("vi-VN")}%` }),
-        el("span", { title: "Điểm tương tác 0–100: trung bình thứ hạng về lượt xem, lượt thích và bình luận so với các video tìm được", textContent: `🏆 ${v.score}/100` }),
+        el("span", { title: v.hot ? "Điểm tổng hợp 0–100, cách tính ở phần ghi chú phía trên" : "Điểm tương tác 0–100: trung bình thứ hạng về lượt xem, lượt thích và bình luận so với các video tìm được", textContent: `🏆 ${v.score}/100` }),
+        v.hot ? el("span", { title: "Lượt xem trung bình mỗi giờ kể từ lúc đăng", textContent: `🔥 ${compact.format(v.hot.viewsPerHour)}/giờ` }) : null,
+        v.hot ? el("span", { title: "Lượt xem so với mức thường gặp của chính kênh này trong lần quét", textContent: `📈 ×${v.hot.vsChannel.toLocaleString("vi-VN")} so với kênh` }) : null,
+        v.hot?.recentPerHour != null ? el("span", { title: "Lượt xem mỗi giờ kể từ lần quét trước", textContent: `🚀 +${compact.format(v.hot.recentPerHour)}/giờ gần đây` }) : null,
       ),
       field("Link", el("div", { className: "value" }, link(v.url, v.url)), v.url),
       field("Chủ đề (theo YouTube)", el("div", { className: "value", textContent: v.topic || "(không rõ)" }), v.topic),
