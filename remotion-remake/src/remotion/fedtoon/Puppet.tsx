@@ -749,6 +749,7 @@ const RigPuppet: React.FC<PuppetProps & { rig: CharacterRig; eyes: number; width
               </React.Fragment>
             );
           }
+          if (item.startsWith("out:")) return SNUG_ACTIONS.includes(action) ? null : <RigImg key={item} rig={rig} s={s} name={item.slice(4)} />;
           return <RigImg key={item} rig={rig} s={s} name={item} />;
         })}
       </div>

@@ -1353,6 +1353,12 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
         "w": 421,
         "h": 1114
       },
+      "hem": {
+        "x": 348,
+        "y": 933,
+        "w": 322,
+        "h": 26
+      },
       "arm-l-seam": {
         "x": 349,
         "y": 701,
@@ -1432,6 +1438,7 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
       "arm:0",
       "arm:1",
       "body",
+      "out:hem",
       "arm:0:seam",
       "arm:1:seam",
       "head"

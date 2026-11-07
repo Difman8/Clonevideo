@@ -59,7 +59,11 @@ export type CharacterRig = {
   elbowRange?: readonly number[];
   /** Other drawings of the same character for some actions, e.g. { wave: "man-wave" } (ids in CAST_RIGS). */
   poses?: Record<string, string>;
-  /** Drawing order, back to front: part names, "arm:<index>", "arm:<index>:front", "arm:<index>:seam", "arm:<index>:bodyline" or "head" (head, brows, mouth, eyelids). */
+  /**
+   * Drawing order, back to front: part names, "out:<part>" (drawn only while the arms swing away from the body, e.g. the
+   * hoodie hem the hands hide at rest), "arm:<index>", "arm:<index>:front", "arm:<index>:seam", "arm:<index>:bodyline"
+   * or "head" (head, brows, mouth, eyelids).
+   */
   order: readonly string[];
   /** The expression of the drawn mouth and whether it is open (an open mouth is reused for speech). Default: an open smile. */
   mouthStyle?: { drawn: string; open: boolean };

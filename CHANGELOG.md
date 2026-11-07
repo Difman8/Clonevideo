@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-07
 
+- **Sửa góc vạt áo nhân vật teen bị gấp khúc, nhọn khi dang tay** — @Difman8 · 20:28 · nhánh `claude/lap-goc-vat-ao-teen`
 - **Sửa bàn tay nhân vật teen rời khỏi tay áo khi nhún vai; app ghi đúng công cụ vẽ ảnh đang chọn** — @Difman8 · 20:02 · nhánh `claude/sua-nhun-vai-va-nhan-cong-cu-ve`
 - **Thêm lựa chọn vẽ ảnh rẻ hơn: nền bằng Google Nano Banana 2.1 (có Batch giảm 50%), đồ vật bằng Recraft** — @Difman8 · 16:29 · nhánh `claude/ve-anh-nano-banana-recraft`
 - **Thêm Kênh theo dõi: lưu danh sách kênh, quét video và xếp hạng theo điểm tổng hợp** — @Difman8 · 14:35 · nhánh `claude/theo-doi-kenh-youtube`

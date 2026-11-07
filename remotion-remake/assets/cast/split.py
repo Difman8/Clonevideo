@@ -16,9 +16,10 @@ Cấu hình rig.json:
   erase     [{part, polygon}] vùng xoá khỏi một bộ phận (mẩu nhọn lộ ra khi cử động)
   fills     phần bị che (chỉ lộ ra khi bộ phận xoay): {part, color, disc: [x, y, r]} | {part, color, polygon, under}
             | {part, color, dilate: px, into: part, polygon?}
+            | {part, color, polygon, aa: true, free?: true}  (mép mượt; free: tô cả chỗ nền trống, part mới được tạo)
   cutOverlap px ảnh gốc của tay mà thân giữ thêm quanh đường cắt ở vai (nhân vật có nét viền)
   head      {pivot}; arms [{side, kind: raised|hanging, segments: [{part, pivot}]}] (đoạn sau nằm trong đoạn trước)
-  order     thứ tự vẽ từ sau ra trước: tên bộ phận, "arm:<i>" hoặc "head"
+  order     thứ tự vẽ từ sau ra trước: tên bộ phận, "out:<bộ phận>" (chỉ vẽ khi tay dang ra), "arm:<i>" hoặc "head"
   face      {skin, mouth: {box, seed, top}, brows: [{box, seed}], eyes: [{cx, cy, rx, ry}], browGap?}
             browGap: px quanh mắt (tính cả viền) không thuộc lông mày, khi lông mày chạm viền mắt
 """
@@ -252,17 +253,20 @@ def split(cid: str, done: dict) -> dict:
                 where &= polygon(w, h, f["polygon"])
             paint(f["part"], where, f["color"])
         elif f.get("aa"):
+            # free: tô cả chỗ nền trống (vd. khe giữa thân áo và gấu áo, chỉ hiện khi tay dang ra), vào lớp riêng.
+            layers.setdefault(f["part"], np.zeros_like(rgba))
+            area = np.ones((h, w), bool) if f.get("free") else solid
             # Mảng lấp mép mượt (khử răng cưa), tô đè cả điểm ảnh đã có (vd. mẩu viền cổ tay áo còn dính):
             # dùng cho sườn áo lộ ra khi tay dang.
             k = 4
             img = Image.new("L", (w * k, h * k), 0)
             ImageDraw.Draw(img).polygon([(x * k, y * k) for x, y in f["polygon"]], fill=255)
             cov = np.array(img.resize((w, h), Image.LANCZOS)).astype(float) / 255
-            inside = (cov > 0.98) & solid
+            inside = (cov > 0.98) & area
             arr = layers[f["part"]]
             arr[inside, :3] = np.array(hex_rgb(f["color"]), dtype=float)
             arr[inside, 3] = 255
-            paint(f["part"], (cov > 0) & ~inside & solid, f["color"], cov)
+            paint(f["part"], (cov > 0) & ~inside & area, f["color"], cov)
         else:
             where = polygon(w, h, f["polygon"]) & (layers[f["part"]][..., 3] < 250) & solid
             if "under" in f:
