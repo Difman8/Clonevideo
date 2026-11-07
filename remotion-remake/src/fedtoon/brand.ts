@@ -89,3 +89,21 @@ export const STYLE_REFERENCE_NOTE =
   "the same flat colors and simple flat shading, the same soft rounded shapes and proportions, the same line work, the same cute face style " +
   "and the same level of detail, so that these characters would look at home in it. Do not draw, copy or include any of these characters, " +
   "do not reuse their poses, layout or plain background.";
+
+/**
+ * Google's image models follow the reference picture more than the words and tend to skip "no ..." lists:
+ * scenes they draw came out with outlines and soft shading. So for Google the flat look is described as
+ * what to draw, before the shared style text, and the character sheet is only a palette and shape guide.
+ */
+export const GEMINI_FLAT_STYLE =
+  "Art direction: a flat vector illustration built only from solid-color shapes, like shapes cut from colored paper and laid side by side. " +
+  "Neighbouring shapes touch directly and are told apart only by their colors, so the picture has no line art at all: no outline strokes, " +
+  "not even thin dark edges around trees, bushes, hills, furniture, clouds or buildings. Every shape is filled with one even color from edge to edge. " +
+  "Where an object needs volume it gets a single slightly darker flat shape of the same hue, with a crisp hard edge. Light from lamps, the sun or " +
+  "windows is drawn as flat lighter shapes with crisp edges, never as a soft glow, airbrush, gradient or shadow.";
+
+/** Sent with the style reference images to Google instead of STYLE_REFERENCE_NOTE. */
+export const GEMINI_STYLE_REFERENCE_NOTE =
+  "The attached image is the channel's character sheet, a guide only for the color palette, the soft rounded shapes and the cute simple faces. " +
+  "Do not draw these characters, their poses or their plain background. The scene is even flatter than these characters: it has none of their " +
+  "thin edge lines and none of the shaded folds on their clothes.";

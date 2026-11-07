@@ -9,7 +9,7 @@ import OpenAI, { toFile } from "openai";
 import { ApiError } from "@google/genai";
 import { mapLimit } from "../discover/classify";
 import { boolSetting, setting } from "../settings";
-import { PALETTE, STYLE_REFERENCE_NOTE, type ColorName } from "../fedtoon/brand";
+import { GEMINI_FLAT_STYLE, GEMINI_STYLE_REFERENCE_NOTE, PALETTE, STYLE_REFERENCE_NOTE, type ColorName } from "../fedtoon/brand";
 import { bgRef, imageFileKey, imageRef, type Shot, type Storyboard } from "../spec/storyboard";
 import { drawGemini, drawInBatch, explainGemini, GeminiRefusal, hasGeminiKey, hasSavedBatch, type GeminiRequest } from "./images-gemini";
 import { drawRecraft, hasRecraftKey, RecraftError } from "./images-recraft";
@@ -157,6 +157,9 @@ async function fitToFrame(data: Buffer, width: number, height: number): Promise<
 /** The text sent with the style references: learn the look, do not copy the characters. */
 const withRefsNote = (text: string, refs: string[]) => (refs.length ? `${STYLE_REFERENCE_NOTE}\n\n${text}` : text);
 
+/** Text for Google: the flat look said first and plainly, then its own note about the references (see GEMINI_FLAT_STYLE). */
+export const geminiText = (text: string, refs: string[]) => [GEMINI_FLAT_STYLE, refs.length ? GEMINI_STYLE_REFERENCE_NOTE : "", text].filter(Boolean).join("\n\n");
+
 export async function generateImage(
   kind: Kind,
   prompt: string,
@@ -169,7 +172,7 @@ export async function generateImage(
   const refs = styleRefs();
   const style = setting("FEDTOON_IMAGE_STYLE");
   if (tool === "gemini") {
-    const fitted = await fitToFrame(await drawGemini(withRefsNote(fullPrompt(kind, prompt, style, portrait, colors, avoid), refs), refs, portrait), meta.width, meta.height);
+    const fitted = await fitToFrame(await drawGemini(geminiText(fullPrompt(kind, prompt, style, portrait, colors, avoid), refs), refs, portrait), meta.width, meta.height);
     return { data: fitted.data, ext: "jpg", note: fitted.note };
   }
   if (tool === "recraft") return { data: await drawRecraft(fullPrompt(kind, prompt, style, portrait, colors, avoid, false), refs, styleSignature(kind)), ext: "png" };
@@ -213,7 +216,8 @@ function styleSignature(kind: Kind) {
   const refs = styleRefs();
   const base = refs.length ? `${setting("FEDTOON_IMAGE_STYLE")}\nrefs:${refsSignature(refs)}` : setting("FEDTOON_IMAGE_STYLE");
   const tool = toolFor(kind);
-  if (tool === "gemini") return `gemini:${setting("GEMINI_IMAGE_MODEL")}:${setting("GEMINI_IMAGE_SIZE")}\n${base}`;
+  // ":flat2": the wording for Google changed (GEMINI_FLAT_STYLE), pictures drawn with the old one are not reused.
+  if (tool === "gemini") return `gemini:${setting("GEMINI_IMAGE_MODEL")}:${setting("GEMINI_IMAGE_SIZE")}:flat2\n${base}`;
   if (tool === "recraft") return `recraft:${setting("RECRAFT_MODEL")}\n${base}`;
   return base;
 }
@@ -286,7 +290,7 @@ export async function generateStoryboardImages(
     if (hasSavedBatch(dir)) await drawInBatch(dir, [], refs, save, wait);
     const left: GeminiRequest[] = [...wanted]
       .filter(([ref, w]) => w.kind === "bg" && !hasPrior(ref) && !fileFor(w.key) && !refused.has(w.key))
-      .map(([, w]) => ({ key: w.key, portrait, text: withRefsNote(fullPrompt("bg", w.prompt, style, portrait, w.colors, w.avoid), refs) }));
+      .map(([, w]) => ({ key: w.key, portrait, text: geminiText(fullPrompt("bg", w.prompt, style, portrait, w.colors, w.avoid), refs) }));
     if (left.length) await drawInBatch(dir, left, refs, save, wait);
     writeJsonAtomic(refusedFile, [...refused]);
   }
