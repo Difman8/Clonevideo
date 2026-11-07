@@ -86,6 +86,15 @@ export function imageSettingsText(meta: Storyboard["meta"]) {
   return `Ảnh vẽ mới: nền bằng ${bg}; đồ vật bằng ${prop}.`;
 }
 
+const TOOL_NAMES: Record<ImageTool, string> = { openai: "OpenAI", gemini: "Google", recraft: "Recraft" };
+
+/** Who draws new pictures with the current settings, for labels on screen ("Google + Recraft"). */
+export function imageToolNames() {
+  const bg = TOOL_NAMES[toolFor("bg")];
+  const prop = TOOL_NAMES[toolFor("prop")];
+  return { bg, prop, label: bg === prop ? bg : `${bg} + ${prop}` };
+}
+
 const named = (names: readonly ColorName[]) => names.map((n) => `${n} (${PALETTE[n]})`).join(", ");
 
 /**

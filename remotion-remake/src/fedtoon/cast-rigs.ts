@@ -1336,34 +1336,34 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
         "h": 502
       },
       "arm-l": {
-        "x": 265,
+        "x": 259,
         "y": 665,
-        "w": 158,
+        "w": 164,
         "h": 406
       },
       "arm-r": {
         "x": 601,
         "y": 667,
-        "w": 151,
+        "w": 157,
         "h": 404
       },
       "body": {
-        "x": 259,
+        "x": 320,
         "y": 351,
-        "w": 499,
+        "w": 421,
         "h": 1114
       },
       "arm-l-seam": {
         "x": 349,
         "y": 701,
         "w": 38,
-        "h": 222
+        "h": 240
       },
       "arm-r-seam": {
         "x": 633,
         "y": 701,
         "w": 37,
-        "h": 222
+        "h": 240
       },
       "mouth": {
         "x": 462,
@@ -1404,7 +1404,7 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
             ],
             "seam": {
               "part": "arm-l-seam",
-              "reach": 207
+              "reach": 222
             }
           }
         ]
@@ -1422,7 +1422,7 @@ export const CAST_RIGS: Record<string, CharacterRig> = {
             ],
             "seam": {
               "part": "arm-r-seam",
-              "reach": 206
+              "reach": 222
             }
           }
         ]
