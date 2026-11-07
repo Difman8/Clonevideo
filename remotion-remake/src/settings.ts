@@ -28,7 +28,9 @@ export type Setting = {
 export const SETTING_GROUPS: { id: string; title: string; help: string; link?: string }[] = [
   { id: "claude", title: "Claude (Anthropic)", help: "Phân tích video và soạn thông tin đăng khi công tắc AI ở Claude.", link: "https://platform.claude.com" },
   { id: "openai", title: "OpenAI", help: "Phân tích video và soạn thông tin đăng khi công tắc AI ở OpenAI.", link: "https://platform.openai.com" },
-  { id: "images", title: "Hình ảnh Fedtoon (OpenAI)", help: "Vẽ nền và đồ vật cho kiểu video Hoạt hình Fedtoon, dùng khóa OpenAI ở trên. Mỗi ảnh tạo một lần rồi được lưu lại.", link: "https://platform.openai.com/usage" },
+  { id: "images", title: "Hình ảnh Fedtoon", help: "Chọn công cụ vẽ nền và đồ vật bên dưới (mặc định OpenAI, dùng khóa OpenAI ở trên). Vẽ nền và đồ vật cho kiểu video Hoạt hình Fedtoon, dùng khóa OpenAI ở trên. Mỗi ảnh tạo một lần rồi được lưu lại.", link: "https://platform.openai.com/usage" },
+  { id: "gemini", title: "Google Gemini (Nano Banana)", help: "Vẽ ảnh nền khi chọn Google ở mục Hình ảnh Fedtoon. Model ảnh của Google không có gói miễn phí: cần bật thanh toán cho dự án của khóa.", link: "https://aistudio.google.com/apikey" },
+  { id: "recraft", title: "Recraft", help: "Vẽ đồ vật khi chọn Recraft ở mục Hình ảnh Fedtoon. Trả trước bằng API units ($1 = 1.000 units).", link: "https://www.recraft.ai/profile/api" },
   { id: "elevenlabs", title: "ElevenLabs (lồng tiếng)", help: "Đọc lời thoại của video dựng lại. Bấm \"Tải giọng & model từ tài khoản\" để chọn giọng.", link: "https://elevenlabs.io/app/settings/api-keys" },
   { id: "youtube", title: "YouTube Data API v3", help: "Tab Tìm video hot (miễn phí 10.000 đơn vị quota mỗi ngày).", link: "https://console.cloud.google.com/apis/library/youtube.googleapis.com" },
   { id: "channel", title: "Kênh của bạn", help: "Dùng khi AI soạn thông tin đăng." },
@@ -90,6 +92,30 @@ export const SETTINGS: Setting[] = [
 
   // Images
   {
+    key: "IMAGE_BG_PROVIDER",
+    group: "images",
+    label: "Công cụ vẽ ảnh nền",
+    help: "Google Nano Banana vẽ ảnh nền rẻ hơn nhiều và bật được chế độ vẽ theo lô (Batch) giảm thêm 50%. Cần khóa ở mục Google Gemini.",
+    type: "select",
+    default: "openai",
+    options: [
+      { value: "openai", label: "OpenAI (gpt-image)" },
+      { value: "gemini", label: "Google Nano Banana" },
+    ],
+  },
+  {
+    key: "IMAGE_PROP_PROVIDER",
+    group: "images",
+    label: "Công cụ vẽ đồ vật",
+    help: "Recraft vẽ đồ vật rồi tách nền thành ảnh trong suốt (2 lần gọi cho mỗi đồ vật). Cần khóa ở mục Recraft.",
+    type: "select",
+    default: "openai",
+    options: [
+      { value: "openai", label: "OpenAI (gpt-image)" },
+      { value: "recraft", label: "Recraft" },
+    ],
+  },
+  {
     key: "OPENAI_IMAGE_MODEL",
     group: "images",
     label: "Model tạo ảnh",
@@ -115,7 +141,7 @@ export const SETTINGS: Setting[] = [
   {
     key: "OPENAI_IMAGE_STYLE_REFS",
     group: "images",
-    label: "Vẽ theo ảnh mẫu phong cách",
+    label: "Vẽ theo ảnh mẫu phong cách (mọi công cụ)",
     help: "Gửi kèm ảnh trong thư mục remotion-remake/assets/style/ (mặc định: bảng nhân vật Fedtoon) để nền và đồ vật cùng nét vẽ với nhân vật. Mỗi lần vẽ tốn thêm một ít tiền cho ảnh đầu vào. Có thể thêm ảnh của bạn vào thư mục đó (tối đa 8 ảnh).",
     type: "boolean",
     default: "true",
@@ -175,6 +201,47 @@ export const SETTINGS: Setting[] = [
   { key: "ELEVENLABS_SEED", group: "elevenlabs", label: "Seed", help: "Số nguyên 0–4294967295 để các lần tạo giống nhau hơn. Để trống = ngẫu nhiên.", type: "number", default: "", min: 0, max: 4294967295, step: 1 },
 
   // YouTube
+  { key: "GEMINI_API_KEY", group: "gemini", label: "API key", help: "Khóa Gemini API (AIza…), tạo ở Google AI Studio.", type: "secret", default: "" },
+  {
+    key: "GEMINI_IMAGE_MODEL",
+    group: "gemini",
+    label: "Model vẽ ảnh",
+    help: "Nano Banana 2.1 là model ảnh nhanh và rẻ nhất có ảnh 2K của Google.",
+    type: "text",
+    default: "gemini-nano-banana-2.1",
+    options: opts("gemini-nano-banana-2.1", "gemini-3.1-flash-image", "gemini-3-pro-image"),
+  },
+  {
+    key: "GEMINI_IMAGE_SIZE",
+    group: "gemini",
+    label: "Cỡ ảnh nền",
+    help: "Google vẽ ở cỡ này rồi app thu về đúng khung video (1080x1920). 2K đủ nét cho video Full HD.",
+    type: "select",
+    default: "2K",
+    options: [
+      { value: "1K", label: "1K (rẻ nhất, hơi mờ ở video 1080p)" },
+      { value: "2K", label: "2K (nét cho video Full HD)" },
+      { value: "4K", label: "4K (đắt nhất)" },
+    ],
+  },
+  {
+    key: "GEMINI_BATCH",
+    group: "gemini",
+    label: "Vẽ ảnh nền theo lô (Batch API, rẻ hơn 50%)",
+    help: "Gửi cả loạt ảnh nền của video trong một lần. Google trả kết quả trong tối đa 24 giờ, thường vài phút. Có thể đóng app rồi bấm Tiếp tục sau để lấy ảnh, không bị tính tiền lần nữa.",
+    type: "boolean",
+    default: "false",
+  },
+  { key: "RECRAFT_API_KEY", group: "recraft", label: "API key", help: "Khóa Recraft API, tạo ở recraft.ai (mục API).", type: "secret", default: "" },
+  {
+    key: "RECRAFT_MODEL",
+    group: "recraft",
+    label: "Model vẽ đồ vật",
+    help: "recraftv4_1: $0.035 mỗi ảnh, cộng $0.01 tách nền. Model Flash rẻ hơn nhưng không vẽ được theo phong cách của kênh nên không dùng ở đây.",
+    type: "text",
+    default: "recraftv4_1",
+    options: opts("recraftv4_1", "recraftv4_1_utility"),
+  },
   { key: "YOUTUBE_API_KEY", group: "youtube", label: "API key", help: "Khóa YouTube Data API v3 (AIza…).", type: "secret", default: "" },
 
   // Channel
