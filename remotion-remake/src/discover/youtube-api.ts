@@ -27,6 +27,16 @@ export type ApiVideo = {
   topicDetails?: { topicCategories?: string[] };
 };
 
+export type ApiChannel = {
+  id: string;
+  snippet: { title: string; customUrl?: string; thumbnails: Partial<Record<"default" | "medium" | "high", { url: string }>> };
+  contentDetails: { relatedPlaylists: { uploads: string } };
+  statistics?: { subscriberCount?: string; hiddenSubscriberCount?: boolean };
+};
+
+/** Finds a channel: exactly one of these. */
+export type ChannelLookup = { id: string } | { forHandle: string } | { forUsername: string };
+
 export type SearchParams = {
   publishedAfter: Date;
   publishedBefore: Date;
@@ -37,6 +47,15 @@ export type SearchParams = {
   videoDuration: "any" | "short" | "medium" | "long";
   pageToken?: string;
 };
+
+export class YoutubeApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
 
 type ApiErrorBody = { error?: { code?: number; message?: string; errors?: { reason?: string }[]; details?: { reason?: string }[] } };
 
@@ -75,7 +94,7 @@ export class YoutubeApi {
     }
     this.quotaUsed += cost;
     const body = (await res.json().catch(() => ({}))) as T & ApiErrorBody;
-    if (!res.ok) throw new Error(explainError(res.status, body));
+    if (!res.ok) throw new YoutubeApiError(explainError(res.status, body), res.status);
     return body;
   }
 
@@ -115,6 +134,31 @@ export class YoutubeApi {
       out.push(...(body.items ?? []));
     }
     return out;
+  }
+
+  /** A channel, or null when it does not exist (1 unit). */
+  async channel(lookup: ChannelLookup): Promise<ApiChannel | null> {
+    const body = await this.get<{ items?: ApiChannel[] }>("channels", { part: "snippet,contentDetails,statistics", ...lookup }, 1);
+    return body.items?.[0] ?? null;
+  }
+
+  /** One page (up to 50) of a channel's uploads playlist, newest first (1 unit). */
+  async uploads(playlistId: string, pageToken?: string): Promise<{ items: { id: string; publishedAt: string }[]; nextPageToken?: string }> {
+    try {
+      const body = await this.get<{ nextPageToken?: string; items?: { contentDetails: { videoId: string; videoPublishedAt?: string } }[] }>(
+        "playlistItems",
+        { part: "contentDetails", playlistId, maxResults: "50", pageToken },
+        1,
+      );
+      return {
+        items: (body.items ?? []).map((i) => ({ id: i.contentDetails.videoId, publishedAt: i.contentDetails.videoPublishedAt ?? "" })),
+        nextPageToken: body.nextPageToken,
+      };
+    } catch (e) {
+      // A channel that never uploaded has no playlist.
+      if (e instanceof YoutubeApiError && e.status === 404) return { items: [] };
+      throw e;
+    }
   }
 
   /** Cheapest call (1 unit): used to check a key before saving it. */

@@ -82,8 +82,10 @@ export type DiscoveredVideo = {
   comments: number | null;
   /** (likes + comments) / views, in percent. */
   engagementRate: number;
-  /** 0–100: average percentile of views, likes and comments among the videos found. */
+  /** 0–100: average percentile of views, likes and comments among the videos found (channel scans: see channels.ts). */
   score: number;
+  /** Followed-channel scans only: how fast the video is growing. */
+  hot?: { viewsPerHour: number; vsChannel: number; recentPerHour: number | null };
   /** YouTube's topic labels and category, in Vietnamese. */
   topic: string;
   category: string;
@@ -114,7 +116,7 @@ const num = (s?: string) => (s === undefined ? null : Number(s) || 0);
 const uniqueCaseless = (list: string[]) => list.filter((x, i) => list.findIndex((y) => y.toLocaleLowerCase() === x.toLocaleLowerCase()) === i);
 
 /** Fraction of `values` below each value (ties share the middle), 0 for the lowest and 1 for the highest. */
-function percentiles(values: number[]): number[] {
+export function percentiles(values: number[]): number[] {
   const sorted = [...values].sort((a, b) => a - b);
   const n = values.length;
   return values.map((v) => {
@@ -133,14 +135,15 @@ const sortValue: Record<SortKey, (v: DiscoveredVideo) => number> = {
   rate: (v) => v.engagementRate,
 };
 
+export const describePeriod = (o: DiscoverOptions) => (o.period === "custom" ? `${o.from} → ${o.to || "nay"}` : (PERIODS.find((p) => p.id === o.period)?.label ?? o.period));
+
 export function describeOptions(o: DiscoverOptions): string {
-  const period = o.period === "custom" ? `${o.from} → ${o.to || "nay"}` : (PERIODS.find((p) => p.id === o.period)?.label ?? o.period);
-  return [FORMAT_LABEL[o.format], o.country ? countryName(o.country) : "Toàn cầu", period, o.category ? categoryName(o.category) : "", o.query ? `"${o.query}"` : ""]
+  return [FORMAT_LABEL[o.format], o.country ? countryName(o.country) : "Toàn cầu", describePeriod(o), o.category ? categoryName(o.category) : "", o.query ? `"${o.query}"` : ""]
     .filter(Boolean)
     .join(" · ");
 }
 
-function toVideo(v: ApiVideo): DiscoveredVideo {
+export function toVideo(v: ApiVideo): DiscoveredVideo {
   const s = v.snippet;
   const views = num(v.statistics.viewCount) ?? 0;
   const likes = num(v.statistics.likeCount);
@@ -320,23 +323,27 @@ async function discoverFrom(cp: Checkpoint, api: YoutubeApi, emit: Emit, checkpo
     notes.push(`Chỉ tìm được ${videos.length}/${opts.limit} video khớp bộ lọc. Tăng "Độ sâu tìm kiếm", chọn khoảng thời gian dài hơn hoặc nới bộ lọc để có thêm.`);
   if (opts.sort !== "views") notes.push(`Video ứng viên là những video nhiều lượt xem nhất mà YouTube trả về, sau đó được xếp lại theo "${SORTS.find((s) => s.id === opts.sort)?.label}".`);
 
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const id = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-  const result: DiscoverResult = {
-    id,
-    createdAt: now.toISOString(),
+  const result = saveDiscovery({
     label: describeOptions(opts),
     options: opts,
     range: { from: range.after.toISOString(), to: range.before.toISOString() },
     videos,
     stats: { scanned: ids.length, matchedLanguage, matchedFormat, quotaUsed: cp.quotaUsed + api.quotaUsed },
     notes,
-  };
+  });
+  emit({ type: "step", step: "save", status: "done", message: `${videos.length} video · đã dùng ${result.stats.quotaUsed} đơn vị quota` });
+  return result;
+}
+
+/** Saves a ranking under a timestamp id, as JSON (shown under "Lần tìm trước") and CSV. */
+export function saveDiscovery(ranking: Omit<DiscoverResult, "id" | "createdAt">): DiscoverResult {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const id = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const result: DiscoverResult = { id, createdAt: now.toISOString(), ...ranking };
   fs.mkdirSync(DISCOVER_DIR, { recursive: true });
   writeJsonAtomic(path.join(DISCOVER_DIR, `${id}.json`), result);
   writeFileAtomic(path.join(DISCOVER_DIR, `${id}.csv`), toCsv(result));
-  emit({ type: "step", step: "save", status: "done", message: `${videos.length} video · đã dùng ${result.stats.quotaUsed} đơn vị quota` });
   return result;
 }
 
@@ -347,7 +354,7 @@ const cell = (v: unknown) => {
 
 /** Spreadsheet export (UTF-8 with BOM so Excel shows Vietnamese correctly). */
 export function toCsv(r: DiscoverResult): string {
-  const head = ["Hạng", "Link", "Tiêu đề", "Chủ đề", "Keywords (tags)", "Hashtag", "Định dạng", "Ngôn ngữ", "Kênh", "Ngày đăng", "Thời lượng (giây)", "Lượt xem", "Lượt thích", "Bình luận", "Tỉ lệ tương tác (%)", "Điểm tương tác", "Danh mục"];
+  const head = ["Hạng", "Link", "Tiêu đề", "Chủ đề", "Keywords (tags)", "Hashtag", "Định dạng", "Ngôn ngữ", "Kênh", "Ngày đăng", "Thời lượng (giây)", "Lượt xem", "Lượt thích", "Bình luận", "Tỉ lệ tương tác (%)", "Điểm tương tác", "Danh mục", "Lượt xem mỗi giờ", "So với trung bình kênh (lần)", "Lượt xem mỗi giờ gần đây"];
   const rows = r.videos.map((v) => [
     v.rank,
     v.url,
@@ -366,6 +373,9 @@ export function toCsv(r: DiscoverResult): string {
     v.engagementRate,
     v.score,
     v.category,
+    v.hot?.viewsPerHour ?? "",
+    v.hot?.vsChannel ?? "",
+    v.hot?.recentPerHour ?? "",
   ]);
   return "﻿" + [head, ...rows].map((row) => row.map(cell).join(",")).join("\r\n") + "\r\n";
 }
