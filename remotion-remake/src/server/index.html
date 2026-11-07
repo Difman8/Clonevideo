@@ -127,6 +127,8 @@
   .badge.warn { background: #fef3c7; color: #92400e; }
   .unfinished { max-width: 1180px; margin: 20px auto 0; padding: 0 16px; }
   .unfinished .card { border-color: var(--warn); }
+  .outdated { max-width: 1180px; margin: 20px auto 0; padding: 0 16px; }
+  .outdated .card { border-color: var(--warn); border-width: 2px; }
   .unfinished-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
   .unfinished-row:first-of-type { border-top: 0; }
   .unfinished-row .what { flex: 1 1 320px; min-width: 0; }
@@ -174,6 +176,12 @@
   <span class="pill" id="st-ytdlp">…</span>
   <span class="pill" id="st-yt">…</span>
 </header>
+<div class="outdated" id="outdated" hidden>
+  <section class="card">
+    <h2>🔄 Đã có bản cập nhật: cần mở lại app</h2>
+    <div class="hint">Code của app trên máy đã được cập nhật, nhưng app đang chạy vẫn là bản cũ, nên video mới vẫn dựng theo cách cũ (phong cách ảnh, nhân vật…). Đóng cửa sổ đen <b>Remotion Remake</b> rồi bấm lại nút <b>Khởi động Remotion Remake</b> để dùng bản mới.</div>
+  </section>
+</div>
 <div class="unfinished" id="unfinished" hidden>
   <section class="card">
     <h2>⏸ Việc đang dở từ lần trước</h2>
@@ -730,8 +738,29 @@ async function showJob(id) {
   scrollTo({ top: 0, behavior: "smooth" });
 }
 
+// ---------- App đang chạy bản cũ (đã cập nhật nhưng chưa mở lại) ----------
+async function checkOutdated() {
+  const v = await api("/api/version").catch(() => null);
+  $("outdated").hidden = !v?.outdated;
+  return !!v?.outdated;
+}
+/** Before work that uses the app's code: true to go on (up to date, or the user chose the old version anyway). */
+async function okToRun() {
+  if (!(await checkOutdated())) return true;
+  return confirm(
+    "App đang chạy bản cũ: code trên máy đã được cập nhật nhưng app chưa được mở lại, nên video sẽ dựng theo cách cũ.
+
+" +
+      "Nên bấm Huỷ, đóng cửa sổ đen Remotion Remake rồi mở lại bằng nút Khởi động.
+Bấm OK nếu vẫn muốn chạy bằng bản cũ.",
+  );
+}
+setInterval(checkOutdated, 60_000);
+document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && checkOutdated());
+
 $("form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
+  if (!(await okToRun())) return;
   try {
     busy(true);
     resetSteps();
@@ -757,6 +786,7 @@ $("form").addEventListener("submit", async (ev) => {
 
 $("rerender").addEventListener("click", async () => {
   if (!current) return;
+  if (!(await okToRun())) return;
   let spec;
   try {
     spec = JSON.parse($("spec").value);
@@ -776,6 +806,7 @@ $("rerender").addEventListener("click", async () => {
 });
 
 async function renderSaved() {
+  if (!(await okToRun())) return;
   try {
     busy(true);
     resetSteps(["render"]);
@@ -1861,6 +1892,7 @@ async function loadUnfinished() {
 const syncBanner = () => ($("unfinished").hidden = !$("unfinished-list").children.length);
 
 loadStatus().then(loadHistory).then(loadUnfinished);
+checkOutdated();
 let startTab = "remake";
 try {
   startTab = location.hash ? tabFromHash() : localStorage.getItem("tab") || "remake";

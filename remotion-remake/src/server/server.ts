@@ -1,5 +1,5 @@
 import { setEnvValue } from "../env";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
@@ -16,12 +16,26 @@ import { catalog, hasElevenLabsKey, previewVoice } from "../pipeline/elevenlabs"
 import { dismissJob, drawPropForJob, listJobs, loadJob, loadState, previewShot, renderSavedJob, rerenderJob, runJob, saveSpec, stepsNow, unfinishedJobs, type JobOptions } from "../pipeline/job";
 import { imageToolNames } from "../pipeline/images";
 import { composePost, defaultChannel, LIMITS, loadComposedPost, loadPostSource, parseWriterOptions, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
-import { OUT_DIR, ytDlp } from "../pipeline/tools";
+import { OUT_DIR, ROOT, ytDlp } from "../pipeline/tools";
 import { parseVideoId } from "../pipeline/youtube";
 import { commentedSettingWarnings, numberSetting, publicSettings, saveSettings } from "../settings";
 
 const PORT = numberSetting("PORT") || 3210;
 const HTML = path.join(path.dirname(fileURLToPath(import.meta.url)), "index.html");
+
+/**
+ * The commit of the code on disk. The app keeps running the code it started with, so after an update
+ * (git pull) it must be reopened: until then the page warns, or new videos would be made the old way.
+ */
+function codeVersion(): string | null {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8", timeout: 5000, windowsHide: true, stdio: ["ignore", "pipe", "ignore"] }).trim() || null;
+  } catch {
+    return null;
+  }
+}
+const STARTED_VERSION = codeVersion();
+const isOutdated = () => !!STARTED_VERSION && codeVersion() !== STARTED_VERSION;
 
 /** Events streamed to the page: JobEvent, DiscoverEvent, plus the final result or error. */
 type TaskEvent = { type: string };
@@ -123,6 +137,7 @@ const server = http.createServer(async (req, res) => {
     if (parts[0] === "media" && parts.length >= 3) return serveMedia(req, res, parts[1], parts.slice(2).join("/"));
     if (parts[0] !== "api") return json(res, 404, { error: "Not found" });
 
+    if (req.method === "GET" && parts[1] === "version") return json(res, 200, { outdated: isOutdated() });
     if (req.method === "GET" && parts[1] === "status") {
       let ytdlp = true;
       try {
