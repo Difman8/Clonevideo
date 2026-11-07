@@ -11,6 +11,7 @@ import { hasElevenLabsKey } from "./elevenlabs";
 import { extractFrames, type Frame } from "./frames";
 import { drawProp, generateStoryboardImages, hasImageKey, imageDir, imageSettingsText } from "./images";
 import { extractPostContent, postContentText, type PostContent } from "./metadata";
+import { officialPost, type OfficialPost } from "./official-post";
 import { renderShotPreview, renderSpec } from "./render";
 import { narrationCoverage, writeStoryboard } from "./storyboard-ai";
 import { commentedSettingWarnings, setting } from "../settings";
@@ -66,7 +67,8 @@ export type JobResult = {
   notes: string[];
   analyzer: string;
   mode: RemakeMode;
-  remixPost: AiOutput["remixPost"] | null;
+  /** The post to publish, in the channel's format. Null when no AI wrote the video. */
+  official: OfficialPost | null;
   video: string | null;
   /** Start of each Fedtoon shot in seconds: tells which shot the paused video is on. */
   shotStarts: number[];
@@ -263,7 +265,7 @@ export async function runJob(opts: JobOptions, emit: Emit, { resume = false } = 
       post.suggestedKeywords = analysis.suggestedKeywords;
       writeJsonAtomic(path.join(dir, "post.json"), post);
       writeFileAtomic(path.join(dir, "post.txt"), postContentText(post));
-      const remixPost = opts.mode === "remix" && analysis.remixPost.title ? analysis.remixPost : null;
+      const remixPost = analysis.remixPost.title ? analysis.remixPost : null;
       writeJsonAtomic(path.join(dir, "job.json"), { options: opts, analyzer: analyzerName, notes: analysis.notes, remixPost });
     } else {
       const analysis = await step(
@@ -293,7 +295,7 @@ export async function runJob(opts: JobOptions, emit: Emit, { resume = false } = 
       post.suggestedKeywords = analysis.suggestedKeywords;
       writeJsonAtomic(path.join(dir, "post.json"), post);
       writeFileAtomic(path.join(dir, "post.txt"), postContentText(post));
-      const remixPost = opts.mode === "remix" && analysis.remixPost.title ? analysis.remixPost : null;
+      const remixPost = analysis.remixPost.title ? analysis.remixPost : null;
       writeJsonAtomic(path.join(dir, "job.json"), { options: opts, analyzer: analyzerName, notes: analysis.notes, remixPost });
     }
 
@@ -524,7 +526,7 @@ export function loadJob(id: string): JobResult | null {
   const post = readJson<PostContent>(path.join(dir, "post.json"));
   const spec = readJson<AnySpec>(path.join(dir, "spec.json"));
   if (!post || !spec) return null;
-  const job = readJson<{ options: JobOptions; analyzer: string; notes: string[]; remixPost: JobResult["remixPost"] }>(path.join(dir, "job.json"));
+  const job = readJson<{ options: JobOptions; analyzer: string; notes: string[]; remixPost: AiOutput["remixPost"] | null }>(path.join(dir, "job.json"));
   const video = path.join(dir, "remake.mp4");
   const hasVideo = fs.existsSync(video);
   return {
@@ -534,7 +536,7 @@ export function loadJob(id: string): JobResult | null {
     notes: job?.notes ?? [],
     analyzer: job?.analyzer ?? "",
     mode: job?.options.mode ?? "clone",
-    remixPost: job?.remixPost ?? null,
+    official: job?.remixPost ? officialPost(job.remixPost) : null,
     video: hasVideo ? video : null,
     shotStarts: isStoryboard(spec) ? storyboardTimeline(spec).start.map((f) => f / spec.meta.fps) : [],
     updatedAt: (hasVideo ? fs.statSync(video) : fs.statSync(path.join(dir, "spec.json"))).mtime.toISOString(),

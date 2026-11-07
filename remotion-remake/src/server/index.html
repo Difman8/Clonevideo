@@ -285,9 +285,9 @@
         <button type="button" class="primary" id="ed-save" disabled>🎬 Lưu &amp; render lại (không tốn AI)</button>
       </div>
     </div>
-    <div class="card" id="remix-card" hidden style="margin-top:20px">
-      <h2>Nội dung đăng đề xuất cho bản remix</h2>
-      <div id="remix"></div>
+    <div class="card" id="official-card" hidden style="margin-top:20px">
+      <h2>Nội dung đăng chính thức</h2>
+      <div id="official"></div>
     </div>
     <div class="card" style="margin-top:20px">
       <h2>Ghi chú phân tích</h2>
@@ -645,13 +645,18 @@ function renderResult(job) {
     ),
   );
   if (!cpSource || cpSource.videoId === job.id) setComposeSource(jobSource).catch((e) => cpError(e.message));
-  $("remix-card").hidden = !job.remixPost;
-  if (job.remixPost) {
-    const r = job.remixPost;
-    $("remix").replaceChildren(
-      field("Tiêu đề", el("div", { className: "value", textContent: r.title }), r.title),
-      field("Hashtag", chips(r.hashtags, "tag", "—"), r.hashtags.join(" ")),
-      field("Mô tả", el("div", { className: "value", textContent: r.description }), r.description),
+  $("official-card").hidden = !job.official;
+  if (job.official) {
+    const o = job.official;
+    $("official").replaceChildren(
+      field("Tiêu đề", el("div", { className: "value", textContent: o.title }), o.title),
+      field("Keywords", el("div", { className: "value", textContent: o.keywords }), o.keywords),
+      field("Mô tả", el("div", { className: "value", textContent: o.description }), o.description),
+      copyButton(`${o.title}
+
+${o.description}
+
+Keywords: ${o.keywords}`, "Sao chép tất cả"),
     );
   }
   const sp = job.spec;

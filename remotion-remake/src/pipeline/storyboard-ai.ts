@@ -20,7 +20,7 @@ export const StoryboardOutputSchema = AnalyzedStoryboardSchema.extend({
   suggestedKeywords: z.array(z.string()).describe("10-15 search keywords for this video, in the video's language."),
   remixPost: z
     .object({ title: z.string(), description: z.string(), hashtags: z.array(z.string()) })
-    .describe("Remix mode only: new title, description and hashtags. Clone mode: empty strings and empty array."),
+    .describe("Publishing post for this video. title and description: no hashtags. hashtags: about 8 short search terms."),
 });
 export type StoryboardOutput = z.infer<typeof StoryboardOutputSchema>;
 
@@ -60,7 +60,7 @@ export const MODE_TEXT: Record<RemakeMode, string> = {
 - Keep the same facts, examples, order and beats. The source's host or narrator becomes Fed.
 - Without a transcript, take the words from the text visible in the keyframes; if there is none, write short lines saying what each moment shows, and say so in notes.
 - The ${BRAND_NAME} outro is the only addition: one short shot (2-3 s) after the copied content.
-Leave remixPost empty.`,
+Fill remixPost with a title, description and hashtags written for this video in ${BRAND_NAME}'s own words.`,
   remix: `Mode: REMIX. Keep the topic, structure and pacing but write new content in ${BRAND_NAME}'s own words: new examples, new jokes, new sentences (facts must stay correct); never reuse the source's sentences. narration: at most about 2.5 words per second of durationSec. Fill remixPost with a new title, description and hashtags.`,
 };
 
