@@ -17,7 +17,7 @@ import { narrationCoverage, writeStoryboard } from "./storyboard-ai";
 import { commentedSettingWarnings, setting } from "../settings";
 import { OUT_DIR, readJsonSafe, writeFileAtomic, writeJsonAtomic } from "./tools";
 import { parseVtt, transcriptText, type Cue } from "./transcript";
-import { addStoryboardVoice, addVoiceover, narrationChars, voiceDir } from "./voiceover";
+import { addStoryboardVoice, addVoiceover, narrationChars, paceToVoice, voiceDir } from "./voiceover";
 import { downloadedSource, downloadSubtitles, downloadVideo, fetchInfo, parseVideoId, type YtInfo } from "./youtube";
 
 export const STEPS = [
@@ -394,6 +394,17 @@ async function voiceStep<T extends AnySpec>(id: string, spec: T, emit: Emit, p: 
 export async function renderJobVideo(id: string, spec: AnySpec, emit: Emit, p?: Progress) {
   const dir = path.join(OUT_DIR, id);
   const progress = p ?? new Progress(id, loadState(id) ?? newState(id));
+  // Shots follow the voice (videos made before keep up too); saved, so the scene editor matches the video.
+  if (isStoryboard(spec) && spec.voiceover.length) {
+    const before = spec;
+    const paced = await paceToVoice(id, before);
+    const length = (s: Storyboard) => s.shots.reduce((n, x) => n + x.durationSec, 0);
+    if (paced.shots.some((s, i) => s.durationSec !== before.shots[i].durationSec)) {
+      emit({ type: "log", message: `Canh nhịp theo lời đọc (nghỉ 0,3 giây giữa các câu): video ${length(before).toFixed(1)} → ${length(paced).toFixed(1)} giây.` });
+      writeJsonAtomic(path.join(dir, "spec.json"), paced);
+    }
+    spec = paced;
+  }
   await step(
     emit,
     progress,
