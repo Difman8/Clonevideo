@@ -95,6 +95,7 @@ Tab **⚙️ Cài đặt → Hình ảnh Fedtoon** chọn công cụ cho từng 
 
 - **Ảnh nền: Google Nano Banana** (`gemini-nano-banana-2.1`). Vẽ ở 2K rồi app thu về đúng khung video 1080x1920. Bật **Vẽ ảnh nền theo lô (Batch API)** để rẻ hơn 50%: cả loạt ảnh nền gửi trong một lần, Google trả trong tối đa 24 giờ (thường vài phút); có thể đóng app rồi bấm **Tiếp tục** để lấy ảnh mà không bị tính tiền lần nữa.
 - **Đồ vật: Recraft** (`recraftv4_1`). Vẽ theo phong cách tạo từ ảnh mẫu trong `assets/style/` (tạo một lần, mã lưu ở `out/_images/`), rồi tách nền thành PNG trong suốt. Recraft không có Batch API.
+- **Đồ vật: Google Nano Banana** (chọn ở **Công cụ vẽ đồ vật**). Google không vẽ được nền trong suốt nên app nhờ vẽ đồ vật trên nền xanh lá thuần (#00FF00, khác hẳn mọi màu của kênh) cỡ 1K rồi tự tách nền ngay trên máy, không tốn thêm phí. Bật **Recraft hết API units thì vẽ đồ vật bằng Google** (mặc định bật) để app tự chuyển sang Google khi tài khoản Recraft hết units, rồi tự quay lại Recraft khoảng 10 phút sau khi bạn nạp thêm.
 
 Cần khóa ở mục **Google Gemini** (bật thanh toán, model ảnh không có gói miễn phí) và **Recraft** (nạp API units).
 

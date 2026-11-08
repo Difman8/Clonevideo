@@ -15,6 +15,8 @@ export class RecraftError extends Error {
   constructor(
     message: string,
     readonly refused = false,
+    /** The account has no API units left (props can then be drawn by Google, see IMAGE_PROP_FALLBACK). */
+    readonly noCredit = false,
   ) {
     super(message);
   }
@@ -34,7 +36,7 @@ async function call(endpoint: string, body: FormData | Record<string, unknown>):
   if (res.ok) return data;
   const detail = String(data.message ?? data.detail ?? (data.error as { message?: string })?.message ?? data.code ?? "");
   if (res.status === 401 || res.status === 403) throw new RecraftError("RECRAFT_API_KEY không hợp lệ.");
-  if (res.status === 402 || /credit|balance|units/i.test(detail)) throw new RecraftError("Tài khoản Recraft đã hết API units: nạp thêm ở recraft.ai (mục API).");
+  if (res.status === 402 || /credit|balance|units/i.test(detail)) throw new RecraftError("Tài khoản Recraft đã hết API units: nạp thêm ở recraft.ai (mục API).", false, true);
   if (res.status === 429) throw new RecraftError("Recraft đang giới hạn số yêu cầu; thử lại sau ít phút.");
   if (res.status === 400 && /nsfw|moderat|inappropriate|safety|prohibited|policy/i.test(detail)) throw new RecraftError(`Recraft từ chối vẽ ảnh này: ${detail}`, true);
   throw new RecraftError(`Recraft báo lỗi ${res.status}${detail ? `: ${detail}` : ""}`);
