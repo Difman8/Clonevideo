@@ -99,6 +99,7 @@
   .crow a { display: block; font-weight: 600; color: var(--text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .crow .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .crow button { flex-shrink: 0; padding: 6px 10px; font-size: 13px; color: var(--err); }
+  .crow button.scan { color: var(--brand); }
   .vlist { display: grid; gap: 14px; margin-top: 14px; }
   .vcard { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
   @media (max-width: 720px) { .vcard { grid-template-columns: 1fr; } }
@@ -358,43 +359,13 @@
   </section>
 
   <section class="card">
-    <h2>📌 Kênh theo dõi</h2>
-    <div class="hint" style="margin:-8px 0 12px">Dán các kênh bạn quan tâm: link kênh, @tên kênh, hoặc link một video của kênh, mỗi dòng một kênh. App lưu lại để lần sau chỉ cần bấm quét. Rất ít tốn quota và không dùng AI.</div>
-    <textarea id="c-input" rows="3" style="min-height:0" aria-label="Dán kênh muốn theo dõi" placeholder="https://www.youtube.com/@tenkenh&#10;@kenhkhac"></textarea>
-    <div class="row" style="margin-top:8px">
-      <button type="button" id="c-add">➕ Thêm kênh</button>
-      <span class="hint" id="c-add-msg"></span>
+    <h2>📌 Top Shorts của kênh</h2>
+    <div class="hint" style="margin:-8px 0 12px">Dán link kênh, @tên kênh hoặc link một video của kênh. App quét <b>toàn bộ</b> Shorts kênh đã đăng bằng YouTube Data API (miễn phí: khoảng 2 đơn vị quota cho mỗi 50 Shorts, kênh 1.000 Shorts tốn khoảng 40 đơn vị) rồi lấy ra 20 Shorts nhiều lượt xem nhất. Không dùng AI. Kênh đã quét được lưu bên dưới để lần sau bấm quét lại.</div>
+    <div class="row">
+      <input type="search" id="c-input" aria-label="Link kênh" placeholder="https://www.youtube.com/@tenkenh" style="flex:1 1 280px; min-width:0" />
+      <button type="button" class="primary" id="c-go">🏆 Quét toàn bộ Shorts</button>
     </div>
     <div class="clist" id="c-list"></div>
-    <div class="filters" style="margin-top:16px">
-      <div class="f">
-        <label>Định dạng</label>
-        <div class="seg" role="radiogroup" aria-label="Định dạng">
-          <label><input type="radio" name="c-format" value="shorts" checked /><span>Shorts</span></label>
-          <label><input type="radio" name="c-format" value="long" /><span>Video dài</span></label>
-          <label><input type="radio" name="c-format" value="all" /><span>Cả hai</span></label>
-        </div>
-      </div>
-      <div class="f">
-        <label for="c-period">Khoảng thời gian đăng</label>
-        <select id="c-period"></select>
-        <div class="row" id="c-custom" hidden>
-          <input type="date" id="c-from" aria-label="Từ ngày" style="flex:1" /> → <input type="date" id="c-to" aria-label="Đến ngày" style="flex:1" />
-        </div>
-      </div>
-      <div class="f">
-        <label for="c-limit">Số video trả về</label>
-        <select id="c-limit">
-          <option value="10">Top 10</option>
-          <option value="20" selected>Top 20</option>
-          <option value="50">Top 50</option>
-        </select>
-      </div>
-    </div>
-    <div class="row" style="margin-top:16px">
-      <button type="button" class="primary" id="c-go">🏆 Quét &amp; xếp hạng</button>
-      <span class="hint">Xếp từ điểm tổng hợp cao đến thấp. Quét lại sau ít nhất 1 giờ để thấy video nào đang tăng.</span>
-    </div>
   </section>
 
   <section class="card">
@@ -558,7 +529,7 @@ function setYoutubeReady(ready) {
   $("yt-key-card").hidden = ready;
   $("d-go").disabled = !ready;
   $("d-go").title = ready ? "" : "Cần khóa YouTube Data API (xem phía trên)";
-  $("c-go").disabled = $("c-add").disabled = !ready;
+  $("c-go").disabled = !ready;
 }
 
 async function loadHistory() {
@@ -1274,19 +1245,6 @@ async function initDiscover() {
     if (saved) writeForm(saved);
   } catch {}
   syncForm();
-  $("c-period").replaceChildren(...DOPT.periods.map((p) => option(p.id, p.label)), option("custom", "Tuỳ chọn ngày…"));
-  $("c-period").value = "7d";
-  try {
-    const saved = JSON.parse(localStorage.getItem("channel-form") || "null");
-    if (saved) {
-      document.querySelector(`input[name=c-format][value="${saved.format}"]`)?.click();
-      $("c-period").value = saved.period;
-      $("c-from").value = saved.from;
-      $("c-to").value = saved.to;
-      $("c-limit").value = saved.limit;
-    }
-  } catch {}
-  $("c-custom").hidden = $("c-period").value !== "custom";
   setYoutubeReady(DOPT.youtubeApi);
   loadDiscoverHistory();
   renderChannels(await api("/api/discover/channels"));
@@ -1325,6 +1283,7 @@ function dOnEvent(e) {
   } else if (e.type === "result") {
     $("d-go").disabled = $("c-go").disabled = false;
     showDiscovery(e.result);
+    api("/api/discover/channels").then(renderChannels, () => {});
     loadDiscoverHistory();
     loadUnfinished();
   }
@@ -1353,74 +1312,51 @@ function dResetProgress(steps = DOPT.steps) {
   $("d-steps").replaceChildren(...stepItems(steps, "dstep-"));
 }
 
-// ---------- Kênh theo dõi ----------
+// ---------- Top Shorts của kênh ----------
 function renderChannels(channels) {
   $("c-list").replaceChildren(
-    ...(channels.length
-      ? channels.map((c) =>
-          el(
-            "div",
-            { className: "crow" },
-            el("img", { src: c.thumbnail, alt: "", loading: "lazy" }),
-            el(
-              "div",
-              {},
-              el("a", { href: c.url, target: "_blank", rel: "noreferrer", textContent: c.title, title: c.title }),
-              el("div", { className: "hint", textContent: [c.handle, c.subscribers == null ? "" : `${compact.format(c.subscribers)} người đăng ký`].filter(Boolean).join(" · ") }),
-            ),
-            el("button", {
-              type: "button",
-              textContent: "🗑 Xoá",
-              onclick: async () => {
-                if (!confirm(`Xoá kênh "${c.title}" khỏi danh sách theo dõi?`)) return;
-                renderChannels(await api(`/api/discover/channels/${encodeURIComponent(c.id)}`, { method: "DELETE" }));
-              },
-            }),
-          ),
-        )
-      : [el("div", { className: "empty", textContent: "Chưa có kênh nào." })]),
+    ...channels.map((c) =>
+      el(
+        "div",
+        { className: "crow" },
+        el("img", { src: c.thumbnail, alt: "", loading: "lazy" }),
+        el(
+          "div",
+          {},
+          el("a", { href: c.url, target: "_blank", rel: "noreferrer", textContent: c.title, title: c.title }),
+          el("div", {
+            className: "hint",
+            textContent: [c.handle, c.subscribers == null ? "" : `${compact.format(c.subscribers)} người đăng ký`, c.shorts == null ? "" : `${c.shorts.toLocaleString("vi-VN")} Shorts`].filter(Boolean).join(" · "),
+          }),
+        ),
+        el("button", { type: "button", className: "scan", textContent: "🏆 Quét", title: "Quét lại toàn bộ Shorts của kênh này", onclick: () => scanChannel(c.id) }),
+        el("button", {
+          type: "button",
+          textContent: "🗑",
+          title: "Xoá khỏi danh sách",
+          onclick: async () => {
+            if (!confirm(`Xoá kênh "${c.title}" khỏi danh sách?`)) return;
+            renderChannels(await api(`/api/discover/channels/${encodeURIComponent(c.id)}`, { method: "DELETE" }));
+          },
+        }),
+      ),
+    ),
   );
 }
 
-$("c-add").addEventListener("click", async () => {
-  const msg = $("c-add-msg");
-  $("c-add").disabled = true;
-  msg.textContent = "Đang tìm kênh…";
-  try {
-    const r = await api("/api/discover/channels", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: $("c-input").value }) });
-    renderChannels(r.channels);
-    // What could not be found stays in the box, to be corrected.
-    $("c-input").value = r.failed.join("\n");
-    msg.textContent = [
-      r.added.length ? `Đã thêm ${r.added.length} kênh.` : "",
-      r.already.length ? `Đã có sẵn: ${r.already.join(", ")}.` : "",
-      r.failed.length ? `Không tìm thấy ${r.failed.length} kênh, còn để trong ô trên để bạn sửa.` : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
-  } catch (e) {
-    msg.textContent = e.message;
-  } finally {
-    $("c-add").disabled = false;
-  }
-});
-
-$("c-period").addEventListener("change", () => ($("c-custom").hidden = $("c-period").value !== "custom"));
-
-$("c-go").addEventListener("click", async () => {
-  const opts = { format: radio("c-format"), period: $("c-period").value, from: $("c-from").value, to: $("c-to").value, limit: Number($("c-limit").value) };
-  try {
-    localStorage.setItem("channel-form", JSON.stringify(opts));
-  } catch {}
+async function scanChannel(channel) {
+  if (!channel.trim()) return $("c-input").focus();
   dResetProgress(DOPT.channelSteps);
   $("d-progress").scrollIntoView({ behavior: "smooth" });
   try {
-    const { task } = await api("/api/discover/channels/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(opts) });
+    const { task } = await api("/api/discover/channels/scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel }) });
     dFollow(task);
   } catch (e) {
     dOnEvent({ type: "error", message: e.message });
   }
-});
+}
+$("c-go").addEventListener("click", () => scanChannel($("c-input").value));
+$("c-input").addEventListener("keydown", (e) => e.key === "Enter" && scanChannel($("c-input").value));
 
 function dFollow(task) {
   const es = new EventSource(`/api/discover/${encodeURIComponent(task)}/events`);

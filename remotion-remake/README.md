@@ -98,11 +98,11 @@ Tab **⚙️ Cài đặt → Hình ảnh Fedtoon** chọn công cụ cho từng 
 
 Cần khóa ở mục **Google Gemini** (bật thanh toán, model ảnh không có gói miễn phí) và **Recraft** (nạp API units).
 
-## Kênh theo dõi
+## Top Shorts của kênh
 
-Trong tab **🔥 Tìm video hot**, dán link kênh, @tên kênh hoặc link một video của kênh, mỗi dòng một kênh, rồi bấm **Thêm kênh**. Danh sách được lưu lại, thêm hoặc xoá kênh lúc nào cũng được. Chọn định dạng và khoảng thời gian rồi bấm **Quét & xếp hạng**: app trả về lượt xem, lượt thích, bình luận, tỉ lệ tương tác của từng video, xếp từ điểm tổng hợp cao đến thấp.
+Trong tab **🔥 Tìm video hot**, dán link kênh, @tên kênh hoặc link một video của kênh rồi bấm **🏆 Quét toàn bộ Shorts**. App đọc **toàn bộ** Shorts kênh đã đăng, lấy lượt xem, lượt thích, bình luận của từng Short và trả về **20 Shorts nhiều lượt xem nhất**, kèm link, keywords, hashtag và nút **🎬 Dựng lại video này**. Kênh đã quét được lưu thành danh sách bên dưới ô nhập: bấm **🏆 Quét** cạnh kênh để quét lại.
 
-Điểm tổng hợp 0–100 so các video trong lần quét với nhau: lượt xem 20, lượt thích 10, bình luận 10, tỉ lệ tương tác 20, tốc độ xem 20, mức vượt trung bình của chính kênh 20. Quét lại sau ít nhất 1 giờ sẽ có thêm số 🚀 (lượt xem mỗi giờ từ lần quét trước), và số này thay cho tốc độ trung bình khi tính điểm. Không dùng AI, mỗi lần quét chỉ tốn vài đơn vị quota.
+Mọi bước chạy bằng YouTube Data API (miễn phí, không dùng AI): danh sách Shorts riêng của kênh do YouTube tạo sẵn (`UUSH…`) và thông tin video, mỗi loại 1 đơn vị quota cho 50 video. Ví dụ kênh có 200 Shorts tốn khoảng 11 đơn vị, kênh 1.000 Shorts khoảng 40 đơn vị (quota miễn phí 10.000 đơn vị/ngày). Danh sách `UUSH…` không có trong tài liệu của Google: nếu một ngày YouTube ngừng trả nó, app tự chuyển sang đọc tối đa 2.000 video mới nhất của kênh rồi kiểm từng video ngắn có phải Short không (chậm hơn và tốn thêm ít quota).
 
 ## Tìm video hot
 

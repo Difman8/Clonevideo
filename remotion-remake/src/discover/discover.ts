@@ -82,9 +82,9 @@ export type DiscoveredVideo = {
   comments: number | null;
   /** (likes + comments) / views, in percent. */
   engagementRate: number;
-  /** 0–100: average percentile of views, likes and comments among the videos found (channel scans: see channels.ts). */
+  /** 0–100: average percentile of views, likes and comments among the videos found (scoreByEngagement). */
   score: number;
-  /** Followed-channel scans only: how fast the video is growing. */
+  /** Results of the old followed-channels ranking only (before "Top Shorts của kênh"): how fast the video was growing. */
   hot?: { viewsPerHour: number; vsChannel: number; recentPerHour: number | null };
   /** YouTube's topic labels and category, in Vietnamese. */
   topic: string;
@@ -114,6 +114,14 @@ const num = (s?: string) => (s === undefined ? null : Number(s) || 0);
 
 /** Case-insensitive dedupe that keeps the first spelling. */
 const uniqueCaseless = (list: string[]) => list.filter((x, i) => list.findIndex((y) => y.toLocaleLowerCase() === x.toLocaleLowerCase()) === i);
+
+/** Sets each video's score: 0–100, the average percentile of its views, likes and comments among `videos`. */
+export function scoreByEngagement(videos: DiscoveredVideo[]) {
+  const pv = percentiles(videos.map((v) => v.views));
+  const pl = percentiles(videos.map((v) => v.likes ?? 0));
+  const pc = percentiles(videos.map((v) => v.comments ?? 0));
+  videos.forEach((v, i) => (v.score = Math.round(((pv[i] + pl[i] + pc[i]) / 3) * 100)));
+}
 
 /** Fraction of `values` below each value (ties share the middle), 0 for the lowest and 1 for the highest. */
 export function percentiles(values: number[]): number[] {
@@ -313,10 +321,7 @@ async function discoverFrom(cp: Checkpoint, api: YoutubeApi, emit: Emit, checkpo
 
   // 5. Rank, save and return.
   emit({ type: "step", step: "save", status: "start" });
-  const pv = percentiles(candidates.map((v) => v.views));
-  const pl = percentiles(candidates.map((v) => v.likes ?? 0));
-  const pc = percentiles(candidates.map((v) => v.comments ?? 0));
-  candidates.forEach((v, i) => (v.score = Math.round(((pv[i] + pl[i] + pc[i]) / 3) * 100)));
+  scoreByEngagement(candidates);
   candidates.sort((a, b) => sortValue[opts.sort](b) - sortValue[opts.sort](a) || b.views - a.views);
   const videos = candidates.slice(0, opts.limit).map((v, i) => ({ ...v, rank: i + 1 }));
   if (videos.length < opts.limit)

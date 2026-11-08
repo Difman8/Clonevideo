@@ -5,7 +5,7 @@ import http from "node:http";
 import path from "node:path";
 import { pipeline } from "node:stream";
 import { fileURLToPath } from "node:url";
-import { addChannels, CHANNEL_STEPS, listChannels, removeChannel, runChannelScan } from "../discover/channels";
+import { CHANNEL_STEPS, listChannels, removeChannel, runChannelShorts } from "../discover/channels";
 import { dismissDiscovery, DISCOVER_STEPS, listDiscoveries, loadDiscovery, newDiscoverId, runDiscover, unfinishedDiscoveries } from "../discover/discover";
 import { LANGUAGE_NAMES } from "../discover/language";
 import { COUNTRIES, CATEGORIES, DEFAULT_OPTIONS, estimateQuota, PERIODS, SORTS } from "../discover/options";
@@ -263,18 +263,17 @@ async function discoverRoutes(req: http.IncomingMessage, res: http.ServerRespons
   return json(res, 404, { error: "Not found" });
 }
 
-/** /api/discover/channels/… — "Kênh theo dõi": the saved list and the ranking of its videos. */
+/** /api/discover/channels/… — "Top Shorts của kênh": the channels scanned before, and a scan of one channel's Shorts. */
 async function channelRoutes(req: http.IncomingMessage, res: http.ServerResponse, rest: string[]) {
   if (req.method === "GET" && rest.length === 0) return json(res, 200, listChannels());
   if (req.method === "DELETE" && rest.length === 1) return json(res, 200, removeChannel(rest[0]));
   if (req.method === "POST") {
     if (!hasYoutubeKey()) return json(res, 400, { error: "Chưa có YOUTUBE_API_KEY. Dán khóa YouTube Data API v3 ở phần cài đặt phía trên." });
-    const body = (await readBody(req)) as { text?: unknown };
-    if (rest.length === 0) return json(res, 200, await addChannels(String(body.text ?? "")));
+    const body = (await readBody(req)) as { channel?: unknown };
     if (rest[0] === "scan") {
       const task = "channels-scan";
       if (running.get(task)?.done === false) return json(res, 409, { error: "Đang quét kênh, chờ xong rồi thử lại." });
-      startTask(task, (emit) => runChannelScan(body, emit));
+      startTask(task, (emit) => runChannelShorts(body, emit));
       return json(res, 202, { task });
     }
   }

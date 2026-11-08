@@ -142,10 +142,10 @@ export class YoutubeApi {
     return body.items?.[0] ?? null;
   }
 
-  /** One page (up to 50) of a channel's uploads playlist, newest first (1 unit). */
-  async uploads(playlistId: string, pageToken?: string): Promise<{ items: { id: string; publishedAt: string }[]; nextPageToken?: string }> {
+  /** One page (up to 50) of a playlist (e.g. a channel's uploads), newest first, and how many videos it holds (1 unit). */
+  async uploads(playlistId: string, pageToken?: string): Promise<{ items: { id: string; publishedAt: string }[]; nextPageToken?: string; total?: number }> {
     try {
-      const body = await this.get<{ nextPageToken?: string; items?: { contentDetails: { videoId: string; videoPublishedAt?: string } }[] }>(
+      const body = await this.get<{ nextPageToken?: string; pageInfo?: { totalResults?: number }; items?: { contentDetails: { videoId: string; videoPublishedAt?: string } }[] }>(
         "playlistItems",
         { part: "contentDetails", playlistId, maxResults: "50", pageToken },
         1,
@@ -153,6 +153,7 @@ export class YoutubeApi {
       return {
         items: (body.items ?? []).map((i) => ({ id: i.contentDetails.videoId, publishedAt: i.contentDetails.videoPublishedAt ?? "" })),
         nextPageToken: body.nextPageToken,
+        total: body.pageInfo?.totalResults,
       };
     } catch (e) {
       // A channel that never uploaded has no playlist.
