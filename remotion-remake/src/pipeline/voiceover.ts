@@ -6,10 +6,18 @@ import path from "node:path";
 import type { VideoSpec, VoiceClip } from "../spec/schema";
 import type { Storyboard } from "../spec/storyboard";
 import { audioDuration, synthesize, ttsOptions, type Alignment } from "./elevenlabs";
-import { OUT_DIR, readJsonSafe, writeFileAtomic } from "./tools";
+import { mapLimit } from "../discover/classify";
+import { ffmpegPath, OUT_DIR, readJsonSafe, run, writeFileAtomic } from "./tools";
 
-/** Silence kept after a line before the next scene starts. */
+/** Classic videos: silence kept after a line before the next scene starts. */
 const TAIL_SEC = 0.35;
+
+/** Fedtoon: pause between the last word of a shot and the next shot's line (a brisk short: ~0.3 s). */
+const PAUSE_SEC = 0.3;
+/** Fedtoon: after the video's last line, so it does not stop on the last word. */
+const END_PAUSE_SEC = 0.8;
+/** Fedtoon: shortest shot with a line (a one-word line still shows its picture). */
+const MIN_VOICED_SEC = 1;
 
 export const voiceDir = (id: string) => path.join(OUT_DIR, id, "voice");
 const alignmentFile = (audio: string) => audio.replace(/\.\w+$/, ".alignment.json");
@@ -79,9 +87,43 @@ export async function addVoiceover(id: string, spec: VideoSpec, onProgress: Prog
   return { ...spec, scenes, voiceover: clips };
 }
 
-/** Fedtoon storyboard: voice per shot, shots lengthened to fit. */
+/**
+ * When the voice stops inside a clip. ElevenLabs ends its clips with 0.1–0.6 s of silence, and its
+ * word timings run into that silence, so the end is measured on the sound (-50 dB keeps soft endings).
+ */
+async function speechEndSec(file: string, durationSec: number): Promise<number> {
+  try {
+    const { stderr } = await run(ffmpegPath(), ["-hide_banner", "-i", file, "-af", "silencedetect=noise=-50dB:d=0.05", "-f", "null", "-"]);
+    const starts = [...stderr.matchAll(/silence_start: (-?[\d.]+)/g)].map((m) => Number(m[1]));
+    const ends = [...stderr.matchAll(/silence_end: ([\d.]+)/g)].map((m) => Number(m[1]));
+    const last = starts.at(-1);
+    // Trailing silence: the last silence never ends, or ends with the file.
+    const trailing = last !== undefined && (ends.length < starts.length || Math.abs((ends.at(-1) ?? 0) - durationSec) < 0.05);
+    return trailing && last > 0.2 ? Math.min(durationSec, last) : durationSec;
+  } catch {
+    return durationSec;
+  }
+}
+
+/**
+ * Fedtoon: each shot with a line lasts until a short pause after its last word, so the lines follow
+ * each other without long gaps (the storyboard's own durations are kept for shots without a line).
+ * Measured on the clips on disk, so re-rendering a saved video ("Render lại") applies it too.
+ */
+export async function paceToVoice(id: string, sb: Storyboard): Promise<Storyboard> {
+  const last = sb.shots.length - 1;
+  const shots = await mapLimit(sb.shots, 4, async (s, i) => {
+    const clip = sb.voiceover.find((c) => c.scene === i);
+    const file = clip && path.join(voiceDir(id), path.basename(clip.src));
+    if (!clip || !file || !fs.existsSync(file)) return s;
+    const end = await speechEndSec(file, clip.durationSec);
+    return { ...s, durationSec: +Math.max(MIN_VOICED_SEC, end + (i === last ? END_PAUSE_SEC : PAUSE_SEC)).toFixed(2) };
+  });
+  return { ...sb, shots };
+}
+
+/** Fedtoon storyboard: voice per shot, shots timed to the voice (paceToVoice). */
 export async function addStoryboardVoice(id: string, sb: Storyboard, onProgress: Progress): Promise<Storyboard> {
   const clips = await voiceLines(id, sb.shots.map((s) => s.narration), sb.meta.language, onProgress);
-  const shots = sb.shots.map((s, i) => ({ ...s, durationSec: fit(s.durationSec, clips.find((c) => c.scene === i)) }));
-  return { ...sb, shots, voiceover: clips };
+  return paceToVoice(id, { ...sb, voiceover: clips });
 }
