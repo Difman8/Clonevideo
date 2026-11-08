@@ -966,7 +966,7 @@ function edPlacementControls(item) {
   return el(
     "div",
     { className: "ed-extra" },
-    el("div", { className: "hint", textContent: "Kéo khung đỏ trên ảnh để đặt vào đúng chỗ. Phần bị cắt được tô tối trên ảnh." }),
+    el("div", { className: "hint", textContent: "Kéo khung đỏ trên ảnh để đặt vào đúng chỗ (khung đang chọn luôn nằm trên cùng, kể cả khi bị nhân vật che). Phần bị cắt được tô tối trên ảnh." }),
     ...rows,
     undo.length ? el("div", { className: "ed-opts", style: "margin-top:6px" }, ...undo) : null,
   );
@@ -1215,11 +1215,14 @@ function edBoxes(layers) {
           shade(`top:${c.top * 100}%;bottom:${c.bottom * 100}%;right:0;width:${c.right * 100}%`),
         );
       }
-      boxes.push(box);
+      boxes.push({ box, selected, area: b.width * b.height });
     });
   add("prop", layers?.props);
   add("character", layers?.characters);
-  $("ed-boxes").replaceChildren(...boxes);
+  // Smaller boxes on top of bigger ones and the selected one on top of all: a prop in front of a
+  // character (e.g. one just added in the middle) can still be grabbed and dragged.
+  boxes.sort((a, b) => a.selected - b.selected || b.area - a.area);
+  $("ed-boxes").replaceChildren(...boxes.map((x) => x.box));
 }
 
 /** Drags a box on the preview; on release the item gets that exact spot (`at`: prop center, character feet). */
