@@ -100,7 +100,7 @@ Cần khóa ở mục **Google Gemini** (bật thanh toán, model ảnh không c
 
 ## Top Shorts của kênh
 
-Trong tab **🔥 Tìm video hot**, dán link kênh, @tên kênh hoặc link một video của kênh rồi bấm **🏆 Quét toàn bộ Shorts**. App đọc **toàn bộ** Shorts kênh đã đăng, lấy lượt xem, lượt thích, bình luận của từng Short và trả về **20 Shorts nhiều lượt xem nhất**, kèm link, keywords, hashtag và nút **🎬 Dựng lại video này**. Kênh đã quét được lưu thành danh sách bên dưới ô nhập: bấm **🏆 Quét** cạnh kênh để quét lại.
+Trong tab **🔥 Tìm video hot**, dán link kênh, @tên kênh hoặc link một video của kênh rồi bấm **🏆 Quét toàn bộ Shorts**. App đọc **toàn bộ** Shorts kênh đã đăng, lấy lượt xem, lượt thích, bình luận của từng Short và trả về **20 Shorts nhiều lượt xem nhất**, kèm link, keywords, hashtag và nút **🎬 Dựng lại video này**. Mọi kênh bạn quét hoặc bấm **➕ Lưu kênh** (dán được nhiều kênh cùng lúc, cách nhau bằng dấu cách hoặc dấu phẩy) đều được lưu vào danh sách bên dưới ô nhập, ngay khi app tìm thấy kênh, kể cả khi lần quét sau đó bị lỗi. Danh sách lưu trên máy (`out/_discover/followed/channels.json`), vẫn còn sau khi tắt app; bấm **🏆 Quét** cạnh kênh để quét lại, **🗑** để xoá.
 
 Mọi bước chạy bằng YouTube Data API (miễn phí, không dùng AI): danh sách Shorts riêng của kênh do YouTube tạo sẵn (`UUSH…`) và thông tin video, mỗi loại 1 đơn vị quota cho 50 video. Ví dụ kênh có 200 Shorts tốn khoảng 11 đơn vị, kênh 1.000 Shorts khoảng 40 đơn vị (quota miễn phí 10.000 đơn vị/ngày). Danh sách `UUSH…` không có trong tài liệu của Google: nếu một ngày YouTube ngừng trả nó, app tự chuyển sang đọc tối đa 2.000 video mới nhất của kênh rồi kiểm từng video ngắn có phải Short không (chậm hơn và tốn thêm ít quota).
 

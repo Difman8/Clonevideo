@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-08
 
+- **Kênh thêm vào để quét luôn được lưu lại, thêm nút Lưu kênh** — @Difman8 · 10:03 · nhánh `claude/luu-kenh-quet`
 - **Quét kênh: dán link kênh là lấy toàn bộ Shorts và ra 20 Shorts nhiều lượt xem nhất** — @Difman8 · 09:54 · nhánh `claude/top-shorts-cua-kenh`
 
 ## 2026-11-07

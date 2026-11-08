@@ -58,7 +58,10 @@ export type SavedChannel = {
   shorts?: number;
 };
 
-/** Channels scanned before, newest scan first: one click scans them again. */
+/**
+ * Every channel the owner added or scanned, most recently used first: one click scans it again.
+ * Kept on disk (channels.json), so the list is still there after the app is closed.
+ */
 export const listChannels = () => readJsonSafe<SavedChannel[]>(CHANNELS_FILE) ?? [];
 
 function saveChannels(channels: SavedChannel[]) {
@@ -66,11 +69,32 @@ function saveChannels(channels: SavedChannel[]) {
   writeJsonAtomic(CHANNELS_FILE, channels);
 }
 
-/** Adds the channel to the list or refreshes it there (name, picture, subscribers), first in the list. */
-function rememberChannel(channel: SavedChannel) {
-  const others = listChannels().filter((c) => c.id !== channel.id);
-  const before = listChannels().find((c) => c.id === channel.id);
-  saveChannels([{ ...channel, addedAt: before?.addedAt ?? channel.addedAt }, ...others]);
+/**
+ * Adds the channel to the list, or refreshes it there (name, picture, subscribers, keeping its last
+ * scan figures), and puts it first. Returns false when it was already in the list.
+ */
+function rememberChannel(channel: SavedChannel): boolean {
+  const saved = listChannels();
+  const before = saved.find((c) => c.id === channel.id);
+  saveChannels([{ ...before, ...channel, addedAt: before?.addedAt ?? channel.addedAt }, ...saved.filter((c) => c.id !== channel.id)]);
+  return !before;
+}
+
+/** Saves channels without scanning them: links, @handles or video links, separated by spaces, commas or lines. */
+export async function addChannels(text: string) {
+  const inputs = [...new Set(text.split(/[\s,]+/).filter(Boolean))];
+  if (!inputs.length) throw new Error("Hãy dán link kênh, @tên kênh hoặc link một video của kênh.");
+  const api = new YoutubeApi();
+  const added: string[] = [];
+  const already: string[] = [];
+  const failed: string[] = [];
+  // Last pasted saved first, so the list shows them in the pasted order, on top.
+  for (const input of [...inputs].reverse()) {
+    const found = await findChannel(api, input);
+    if (!found) failed.unshift(input);
+    else (rememberChannel(toSavedChannel(found)) ? added : already).unshift(found.snippet.title);
+  }
+  return { channels: listChannels(), added, already, failed, quotaUsed: api.quotaUsed };
 }
 
 export function removeChannel(id: string) {
@@ -165,6 +189,8 @@ export async function runChannelShorts(raw: unknown, emit: (e: ChannelEvent) => 
   const found = await findChannel(api, text);
   if (!found) throw new Error(`Không tìm thấy kênh "${text}". Kiểm tra lại link hoặc @tên kênh.`);
   const channel = toSavedChannel(found);
+  // Saved as soon as it is found: the channel stays in the list even if the scan stops later.
+  rememberChannel(channel);
   emit({ type: "step", step: "channel", status: "done", message: channel.title });
 
   // 2. Every Short it published, from YouTube's Shorts playlist of the channel.

@@ -360,11 +360,13 @@
 
   <section class="card">
     <h2>📌 Top Shorts của kênh</h2>
-    <div class="hint" style="margin:-8px 0 12px">Dán link kênh, @tên kênh hoặc link một video của kênh. App quét <b>toàn bộ</b> Shorts kênh đã đăng bằng YouTube Data API (miễn phí: khoảng 2 đơn vị quota cho mỗi 50 Shorts, kênh 1.000 Shorts tốn khoảng 40 đơn vị) rồi lấy ra 20 Shorts nhiều lượt xem nhất. Không dùng AI. Kênh đã quét được lưu bên dưới để lần sau bấm quét lại.</div>
+    <div class="hint" style="margin:-8px 0 12px">Dán link kênh, @tên kênh hoặc link một video của kênh. App quét <b>toàn bộ</b> Shorts kênh đã đăng bằng YouTube Data API (miễn phí: khoảng 2 đơn vị quota cho mỗi 50 Shorts, kênh 1.000 Shorts tốn khoảng 40 đơn vị) rồi lấy ra 20 Shorts nhiều lượt xem nhất. Không dùng AI.<br />Mọi kênh bạn quét hoặc bấm <b>➕ Lưu kênh</b> đều được lưu vào danh sách bên dưới (lưu trên máy, vẫn còn sau khi tắt app): lần sau chỉ cần bấm <b>🏆 Quét</b> cạnh kênh. Có thể dán nhiều kênh cùng lúc, cách nhau bằng dấu cách hoặc dấu phẩy, rồi bấm Lưu kênh.</div>
     <div class="row">
       <input type="search" id="c-input" aria-label="Link kênh" placeholder="https://www.youtube.com/@tenkenh" style="flex:1 1 280px; min-width:0" />
       <button type="button" class="primary" id="c-go">🏆 Quét toàn bộ Shorts</button>
+      <button type="button" id="c-add">➕ Lưu kênh</button>
     </div>
+    <div class="hint" id="c-add-msg" style="margin-top:6px"></div>
     <div class="clist" id="c-list"></div>
   </section>
 
@@ -529,7 +531,7 @@ function setYoutubeReady(ready) {
   $("yt-key-card").hidden = ready;
   $("d-go").disabled = !ready;
   $("d-go").title = ready ? "" : "Cần khóa YouTube Data API (xem phía trên)";
-  $("c-go").disabled = !ready;
+  $("c-go").disabled = $("c-add").disabled = !ready;
 }
 
 async function loadHistory() {
@@ -1279,6 +1281,7 @@ function dOnEvent(e) {
     $("d-error").hidden = false;
     $("d-error").textContent = "Lỗi: " + e.message;
     $("d-go").disabled = $("c-go").disabled = false;
+    api("/api/discover/channels").then(renderChannels, () => {});
     loadUnfinished();
   } else if (e.type === "result") {
     $("d-go").disabled = $("c-go").disabled = false;
@@ -1356,6 +1359,29 @@ async function scanChannel(channel) {
   }
 }
 $("c-go").addEventListener("click", () => scanChannel($("c-input").value));
+$("c-add").addEventListener("click", async () => {
+  const msg = $("c-add-msg");
+  if (!$("c-input").value.trim()) return $("c-input").focus();
+  $("c-add").disabled = true;
+  msg.textContent = "Đang tìm kênh…";
+  try {
+    const r = await api("/api/discover/channels", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: $("c-input").value }) });
+    renderChannels(r.channels);
+    // What could not be found stays in the box, to be corrected.
+    $("c-input").value = r.failed.join(" ");
+    msg.textContent = [
+      r.added.length ? `Đã lưu ${r.added.length} kênh: ${r.added.join(", ")}.` : "",
+      r.already.length ? `Đã có trong danh sách: ${r.already.join(", ")}.` : "",
+      r.failed.length ? `Không tìm thấy ${r.failed.length} kênh, còn để trong ô trên để bạn sửa.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  } catch (e) {
+    msg.textContent = e.message;
+  } finally {
+    $("c-add").disabled = false;
+  }
+});
 $("c-input").addEventListener("keydown", (e) => e.key === "Enter" && scanChannel($("c-input").value));
 
 function dFollow(task) {
