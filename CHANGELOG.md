@@ -2,6 +2,10 @@
 
 GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào `main` (mới nhất ở trên).
 
+## 2026-11-08
+
+- **Quét kênh: dán link kênh là lấy toàn bộ Shorts và ra 20 Shorts nhiều lượt xem nhất** — @Difman8 · 09:54 · nhánh `claude/top-shorts-cua-kenh`
+
 ## 2026-11-07
 
 - **Sửa lỗi cú pháp trong hộp hỏi lại khi app chạy bản cũ [skip changelog]** — @Difman8 · 22:19 · nhánh `claude/canh-bao-app-chua-mo-lai`

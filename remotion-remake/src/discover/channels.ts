@@ -1,34 +1,39 @@
-// "Kênh theo dõi": the channels the owner follows, and a ranking of their recent
-// videos. No AI, and very little quota: a saved channel keeps its uploads playlist,
-// and playlist pages and video details cost 1 unit per 50 videos.
+// "Top Shorts của kênh": every Short a channel has published, ranked by views. Only the free
+// YouTube Data API and no AI: YouTube keeps a playlist of each channel's Shorts, and its pages
+// and the video details cost 1 quota unit per 50 videos (a channel with 1,000 Shorts: ~40 units).
 import fs from "node:fs";
 import path from "node:path";
 import { readJsonSafe, writeJsonAtomic } from "../pipeline/tools";
 import { parseVideoId } from "../pipeline/youtube";
 import { guessShorts, isShortsPage, mapLimit, SHORTS_MAX_SEC } from "./classify";
-import { describePeriod, DISCOVER_DIR, percentiles, saveDiscovery, toVideo, type DiscoveredVideo, type DiscoverResult } from "./discover";
-import { FORMAT_LABEL, parseDiscoverOptions, timeRange } from "./options";
-import { YoutubeApi, type ApiChannel, type ChannelLookup } from "./youtube-api";
+import { DISCOVER_DIR, saveDiscovery, scoreByEngagement, toVideo, type DiscoveredVideo, type DiscoverResult } from "./discover";
+import { parseDiscoverOptions } from "./options";
+import { YoutubeApi, YoutubeApiError, type ApiChannel, type ChannelLookup } from "./youtube-api";
 
 // A folder of its own: listDiscoveries reads every .json directly in DISCOVER_DIR as a past search.
 const FOLLOW_DIR = path.join(DISCOVER_DIR, "followed");
 const CHANNELS_FILE = path.join(FOLLOW_DIR, "channels.json");
-const SNAPSHOTS_FILE = path.join(FOLLOW_DIR, "snapshots.json");
 
-/** A very active channel over a long period stops here rather than spending quota on old videos. */
-const MAX_PAGES_PER_CHANNEL = 10;
-/** Two scans closer than this say nothing about growth. */
-const MIN_SNAPSHOT_HOURS = 1;
-const SNAPSHOT_KEEP_DAYS = 90;
+/** How many Shorts the ranking shows. */
+export const TOP_SHORTS = 20;
+/** YouTube pages a playlist up to 20,000 videos (400 pages of 50). */
+const MAX_PAGES = 400;
+/** Fallback when the Shorts playlist is unavailable: the newest uploads looked at (50 per page). */
+const FALLBACK_MAX_PAGES = 40;
 
-/** How the overall score is made: the shares of each signal, adding up to 100. */
-const SCORE_WEIGHTS = { views: 20, likes: 10, comments: 10, engagement: 20, speed: 20, vsChannel: 20 };
+/**
+ * Playlists YouTube keeps for every channel next to its uploads ("UU…"): only its Shorts ("UUSH…")
+ * and only its regular videos ("UULF…"). Not in Google's documentation but served by the API;
+ * if they ever stop working the scan falls back to the uploads playlist (see runChannelShorts).
+ */
+const shortsPlaylist = (channelId: string) => `UUSH${channelId.slice(2)}`;
+const longPlaylist = (channelId: string) => `UULF${channelId.slice(2)}`;
 
 export const CHANNEL_STEPS = [
-  { id: "list", label: "Lấy danh sách video của các kênh" },
+  { id: "channel", label: "Tìm kênh" },
+  { id: "list", label: "Lấy danh sách toàn bộ Shorts của kênh" },
   { id: "details", label: "Lấy lượt xem, lượt thích, bình luận" },
-  { id: "format", label: "Phân loại Shorts / video dài" },
-  { id: "save", label: "Tính điểm & xếp hạng" },
+  { id: "save", label: `Xếp hạng ${TOP_SHORTS} Shorts nhiều lượt xem nhất` },
 ] as const;
 type StepId = (typeof CHANNEL_STEPS)[number]["id"];
 
@@ -44,19 +49,34 @@ export type SavedChannel = {
   handle: string;
   url: string;
   thumbnail: string;
-  /** Playlist of all its uploads. Saved, so a scan does not pay to look it up again. */
+  /** Playlist of all its uploads (fallback when the Shorts playlist is unavailable). */
   uploads: string;
   subscribers: number | null;
   addedAt: string;
+  /** Last scan: when, and how many Shorts the channel had. */
+  scannedAt?: string;
+  shorts?: number;
 };
 
-type Snapshot = { views: number; at: string };
-
+/** Channels scanned before, newest scan first: one click scans them again. */
 export const listChannels = () => readJsonSafe<SavedChannel[]>(CHANNELS_FILE) ?? [];
 
 function saveChannels(channels: SavedChannel[]) {
   fs.mkdirSync(FOLLOW_DIR, { recursive: true });
   writeJsonAtomic(CHANNELS_FILE, channels);
+}
+
+/** Adds the channel to the list or refreshes it there (name, picture, subscribers), first in the list. */
+function rememberChannel(channel: SavedChannel) {
+  const others = listChannels().filter((c) => c.id !== channel.id);
+  const before = listChannels().find((c) => c.id === channel.id);
+  saveChannels([{ ...channel, addedAt: before?.addedAt ?? channel.addedAt }, ...others]);
+}
+
+export function removeChannel(id: string) {
+  const channels = listChannels().filter((c) => c.id !== id);
+  saveChannels(channels);
+  return channels;
 }
 
 const decoded = (s: string) => {
@@ -67,7 +87,7 @@ const decoded = (s: string) => {
   }
 };
 
-/** The lookups to try for one pasted line: channel link, @handle, channel id, or a video link. */
+/** The lookups to try for a pasted channel: channel link, @handle, channel id, or a video link. */
 function lookupsFor(text: string): ChannelLookup[] {
   const handle = text.match(/(?:^|youtube\.com\/)@([^/?#\s]+)/i);
   if (handle) return [{ forHandle: `@${decoded(handle[1])}` }];
@@ -107,151 +127,108 @@ function toSavedChannel(c: ApiChannel): SavedChannel {
   };
 }
 
-/** Adds every channel of the pasted text (one per line, or separated by spaces or commas). */
-export async function addChannels(text: string) {
-  const inputs = [...new Set(text.split(/[\s,]+/).filter(Boolean))];
-  if (!inputs.length) throw new Error("Hãy dán link hoặc @tên của ít nhất một kênh.");
-  const api = new YoutubeApi();
-  const channels = listChannels();
-  const added: string[] = [];
-  const failed: string[] = [];
-  const already: string[] = [];
-  for (const input of inputs) {
-    const found = await findChannel(api, input);
-    if (!found) failed.push(input);
-    else if (channels.some((c) => c.id === found.id)) already.push(found.snippet.title);
-    else {
-      channels.push(toSavedChannel(found));
-      added.push(found.snippet.title);
-    }
+/** Every video id of a playlist, up to `maxPages` pages of 50 (1 unit each). */
+async function playlistIds(api: YoutubeApi, playlistId: string, maxPages: number, onPage: (got: number, total: number) => void) {
+  const ids: string[] = [];
+  let pageToken: string | undefined;
+  for (let page = 1; page <= maxPages; page++) {
+    const r = await api.uploads(playlistId, pageToken);
+    ids.push(...r.items.map((i) => i.id));
+    onPage(ids.length, r.total ?? ids.length);
+    pageToken = r.nextPageToken;
+    if (!pageToken) return { ids: [...new Set(ids)], complete: true };
   }
-  if (added.length) saveChannels(channels);
-  return { channels, added, failed, already, quotaUsed: api.quotaUsed };
+  return { ids: [...new Set(ids)], complete: false };
 }
 
-export function removeChannel(id: string) {
-  const channels = listChannels().filter((c) => c.id !== id);
-  saveChannels(channels);
-  return channels;
-}
-
-const median = (values: number[]) => {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = sorted.length >> 1;
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-};
-
-/** Fills in the growth figures and the overall score, then updates the saved view counts. */
-function scoreVideos(videos: DiscoveredVideo[], now: Date) {
-  const saved = readJsonSafe<Record<string, Snapshot>>(SNAPSHOTS_FILE) ?? {};
-  const hoursSince = (iso: string) => (now.getTime() - new Date(iso).getTime()) / 3_600_000;
-  const byChannel = new Map<string, number[]>();
-  for (const v of videos) byChannel.set(v.channelUrl, [...(byChannel.get(v.channelUrl) ?? []), v.views]);
-
-  for (const v of videos) {
-    const past = saved[v.id];
-    const gap = past ? hoursSince(past.at) : 0;
-    const typical = median(byChannel.get(v.channelUrl)!);
-    v.hot = {
-      viewsPerHour: Math.round(v.views / Math.max(1, hoursSince(v.publishedAt))),
-      vsChannel: typical ? Math.round((v.views / typical) * 10) / 10 : 1,
-      recentPerHour: gap >= MIN_SNAPSHOT_HOURS ? Math.max(0, Math.round((v.views - past.views) / gap)) : null,
-    };
-    // Kept while it is recent: the next scan then still compares over at least an hour.
-    if (!past || gap >= MIN_SNAPSHOT_HOURS) saved[v.id] = { views: v.views, at: now.toISOString() };
+/** A hidden playlist (Shorts, regular videos), or null when YouTube does not serve it: an unknown playlist id answers 400. */
+async function hiddenPlaylistIds(...args: Parameters<typeof playlistIds>) {
+  try {
+    return await playlistIds(...args);
+  } catch (e) {
+    if (e instanceof YoutubeApiError && (e.status === 400 || e.status === 404)) return null;
+    throw e;
   }
-
-  const signals = {
-    views: videos.map((v) => v.views),
-    likes: videos.map((v) => v.likes ?? 0),
-    comments: videos.map((v) => v.comments ?? 0),
-    engagement: videos.map((v) => v.engagementRate),
-    // What the video did since the last scan says more than its average since publication.
-    speed: videos.map((v) => v.hot!.recentPerHour ?? v.hot!.viewsPerHour),
-    vsChannel: videos.map((v) => v.hot!.vsChannel),
-  };
-  const ranks = Object.entries(signals).map(([name, values]) => ({ weight: SCORE_WEIGHTS[name as keyof typeof SCORE_WEIGHTS], ranks: percentiles(values) }));
-  videos.forEach((v, i) => (v.score = Math.round(ranks.reduce((sum, s) => sum + s.weight * s.ranks[i], 0))));
-
-  const oldest = now.getTime() - SNAPSHOT_KEEP_DAYS * 86_400_000;
-  fs.mkdirSync(FOLLOW_DIR, { recursive: true });
-  writeJsonAtomic(SNAPSHOTS_FILE, Object.fromEntries(Object.entries(saved).filter(([, s]) => new Date(s.at).getTime() >= oldest)));
 }
 
-/** Ranks the videos the followed channels published in the chosen period, best overall score first. */
-export async function runChannelScan(raw: unknown, emit: (e: ChannelEvent) => void): Promise<DiscoverResult> {
-  const channels = listChannels();
-  if (!channels.length) throw new Error("Chưa có kênh nào: dán link kênh rồi bấm Thêm kênh.");
-  const opts = parseDiscoverOptions({ ...(raw as object), country: "", query: "", category: "", sort: "engagement" });
-  const { after, before } = timeRange(opts);
-  const api = new YoutubeApi();
-  const notes = [
-    `Đã quét ${channels.length} kênh: ${channels.map((c) => c.title).join(", ")}.`,
-    `Điểm tổng hợp 0–100 so các video trong lần quét này với nhau: lượt xem ${SCORE_WEIGHTS.views}, lượt thích ${SCORE_WEIGHTS.likes}, bình luận ${SCORE_WEIGHTS.comments}, tỉ lệ tương tác ${SCORE_WEIGHTS.engagement}, tốc độ xem ${SCORE_WEIGHTS.speed}, mức vượt trung bình của chính kênh ${SCORE_WEIGHTS.vsChannel}.`,
-  ];
+const asShort = (v: DiscoveredVideo): DiscoveredVideo => ({ ...v, format: "shorts", url: `https://www.youtube.com/shorts/${v.id}` });
 
-  // 1. Uploads playlists, newest first: stop at the first page that reaches the start of the period.
+/** Scans every Short of one channel (link, @handle or one of its video links) and ranks the most viewed. */
+export async function runChannelShorts(raw: unknown, emit: (e: ChannelEvent) => void): Promise<DiscoverResult> {
+  const text = String((raw as { channel?: unknown } | null)?.channel ?? "").trim();
+  if (!text) throw new Error("Hãy dán link kênh, @tên kênh hoặc link một video của kênh.");
+  const api = new YoutubeApi();
+  const notes: string[] = [];
+
+  // 1. The channel.
+  emit({ type: "step", step: "channel", status: "start" });
+  const found = await findChannel(api, text);
+  if (!found) throw new Error(`Không tìm thấy kênh "${text}". Kiểm tra lại link hoặc @tên kênh.`);
+  const channel = toSavedChannel(found);
+  emit({ type: "step", step: "channel", status: "done", message: channel.title });
+
+  // 2. Every Short it published, from YouTube's Shorts playlist of the channel.
   emit({ type: "step", step: "list", status: "start" });
-  const ids = new Set<string>();
-  const capped: string[] = [];
-  let done = 0;
-  await mapLimit(channels, 4, async (channel) => {
-    let pageToken: string | undefined;
-    for (let page = 1; ; page++) {
-      const r = await api.uploads(channel.uploads, pageToken);
-      for (const item of r.items) {
-        const published = new Date(item.publishedAt);
-        if (published >= after && published <= before) ids.add(item.id);
-      }
-      pageToken = r.nextPageToken;
-      const last = r.items[r.items.length - 1];
-      if (!pageToken || !last || new Date(last.publishedAt) < after) break;
-      if (page === MAX_PAGES_PER_CHANNEL) {
-        capped.push(channel.title);
-        break;
-      }
+  const progress = (got: number, total: number) => emit({ type: "progress", step: "list", progress: total ? Math.min(1, got / total) : 1 });
+  const listed = await hiddenPlaylistIds(api, shortsPlaylist(channel.id), MAX_PAGES, progress);
+  let ids = listed?.ids ?? [];
+  // Fallback when YouTube no longer serves the hidden playlists: read the newest uploads and check each short one.
+  let checkEach = !listed;
+  if (listed && !listed.complete) notes.push(`Kênh có hơn ${MAX_PAGES * 50} Shorts: YouTube chỉ cho đọc ${MAX_PAGES * 50} Shorts mới nhất.`);
+  if (listed && !ids.length) {
+    const uploads = await api.uploads(channel.uploads);
+    if (!uploads.items.length) notes.push("Kênh này chưa đăng video công khai nào.");
+    else {
+      // An empty Shorts playlist means no Shorts only if the regular-video playlist is served.
+      const regular = await hiddenPlaylistIds(api, longPlaylist(channel.id), 1, () => {});
+      if (regular?.ids.length) notes.push("Kênh này chưa đăng Short nào (chỉ có video dài).");
+      else checkEach = true;
     }
-    emit({ type: "progress", step: "list", progress: ++done / channels.length });
-  });
-  if (capped.length) notes.push(`${capped.join(", ")} đăng quá nhiều video trong khoảng này: chỉ xét ${MAX_PAGES_PER_CHANNEL * 50} video mới nhất của mỗi kênh.`);
-  emit({ type: "step", step: "list", status: "done", message: `${ids.size} video` });
+  }
+  if (checkEach) {
+    ids = (await playlistIds(api, channel.uploads, FALLBACK_MAX_PAGES, progress)).ids;
+    notes.push(
+      `YouTube không trả về danh sách Shorts riêng của kênh nên app đọc ${ids.length} video mới nhất của kênh (tối đa ${FALLBACK_MAX_PAGES * 50}) và kiểm từng video ngắn có phải Short không.`,
+    );
+  }
+  emit({ type: "step", step: "list", status: "done", message: checkEach ? `${ids.length} video (chưa lọc Shorts)` : `${ids.length} Shorts` });
 
-  // 2. Statistics, title, duration.
+  // 3. Views, likes, comments (50 per call).
   emit({ type: "step", step: "details", status: "start" });
-  const details = (await api.videos([...ids])).filter((v) => v.snippet.liveBroadcastContent === "none");
-  let videos = details.map(toVideo);
-  emit({ type: "step", step: "details", status: "done", message: `${videos.length} video` });
+  let shorts = (await api.videos(ids)).filter((v) => v.snippet.liveBroadcastContent === "none").map(toVideo);
+  if (checkEach) {
+    const candidates = shorts.filter((v) => v.durationSec <= SHORTS_MAX_SEC);
+    const verdicts = await mapLimit(candidates, 8, async (v) => (await isShortsPage(v.id)) ?? guessShorts(v.durationSec, `${v.title} ${v.description}`));
+    shorts = candidates.filter((_, i) => verdicts[i]);
+  }
+  shorts = shorts.map(asShort);
+  emit({ type: "step", step: "details", status: "done", message: `${shorts.length} Shorts` });
 
-  // 3. Shorts or regular video: youtube.com/shorts/<id> answers 200 only for a Short.
-  emit({ type: "step", step: "format", status: "start" });
-  const toCheck = videos.filter((v) => v.durationSec <= SHORTS_MAX_SEC);
-  let checked = 0;
-  await mapLimit(toCheck, 8, async (v) => {
-    if ((await isShortsPage(v.id)) ?? guessShorts(v.durationSec, `${v.title} ${v.description} ${v.keywords.join(" ")}`)) {
-      v.format = "shorts";
-      v.url = `https://www.youtube.com/shorts/${v.id}`;
-    }
-    emit({ type: "progress", step: "format", progress: ++checked / toCheck.length });
-  });
-  const shortsCount = videos.filter((v) => v.format === "shorts").length;
-  emit({ type: "step", step: "format", status: "done", message: `${shortsCount} Shorts · ${videos.length - shortsCount} video dài` });
-  if (opts.format !== "all") videos = videos.filter((v) => v.format === opts.format);
-
-  // 4. Score, rank, save.
+  // 4. Most viewed first, saved with the other results.
   emit({ type: "step", step: "save", status: "start" });
-  scoreVideos(videos, new Date());
-  if (videos.length && videos.every((v) => v.hot!.recentPerHour === null)) notes.push("Quét lại sau ít nhất 1 giờ để có thêm số 🚀: lượt xem mỗi giờ từ lần quét trước, cho thấy video nào đang tăng thật.");
-  if (!videos.length) notes.push("Các kênh này không có video nào khớp trong khoảng thời gian đã chọn. Thử chọn khoảng dài hơn.");
-  videos.sort((a, b) => b.score - a.score || b.views - a.views);
-  const ranked = videos.slice(0, opts.limit).map((v, i) => ({ ...v, rank: i + 1 }));
+  scoreByEngagement(shorts);
+  shorts.sort((a, b) => b.views - a.views || (b.likes ?? 0) - (a.likes ?? 0));
+  const top = shorts.slice(0, TOP_SHORTS).map((v, i) => ({ ...v, rank: i + 1 }));
+  if (shorts.length) {
+    const total = shorts.reduce((sum, v) => sum + v.views, 0);
+    const topViews = top.reduce((sum, v) => sum + v.views, 0);
+    notes.unshift(
+      `Đã quét toàn bộ ${shorts.length} Shorts của kênh ${channel.title}. ${top.length} Shorts đứng đầu có ${Math.round((topViews / Math.max(1, total)) * 100)}% tổng lượt xem Shorts của kênh.`,
+      "🏆 Điểm tương tác 0–100 so mỗi Short với toàn bộ Shorts của kênh (trung bình thứ hạng về lượt xem, lượt thích và bình luận).",
+    );
+  }
+  const dates = shorts.map((v) => v.publishedAt).filter(Boolean).sort();
+  const now = new Date().toISOString();
+  rememberChannel({ ...channel, scannedAt: now, shorts: shorts.length });
   const result = saveDiscovery({
-    label: `📌 ${channels.length} kênh theo dõi · ${FORMAT_LABEL[opts.format]} · ${describePeriod(opts)}`,
-    options: opts,
-    range: { from: after.toISOString(), to: before.toISOString() },
-    videos: ranked,
-    stats: { scanned: ids.size, matchedLanguage: details.length, matchedFormat: videos.length, quotaUsed: api.quotaUsed },
+    label: `📌 Shorts nhiều lượt xem nhất của ${channel.title}`,
+    // No country: a channel scan does not filter by language.
+    options: parseDiscoverOptions({ country: "", format: "shorts", sort: "views", limit: TOP_SHORTS }),
+    range: { from: dates[0] ?? now, to: now },
+    videos: top,
+    stats: { scanned: ids.length, matchedLanguage: shorts.length, matchedFormat: shorts.length, quotaUsed: api.quotaUsed },
     notes,
   });
-  emit({ type: "step", step: "save", status: "done", message: `${ranked.length} video · đã dùng ${api.quotaUsed} đơn vị quota` });
+  emit({ type: "step", step: "save", status: "done", message: `${top.length} Shorts · đã dùng ${api.quotaUsed} đơn vị quota` });
   return result;
 }
