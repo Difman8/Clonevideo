@@ -76,7 +76,8 @@ export async function renderShotPreview(sb: Storyboard, shot: number, publicFile
   // Only adds what is new (a picture just drawn), so previews stay fast and never disturb each other.
   for (const f of publicFiles) if (fs.existsSync(f.from)) fs.cpSync(f.from, path.join(serveUrl, "public", f.to), { recursive: true, force: false });
   const browser = await browserExecutable();
-  const inputProps = sb as unknown as Record<string, unknown>;
+  // Camera at rest: the boxes the editor draws (and drags) then line up exactly with the picture.
+  const inputProps = { ...sb, editorStill: true } as unknown as Record<string, unknown>;
   const composition = await selectComposition({ serveUrl, id: "Fedtoon", inputProps, browserExecutable: browser });
   const tl = storyboardTimeline(sb);
   const frame = Math.min(tl.start[shot] + Math.round(tl.base[shot] * 0.7), composition.durationInFrames - 1);

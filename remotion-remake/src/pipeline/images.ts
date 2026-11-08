@@ -244,6 +244,30 @@ export async function drawProp(id: string, sb: Storyboard, prompt: string): Prom
 }
 
 /**
+ * Draws a new background for the scene editor (paid, only on an explicit click), in the shot's
+ * colors and avoiding its characters' colors. A description this video already has a picture for is reused.
+ */
+export async function drawBackground(id: string, sb: Storyboard, prompt: string, colors: ColorName[], avoid: ColorName[]): Promise<{ ref: string; src: string; drawn: boolean }> {
+  const text = prompt.trim();
+  const ref = bgRef({ prompt: text, mood: "night", colors });
+  const dir = imageDir(id);
+  const prior = sb.images[ref];
+  if (prior && fs.existsSync(path.join(dir, path.basename(prior)))) return { ref, src: prior, drawn: false };
+  // Same file name as a background drawn with the video, so the same description is never paid twice.
+  const key = imageFileKey("bg", colors.length ? `${text} | ${colors.join(", ")}` : text, styleSignature("bg"));
+  fs.mkdirSync(dir, { recursive: true });
+  const existing = ["jpg", "png"].map((ext) => `${key}.${ext}`).find((f) => fs.existsSync(path.join(dir, f)));
+  if (existing) return { ref, src: `img/${id}/${existing}`, drawn: false };
+  try {
+    const img = await generateImage("bg", text, sb.meta, colors, avoid);
+    writeFileAtomic(path.join(dir, `${key}.${img.ext}`), img.data);
+    return { ref, src: `img/${id}/${key}.${img.ext}`, drawn: true };
+  } catch (e) {
+    throw new Error(isPerImageRefusal(e) ? "Công cụ vẽ ảnh từ chối mô tả này, hãy thử viết khác đi." : explain(e));
+  }
+}
+
+/**
  * Makes sure every background and prop of the storyboard has a picture and
  * returns the storyboard with `images` filled in. Pictures the tool refuses are
  * skipped (the renderer draws a backdrop / placeholder instead).

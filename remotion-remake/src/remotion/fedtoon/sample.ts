@@ -5,7 +5,7 @@ const none = { content: "", style: "none" as const, position: "top" as const };
 
 // Preview storyboard for Remotion Studio (no generated images: backdrops are drawn in code).
 // Shot 1 asks for a teal background behind teal Fed on purpose: finalizeStoryboard replaces that one color.
-export const sampleStoryboard: Storyboard = finalizeStoryboard(
+const sample: Storyboard = finalizeStoryboard(
   {
     title: "Why is the sky blue?",
     cast: ["fed", "man", "scientist", "grandpa"].map((id) => SAMPLE_CAST.find((m) => m.id === id)!),
@@ -20,3 +20,8 @@ export const sampleStoryboard: Storyboard = finalizeStoryboard(
   },
   { width: 1080, height: 1920, fps: 30, language: "en" },
 );
+
+// Scene-editor placement (never written by the AI): the sun dragged low and its lower part cut off, setting behind the horizon.
+sample.shots[1].props[0] = { ...sample.shots[1].props[0], at: { x: 0.5, y: 0.62 }, crop: { top: 0, right: 0, bottom: 0.4, left: 0 } };
+
+export const sampleStoryboard = sample;

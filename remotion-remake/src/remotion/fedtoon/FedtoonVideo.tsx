@@ -8,7 +8,7 @@ import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
 import { BRAND_FONT, BRAND_NAME, PALETTE, type ColorName } from "../../fedtoon/brand";
 import { deltaE } from "../../fedtoon/contrast";
-import { characterBox, propBox } from "../../fedtoon/layout";
+import { characterBox, cropClipPath, propBox } from "../../fedtoon/layout";
 import { MASCOT_RIG } from "../../fedtoon/mascot-rig";
 import type { VoiceClip } from "../../spec/schema";
 import { bgRef, imageRef, storyboardTimeline, type Prop, type Shot, type ShotCharacter, type Storyboard } from "../../spec/storyboard";
@@ -162,13 +162,17 @@ const PropView: React.FC<{ prop: Prop; src?: string; index: number; bgColor: str
   // Placeholder while the picture is missing: a flat "spotlight" circle with a ring.
   const fill = mostDifferent([PALETTE.plum, PALETTE.lime, PALETTE.magenta, PALETTE.cyan], bgColor);
   const ring = mostDifferent([PALETTE.magenta, PALETTE.yellow, PALETTE.cyan, PALETTE.lime], fill);
+  // The crop is a still window: the prop keeps moving behind it (e.g. bobbing at a water line).
+  const clipPath = cropClipPath(prop.crop, { left: 0, top: 0, width: size, height: size });
   return (
-    <div style={{ position: "absolute", left: x - size / 2, top: y - size / 2, width: size, height: size, transform: `scale(${prop.motion === "none" ? 1 : enter}) ${motion}` }}>
-      {src ? (
-        <Img src={staticFile(src)} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-      ) : (
-        <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: fill, border: `${size * 0.035}px solid ${ring}`, boxSizing: "border-box" }} />
-      )}
+    <div style={{ position: "absolute", left: x - size / 2, top: y - size / 2, width: size, height: size, clipPath }}>
+      <div style={{ width: "100%", height: "100%", transform: `scale(${prop.motion === "none" ? 1 : enter}) ${motion}` }}>
+        {src ? (
+          <Img src={staticFile(src)} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+        ) : (
+          <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: fill, border: `${size * 0.035}px solid ${ring}`, boxSizing: "border-box" }} />
+        )}
+      </div>
     </div>
   );
 };
@@ -179,7 +183,7 @@ const CharacterView: React.FC<{ sb: Storyboard; ch: ShotCharacter; index: number
   const { width, height } = useBox();
   const member = sb.cast.find((c) => c.id === ch.castId);
   if (!member) return null;
-  const { x, feet, h } = characterBox(ch, width, height);
+  const { x, feet, h, halfWidth } = characterBox(ch, width, height);
   const pop = spring({ frame: frame - index * 4, fps, config: { damping: 11, stiffness: 140 } });
   const slideIn = interpolate(spring({ frame: frame - index * 4, fps, config: { damping: 200 } }), [0, 1], [x < width / 2 ? -width * 0.4 : width * 0.4, 0]);
   const opacity = ch.enter === "fade" ? interpolate(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" }) : 1;
@@ -187,10 +191,14 @@ const CharacterView: React.FC<{ sb: Storyboard; ch: ShotCharacter; index: number
   // A character who speaks but was given no gesture talks with its hands.
   const action = speaking && ch.action === "idle" ? "talk" : ch.action;
   const walkX = ch.action === "walk" ? (frame / fps) * (ch.facing === "left" ? -60 : 60) : 0;
+  // The crop window stays where the character was placed (the box the editor shows).
+  const clipPath = cropClipPath(ch.crop, { left: h / 2 - halfWidth, top: 0, width: 2 * halfWidth, height: h });
   return (
-    <div style={{ position: "absolute", left: x - h * 0.5 + walkX, top: feet - h, width: h, height: h, opacity, transform, transformOrigin: "50% 100%" }}>
-      <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "center", alignItems: "flex-end" }}>
-        <Puppet member={member} action={action} expression={ch.expression} facing={ch.facing} t={frame / fps} mouth={mouth} height={h} seed={index + sb.cast.indexOf(member) * 3} />
+    <div style={{ position: "absolute", left: x - h * 0.5, top: feet - h, width: h, height: h, clipPath }}>
+      <div style={{ position: "absolute", inset: 0, opacity, transform: `translateX(${walkX}px) ${transform}`, transformOrigin: "50% 100%" }}>
+        <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "center", alignItems: "flex-end" }}>
+          <Puppet member={member} action={action} expression={ch.expression} facing={ch.facing} t={frame / fps} mouth={mouth} height={h} seed={index + sb.cast.indexOf(member) * 3} />
+        </div>
       </div>
     </div>
   );
@@ -304,28 +312,30 @@ const Watermark: React.FC = () => {
 
 // ---------- shot ----------
 
-const ShotView: React.FC<{ sb: Storyboard; shot: Shot; index: number; frames: number; clip?: VoiceClip }> = ({ sb, shot, index, frames, clip }) => {
+const ShotView: React.FC<{ sb: Storyboard; shot: Shot; index: number; frames: number; clip?: VoiceClip; still?: boolean }> = ({ sb, shot, index, frames, clip, still }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const ref = bgRef(shot.background);
   const bg = sb.images[ref];
-  const cam = camera(shot.camera, Math.min(1, frame / Math.max(1, frames)), frame, fps);
+  const cam = still ? { scale: 1, x: 0, y: 0 } : camera(shot.camera, Math.min(1, frame / Math.max(1, frames)), frame, fps);
   const t = frame / fps;
   const mouth = clip ? mouthAt(t, clip.words, clip.durationSec) : 0;
   const [c0] = hex(shot.background.colors.length ? shot.background.colors : ["plum", "violet"]);
+  // Items dragged to a spot of the background (scene editor) are drawn on the background's own layer,
+  // so the camera moves them with the picture; the others float in front with a little parallax.
+  const items = (placed: boolean) => [
+    ...shot.props.map((p, i) => (!!p.at === placed ? <PropView key={`p${i}`} prop={p} index={i} src={sb.images[imageRef("prop", p.prompt)]} bgColor={c0} /> : null)),
+    ...shot.characters.map((c, i) =>
+      !!c.at === placed ? <CharacterView key={`c${c.castId}${i}`} sb={sb} ch={c} index={i} speaking={shot.speaker === c.castId && !!clip} mouth={shot.speaker === c.castId ? mouth : 0} /> : null,
+    ),
+  ];
   return (
     <AbsoluteFill style={{ overflow: "hidden", background: c0 }}>
       <AbsoluteFill style={{ transform: `scale(${cam.scale}) translate(${cam.x}%, ${cam.y}%)` }}>
         {bg ? <Img src={staticFile(bg)} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Backdrop bg={shot.background} seed={index + 1} />}
+        {items(true)}
       </AbsoluteFill>
-      <AbsoluteFill style={{ transform: `translate(${cam.x * 0.4}%, ${cam.y * 0.4}%)` }}>
-        {shot.props.map((p, i) => (
-          <PropView key={i} prop={p} index={i} src={sb.images[imageRef("prop", p.prompt)]} bgColor={c0} />
-        ))}
-        {shot.characters.map((c, i) => (
-          <CharacterView key={c.castId + i} sb={sb} ch={c} index={i} speaking={shot.speaker === c.castId && !!clip} mouth={shot.speaker === c.castId ? mouth : 0} />
-        ))}
-      </AbsoluteFill>
+      <AbsoluteFill style={{ transform: `translate(${cam.x * 0.4}%, ${cam.y * 0.4}%)` }}>{items(false)}</AbsoluteFill>
       <OnScreenText text={shot.text} bgColor={c0} />
       {sb.captions && shot.narration && <Captions narration={shot.narration} clip={clip} duration={frames / fps} />}
     </AbsoluteFill>
@@ -339,7 +349,8 @@ function transitionFor(name: Shot["transition"], frames: number, key: string) {
   return <TransitionSeries.Transition key={key} presentation={fade()} timing={timing} />;
 }
 
-export const FedtoonVideo: React.FC<Storyboard> = (sb) => {
+/** `editorStill`: the scene editor's preview, with the camera at rest so dragged items line up with the picture. */
+export const FedtoonVideo: React.FC<Storyboard & { editorStill?: boolean }> = (sb) => {
   const fontFamily = useFontFamily(BRAND_FONT);
   const tl = storyboardTimeline(sb);
   const clipOf = (i: number) => sb.voiceover.find((c) => c.scene === i);
@@ -348,7 +359,7 @@ export const FedtoonVideo: React.FC<Storyboard> = (sb) => {
     if (tl.trans[i] > 0) children.push(transitionFor(shot.transition, tl.trans[i], `t${i}`));
     children.push(
       <TransitionSeries.Sequence key={`s${i}`} durationInFrames={tl.seq[i]}>
-        <ShotView sb={sb} shot={shot} index={i} frames={tl.seq[i]} clip={clipOf(i)} />
+        <ShotView sb={sb} shot={shot} index={i} frames={tl.seq[i]} clip={clipOf(i)} still={sb.editorStill} />
       </TransitionSeries.Sequence>,
     );
   });

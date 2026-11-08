@@ -13,7 +13,7 @@ import { hasYoutubeKey, KEY_HELP_URL, YoutubeApi } from "../discover/youtube-api
 import { FED, RECURRING_CAST } from "../fedtoon/cast";
 import { parseProvider, providerStatus } from "../pipeline/ai";
 import { catalog, hasElevenLabsKey, previewVoice } from "../pipeline/elevenlabs";
-import { dismissJob, drawPropForJob, listJobs, loadJob, loadState, previewShot, renderSavedJob, rerenderJob, runJob, saveSpec, stepsNow, unfinishedJobs, type JobOptions } from "../pipeline/job";
+import { dismissJob, drawBackgroundForJob, drawPropForJob, listJobs, loadJob, loadState, previewShot, renderSavedJob, rerenderJob, runJob, saveSpec, stepsNow, unfinishedJobs, type JobOptions } from "../pipeline/job";
 import { imageToolNames } from "../pipeline/images";
 import { composePost, defaultChannel, LIMITS, loadComposedPost, loadPostSource, parseWriterOptions, sanitizeSource, saveComposedPost, TARGET } from "../pipeline/post-writer";
 import { OUT_DIR, ROOT, ytDlp } from "../pipeline/tools";
@@ -203,7 +203,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 202, { id });
     }
 
-    // Scene editor: saving, previewing and reusing pictures never call an AI; draw-prop does, on an explicit click.
+    // Scene editor: saving, previewing and reusing pictures never call an AI; draw-prop and draw-bg do, on an explicit click.
     if (req.method === "POST" && (parts[3] === "spec" || parts[3] === "preview")) {
       if (running.get(id)?.done === false) return json(res, 409, { error: "Video này đang được render, chờ xong rồi thử lại." });
       const body = (await readBody(req)) as { spec?: unknown; shot?: number };
@@ -213,6 +213,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && parts[3] === "draw-prop") {
       const body = (await readBody(req)) as { prompt?: string };
       return json(res, 200, await drawPropForJob(id, String(body.prompt ?? "")));
+    }
+    if (req.method === "POST" && parts[3] === "draw-bg") {
+      // Paid: only the app's own page (a JSON request) may ask, not a form on another website.
+      if (!req.headers["content-type"]?.startsWith("application/json")) return json(res, 415, { error: "Cần gửi JSON" });
+      const body = (await readBody(req)) as { prompt?: string; colors?: unknown; avoid?: unknown };
+      return json(res, 200, await drawBackgroundForJob(id, String(body.prompt ?? ""), body.colors, body.avoid));
     }
 
     if (req.method === "GET" && parts[3] === "events") return streamEvents(req, res, id);
