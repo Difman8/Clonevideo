@@ -148,6 +148,16 @@
   .ed-box { position: absolute; padding: 0; background: none; border: 2px dashed transparent; border-radius: 10px; }
   .ed-box:hover { border-color: rgba(255,255,255,.9); background: rgba(255,255,255,.12); }
   .ed-box.selected { border: 3px solid #ef4444; background: rgba(239,68,68,.12); }
+  .ed-box { touch-action: none; cursor: grab; }
+  .ed-box.dragging { cursor: grabbing; border: 3px solid #ef4444; }
+  .ed-cut { position: absolute; background: rgba(15,10,30,.55); pointer-events: none; }
+  .ed-crop { display: grid; grid-template-columns: 74px minmax(0, 1fr) 38px; align-items: center; gap: 6px; font-size: 12px; margin-top: 4px; }
+  .ed-crop input { width: 100%; }
+  .ed-extra { grid-column: 1 / -1; padding-top: 8px; border-top: 1px dashed var(--line); }
+  .ed-bglib { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .ed-bglib button { padding: 0; border-radius: 6px; background-size: cover; background-position: center; border: 3px solid transparent; }
+  .ed-bglib button.current { border-color: #ef4444; }
+  .ed-group textarea { width: 100%; padding: 6px 8px; font-size: 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-height: 0; }
   .ed-group { margin-bottom: 16px; }
   .ed-group > b { display: block; margin-bottom: 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
   .ed-layer { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; padding: 10px; margin-bottom: 8px; border: 2px solid var(--line); border-radius: 10px; cursor: pointer; }
@@ -284,7 +294,7 @@
     </div>
     <div class="card" id="editor" hidden style="margin-top:20px">
       <h2>✏️ Sửa từng cảnh</h2>
-      <div class="hint">Chọn một cảnh ở dải dưới đây, hoặc tạm dừng video rồi bấm <b>Sửa cảnh đang xem</b>. Bấm thẳng vào đồ vật hay nhân vật trên ảnh để chọn. Xoá, đổi chỗ, đổi cỡ và dùng lại ảnh sẵn có đều miễn phí; chỉ nút vẽ ảnh mới mới tốn phí OpenAI. Chi tiết nằm trong ảnh nền thì không tách riêng để xoá được.</div>
+      <div class="hint">Chọn một cảnh ở dải dưới đây, hoặc tạm dừng video rồi bấm <b>Sửa cảnh đang xem</b>. Bấm vào đồ vật hay nhân vật trên ảnh để chọn, <b>kéo</b> để đặt nó vào đúng chỗ trên ảnh nền (nó sẽ dính theo ảnh nền khi máy quay chuyển động); chọn xong có thanh <b>✂️ Cắt</b> để cắt bớt một phần (vd. người chìm dưới nước). Đổi nền có sẵn, xoá, đổi chỗ, đổi cỡ và dùng lại ảnh sẵn có đều miễn phí; chỉ các nút vẽ ảnh mới mới tốn phí. Chi tiết nằm trong ảnh nền thì không tách riêng để xoá được.</div>
       <div class="ed-strip" id="ed-strip"></div>
       <div class="ed-main">
         <div class="ed-stage" id="ed-stage">
@@ -809,17 +819,16 @@ const ED_LABELS = {
   textPosition: { top: "Trên", center: "Giữa", bottom: "Dưới" },
 };
 
-const ed = { id: null, saved: null, draft: null, shot: 0, selected: null, previews: new Map(), asking: false, busy: false, drawing: false };
+const ed = { id: null, saved: null, draft: null, shot: 0, selected: null, previews: new Map(), asking: false, busy: false, drawing: false, drawingBg: false, shownLayers: null, dragLayers: null };
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const edDirty = () => !!ed.draft && JSON.stringify(ed.draft.shots) !== JSON.stringify(ed.saved.shots);
 const edChanged = (i) => JSON.stringify(ed.draft.shots[i]) !== JSON.stringify(ed.saved.shots[i]);
 const edShot = () => ed.draft.shots[ed.shot];
 const edPicture = (src) => `/media/${encodeURIComponent(ed.id)}/img/${encodeURIComponent(src.split("/").pop())}`;
 const edPropImage = (prompt) => ed.draft.images[`prop:${prompt.trim()}`];
-const edBgImage = (shot) => {
-  const bg = shot.background;
-  return ed.draft.images[`bg:${bg.colors.length ? `${bg.prompt.trim()} | ${bg.colors.join(", ")}` : bg.prompt.trim()}`];
-};
+const edBgRef = (bg) => `bg:${bg.colors.length ? `${bg.prompt.trim()} | ${bg.colors.join(", ")}` : bg.prompt.trim()}`;
+const edBgImage = (shot) => ed.draft.images[edBgRef(shot.background)];
+const edItem = (kind, index) => (kind === "prop" ? edShot().props[index] : edShot().characters[index]);
 
 function edLoad(job) {
   const isFedtoon = job.spec.kind === "fedtoon";
@@ -848,8 +857,10 @@ function edChoice(labels, value, onChange) {
 }
 
 /** Applies a change to the draft, redraws the panel and refreshes the preview. */
-function edEdit(change, { refresh = true } = {}) {
+function edEdit(change, { refresh = true, layers = null } = {}) {
   change();
+  // Boxes to show while the new preview is drawn (after a drag: where the item was dropped).
+  ed.dragLayers = layers;
   edRender();
   if (refresh) edPreview();
 }
@@ -857,7 +868,7 @@ function edEdit(change, { refresh = true } = {}) {
 function edSelect(selected) {
   ed.selected = selected;
   edRender();
-  edBoxes(ed.previews.get(edKey())?.layers);
+  edBoxes(ed.previews.get(edKey())?.layers ?? ed.dragLayers ?? ed.shownLayers);
   document.querySelector(".ed-layer.selected")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
@@ -887,6 +898,7 @@ function edRender() {
   $("ed-strip").children[ed.shot]?.scrollIntoView({ block: "nearest", inline: "nearest" });
   $("ed-panel").replaceChildren(
     el("div", { className: "hint", style: "margin-bottom:12px", textContent: `Cảnh ${ed.shot + 1}/${ed.draft.shots.length}${edShot().narration ? ` · “${edShot().narration}”` : ""}` }),
+    edBackgroundGroup(),
     edPropsGroup(),
     edCharactersGroup(),
     edTextGroup(),
@@ -901,6 +913,62 @@ function edLayer(kind, index, picture, title, options) {
     { className: `ed-layer${selected ? " selected" : ""}`, onclick: () => edSelect({ kind, index }) },
     picture,
     el("div", {}, el("div", { className: "desc", textContent: title }), el("div", { className: "ed-opts" }, ...options)),
+    selected ? edPlacementControls(edItem(kind, index)) : null,
+  );
+}
+
+/** Position choice: a named spot, or "dragged" when the item was dragged on the picture. Picking a named spot undoes the drag. */
+function edPlaceChoice(labels, item) {
+  return edChoice(item.at ? { custom: "📍 Tự kéo trên ảnh", ...labels } : labels, item.at ? "custom" : item.position, (v) => {
+    if (v !== "custom")
+      edEdit(() => {
+        delete item.at;
+        item.position = v;
+      });
+  });
+}
+
+/** Crop sliders (and undo buttons) of the selected prop or character. */
+function edPlacementControls(item) {
+  const crop = { top: 0, right: 0, bottom: 0, left: 0, ...item.crop };
+  const opposite = { top: "bottom", bottom: "top", left: "right", right: "left" };
+  const sides = { top: "✂️ Cắt trên", bottom: "✂️ Cắt dưới", left: "✂️ Cắt trái", right: "✂️ Cắt phải" };
+  const store = () => {
+    if (crop.top + crop.right + crop.bottom + crop.left > 0) item.crop = { ...crop };
+    else delete item.crop;
+  };
+  const rows = Object.entries(sides).map(([side, label]) => {
+    const out = el("span", { className: "hint", textContent: `${Math.round(crop[side] * 100)}%` });
+    const range = el("input", { type: "range", min: 0, max: 90, step: 5, value: Math.round(crop[side] * 100), ariaLabel: label });
+    range.onclick = (e) => e.stopPropagation();
+    range.oninput = () => {
+      // Opposite sides never cut the whole item away.
+      const v = Math.max(0, Math.min(Number(range.value) / 100, 0.9 - crop[opposite[side]]));
+      range.value = Math.round(v * 100);
+      crop[side] = v;
+      out.textContent = `${range.value}%`;
+      store();
+      edBoxes(ed.shownLayers);
+    };
+    range.onchange = () => edEdit(store, { layers: ed.shownLayers });
+    return el("label", { className: "ed-crop", onclick: (e) => e.stopPropagation() }, el("span", { textContent: label }), range, out);
+  });
+  const button = (text, change) =>
+    el("button", {
+      type: "button",
+      textContent: text,
+      onclick: (e) => {
+        e.stopPropagation();
+        edEdit(change);
+      },
+    });
+  const undo = [item.at ? button("📍 Về vị trí theo nấc", () => delete item.at) : null, item.crop ? button("↺ Bỏ cắt", () => delete item.crop) : null].filter(Boolean);
+  return el(
+    "div",
+    { className: "ed-extra" },
+    el("div", { className: "hint", textContent: "Kéo khung đỏ trên ảnh để đặt vào đúng chỗ. Phần bị cắt được tô tối trên ảnh." }),
+    ...rows,
+    undo.length ? el("div", { className: "ed-opts", style: "margin-top:6px" }, ...undo) : null,
   );
 }
 
@@ -919,6 +987,88 @@ function edDelete(label, onclick) {
   });
 }
 
+/** "Ảnh nền": reuse a background of this video (free) or draw a new one from a description (paid). */
+function edBackgroundGroup() {
+  const shot = edShot();
+  const bg = shot.background;
+  const ref = edBgRef(bg);
+  const sharing = ed.draft.shots.map((s, i) => (edBgRef(s.background) === ref ? i : -1)).filter((i) => i >= 0);
+  const all = sharing.length > 1 ? el("input", { type: "checkbox" }) : null;
+  const targets = () => (all?.checked ? sharing : [ed.shot]);
+  const apply = (list, prompt, colors) =>
+    edEdit(() => {
+      for (const i of list) ed.draft.shots[i].background = { ...ed.draft.shots[i].background, prompt, colors };
+    });
+  const { width, height } = ed.draft.meta;
+  const thumbW = width > height ? 80 : 45;
+  const seen = new Set();
+  const library = Object.entries(ed.draft.images).filter(([r, src]) => r.startsWith("bg:") && !seen.has(src) && seen.add(src));
+  const parse = (r) => {
+    const body = r.slice(3);
+    const cut = body.lastIndexOf(" | ");
+    return cut < 0 ? { prompt: body, colors: [] } : { prompt: body.slice(0, cut), colors: body.slice(cut + 3).split(", ") };
+  };
+  const lib = el(
+    "div",
+    { className: "ed-bglib" },
+    ...library.map(([r, src]) => {
+      const b = el("button", {
+        type: "button",
+        title: parse(r).prompt,
+        className: ed.draft.images[ref] === src ? "current" : "",
+        onclick: () => {
+          const p = parse(r);
+          apply(targets(), p.prompt, p.colors);
+        },
+      });
+      b.style.cssText += `width:${thumbW}px;height:${Math.round((thumbW * height) / width)}px;background-image:url("${edPicture(src)}")`;
+      return b;
+    }),
+  );
+  const input = el("textarea", { rows: 3, placeholder: "Mô tả ảnh nền mới bằng tiếng Anh, ví dụ: a calm lake at night with a small wooden boat" });
+  input.value = bg.prompt;
+  const draw = el("button", {
+    type: "button",
+    style: "margin-top:6px",
+    textContent: ed.drawingBg ? "Đang vẽ, chờ khoảng 1 phút…" : `🎨 Vẽ nền mới (tốn phí ${IMAGE_TOOLS.bg})`,
+    disabled: ed.drawingBg,
+    onclick: async () => {
+      const prompt = input.value.trim();
+      if (!prompt) return input.focus();
+      const list = targets();
+      const colors = [...bg.colors];
+      // A description that already has a picture in this video costs nothing.
+      if (ed.draft.images[edBgRef({ prompt, colors })]) return apply(list, prompt, colors);
+      const shotIndex = ed.shot;
+      const avoid = [...new Set(shot.characters.map((c) => ed.draft.cast.find((m) => m.id === c.castId)?.outfit).filter(Boolean))];
+      ed.drawingBg = true;
+      edRender();
+      try {
+        const r = await api(`/api/jobs/${encodeURIComponent(ed.id)}/draw-bg`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt, colors, avoid }) });
+        ed.saved.images[r.ref] = ed.draft.images[r.ref] = r.src;
+        ed.shot = shotIndex;
+        apply(list, r.prompt, colors);
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        ed.drawingBg = false;
+        edRender();
+      }
+    },
+  });
+  const details = el(
+    "details",
+    { open: ed.drawingBg },
+    el("summary", { textContent: `🖼 Đổi ảnh nền: chọn nền có sẵn (${library.length}, miễn phí) hoặc vẽ nền mới`, style: "cursor:pointer;margin-bottom:8px;font-size:14px" }),
+    lib,
+    el("div", { className: "hint", style: "margin-bottom:4px", textContent: "Hoặc sửa mô tả rồi bấm vẽ (mô tả đã có ảnh thì dùng lại, không tốn phí):" }),
+    input,
+    draw,
+    all ? el("label", { style: "margin-top:8px;display:flex;gap:6px;align-items:center;font-size:13px" }, all, `Đổi cho cả ${sharing.length} cảnh dùng chung nền này (cảnh ${sharing.map((i) => i + 1).join(", ")})`) : null,
+  );
+  return el("div", { className: "ed-group" }, el("b", { textContent: "Ảnh nền" }), details);
+}
+
 function edPropsGroup() {
   const shot = edShot();
   const rows = shot.props.map((p, i) => {
@@ -930,7 +1080,7 @@ function edPropsGroup() {
       src ? el("img", { src: edPicture(src), alt: "" }) : el("div", { className: "ed-avatar", textContent: "?" }),
       p.prompt,
       [
-        edChoice(ED_LABELS.propPosition, p.position, (v) => edEdit(() => (p.position = v))),
+        edPlaceChoice(ED_LABELS.propPosition, p),
         edChoice(ED_LABELS.scale, p.scale, (v) => edEdit(() => (p.scale = v))),
         edChoice(ED_LABELS.motion, p.motion, (v) => edEdit(() => (p.motion = v))),
         edDelete("🗑 Xoá", () => shot.props.splice(i, 1)),
@@ -991,7 +1141,7 @@ function edCharactersGroup() {
   const shot = edShot();
   const rows = shot.characters.map((c, i) =>
     edLayer("character", i, el("div", { className: "ed-avatar", textContent: "🧑" }), ed.draft.cast.find((m) => m.id === c.castId)?.name ?? c.castId, [
-      edChoice(ED_LABELS.position, c.position, (v) => edEdit(() => (c.position = v))),
+      edPlaceChoice(ED_LABELS.position, c),
       edChoice(ED_LABELS.scale, c.scale, (v) => edEdit(() => (c.scale = v))),
       edChoice(ED_LABELS.action, c.action, (v) => edEdit(() => (c.action = v))),
       edChoice(ED_LABELS.expression, c.expression, (v) => edEdit(() => (c.expression = v))),
@@ -1038,22 +1188,76 @@ function edTextGroup() {
 const edKey = () => `${ed.shot}|${JSON.stringify(edShot())}|${JSON.stringify(ed.draft.cast)}`;
 
 function edBoxes(layers) {
+  if (layers) ed.shownLayers = layers;
   const boxes = [];
   const add = (kind, list) =>
     (list ?? []).forEach((b, index) => {
+      const item = edItem(kind, index);
+      if (!item) return;
       const selected = ed.selected?.kind === kind && ed.selected.index === index;
+      const name = kind === "prop" ? item.prompt : ed.draft.cast.find((m) => m.id === item.castId)?.name;
       const box = el("button", {
         type: "button",
         className: `ed-box${selected ? " selected" : ""}`,
-        title: kind === "prop" ? edShot().props[index]?.prompt : ed.draft.cast.find((m) => m.id === edShot().characters[index]?.castId)?.name,
-        onclick: () => edSelect({ kind, index }),
+        title: `${name ?? ""} · kéo để đặt vào chỗ khác`,
+        // Keyboard (Enter/Space) selects; the mouse selects or drags through pointer events.
+        onclick: (e) => e.detail === 0 && edSelect({ kind, index }),
+        onpointerdown: (e) => edDrag(e, box, kind, index, b),
       });
       box.style.cssText += `left:${b.left * 100}%;top:${b.top * 100}%;width:${b.width * 100}%;height:${b.height * 100}%`;
+      const c = item.crop;
+      if (c) {
+        const shade = (css) => el("div", { className: "ed-cut", style: css });
+        box.append(
+          shade(`left:0;right:0;top:0;height:${c.top * 100}%`),
+          shade(`left:0;right:0;bottom:0;height:${c.bottom * 100}%`),
+          shade(`top:${c.top * 100}%;bottom:${c.bottom * 100}%;left:0;width:${c.left * 100}%`),
+          shade(`top:${c.top * 100}%;bottom:${c.bottom * 100}%;right:0;width:${c.right * 100}%`),
+        );
+      }
       boxes.push(box);
     });
   add("prop", layers?.props);
   add("character", layers?.characters);
   $("ed-boxes").replaceChildren(...boxes);
+}
+
+/** Drags a box on the preview; on release the item gets that exact spot (`at`: prop center, character feet). */
+function edDrag(e, box, kind, index, b) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const stage = $("ed-stage").getBoundingClientRect();
+  const start = { x: e.clientX, y: e.clientY };
+  let left = b.left;
+  let top = b.top;
+  let moved = false;
+  box.setPointerCapture(e.pointerId);
+  const move = (ev) => {
+    if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4) return;
+    moved = true;
+    box.classList.add("dragging");
+    left = b.left + (ev.clientX - start.x) / stage.width;
+    top = b.top + (ev.clientY - start.y) / stage.height;
+    box.style.left = `${left * 100}%`;
+    box.style.top = `${top * 100}%`;
+  };
+  const end = () => {
+    box.removeEventListener("pointermove", move);
+    box.removeEventListener("pointerup", end);
+    box.removeEventListener("pointercancel", end);
+    if (!moved) return edSelect({ kind, index });
+    const item = edItem(kind, index);
+    const round = (v) => Math.round(v * 1000) / 1000;
+    const at = { x: round(left + b.width / 2), y: round(kind === "prop" ? top + b.height / 2 : top + b.height) };
+    // Keep the boxes where they were dropped while the new preview is drawn.
+    const layers = clone(ed.shownLayers ?? { props: [], characters: [] });
+    (kind === "prop" ? layers.props : layers.characters)[index] = { ...b, left, top };
+    ed.selected = { kind, index };
+    edEdit(() => (item.at = at), { layers });
+  };
+  box.addEventListener("pointermove", move);
+  box.addEventListener("pointerup", end);
+  box.addEventListener("pointercancel", end);
 }
 
 /** Shows the current shot. One request at a time; a newer change is picked up when it returns. */
@@ -1065,10 +1269,15 @@ async function edPreview() {
     $("ed-img").src = cached.image;
     $("ed-stage").classList.remove("loading");
     $("ed-wait").hidden = true;
+    ed.dragLayers = null;
     edBoxes(cached.layers);
     return;
   }
-  edBoxes(null);
+  if (ed.dragLayers) edBoxes(ed.dragLayers);
+  else {
+    ed.shownLayers = null;
+    edBoxes(null);
+  }
   $("ed-stage").classList.add("loading");
   $("ed-wait").hidden = false;
   $("ed-wait").textContent = "Đang vẽ xem trước…";

@@ -4,6 +4,7 @@ GitHub Actions tự ghi mục này mỗi khi có thay đổi được gộp vào
 
 ## 2026-11-08
 
+- **Trình sửa cảnh: kéo thả vật thể tới chỗ bất kỳ, cắt bớt vật thể, đổi ảnh nền từng cảnh** — @Difman8 · 15:08 · nhánh `claude/keo-tha-cat-doi-nen`
 - **Rút ngắn khoảng nghỉ giữa các câu: video Fedtoon nghỉ 0,3 giây sau mỗi câu, áp dụng cả khi Render lại** — @Difman8 · 13:06 · nhánh `claude/rut-ngan-khoang-nghi`
 - **Kênh thêm vào để quét luôn được lưu lại, thêm nút Lưu kênh** — @Difman8 · 10:03 · nhánh `claude/luu-kenh-quet`
 - **Quét kênh: dán link kênh là lấy toàn bộ Shorts và ra 20 Shorts nhiều lượt xem nhất** — @Difman8 · 09:54 · nhánh `claude/top-shorts-cua-kenh`

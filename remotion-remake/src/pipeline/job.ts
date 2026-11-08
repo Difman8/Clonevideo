@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { finalizeSpec, normalizeMeta } from "../spec/normalize";
 import { VideoSpecSchema, type VideoSpec } from "../spec/schema";
+import { COLOR_NAMES, type ColorName } from "../fedtoon/brand";
 import { finalizeStoryboard, isStoryboard, storyboardTimeline, StoryboardSchema, type Storyboard } from "../spec/storyboard";
 import { shotLayers } from "../fedtoon/layout";
 import { PROVIDERS, type Provider } from "./ai";
@@ -9,7 +10,7 @@ import type { AiOutput, RemakeMode } from "./ai-common";
 import { analyzeBasic } from "./analyze-basic";
 import { hasElevenLabsKey } from "./elevenlabs";
 import { extractFrames, type Frame } from "./frames";
-import { drawProp, generateStoryboardImages, imageDir, imageSettingsText, imageToolNames, missingImageKeys } from "./images";
+import { drawBackground, drawProp, generateStoryboardImages, imageDir, imageSettingsText, imageToolNames, missingImageKeys } from "./images";
 import { extractPostContent, postContentText, type PostContent } from "./metadata";
 import { officialPost, type OfficialPost } from "./official-post";
 import { renderShotPreview, renderSpec } from "./render";
@@ -464,6 +465,21 @@ export async function drawPropForJob(id: string, prompt: string) {
   const now = parseSpec(readJson(specFile(id))) as Storyboard;
   writeJsonAtomic(specFile(id), { ...now, images: { ...now.images, [result.ref]: result.src } });
   return result;
+}
+
+/** Draws a new background for one shot (paid). Recorded at once, like drawPropForJob. */
+export async function drawBackgroundForJob(id: string, prompt: string, rawColors: unknown, rawAvoid: unknown) {
+  if (!prompt.trim()) throw new Error("Hãy mô tả ảnh nền muốn vẽ (tiếng Anh cho kết quả tốt nhất).");
+  const missing = missingImageKeys(["bg"]);
+  if (missing.length) throw new Error(`Chưa có ${missing.join(", ")}: thêm ở tab ⚙️ Cài đặt để vẽ ảnh mới.`);
+  const before = parseSpec(readJson(specFile(id)));
+  if (!isStoryboard(before)) throw new Error("Chỉ video Fedtoon mới đổi được ảnh nền.");
+  const colorsOf = (raw: unknown) => (Array.isArray(raw) ? raw.filter((c): c is ColorName => (COLOR_NAMES as readonly string[]).includes(c)) : []);
+  const result = await drawBackground(id, before, prompt, colorsOf(rawColors).slice(0, 3), colorsOf(rawAvoid));
+  // Read again: the editor may have saved while the picture was being drawn.
+  const now = parseSpec(readJson(specFile(id))) as Storyboard;
+  writeJsonAtomic(specFile(id), { ...now, images: { ...now.images, [result.ref]: result.src } });
+  return { ...result, prompt: prompt.trim() };
 }
 
 /**

@@ -79,6 +79,19 @@ export const ShotSchema = z.object({
   sfx: z.array(z.enum(SFX)).describe("Sound effects at the start of the shot, usually none or one."),
 });
 
+/**
+ * Set by the scene editor only, never by the AI (not in the schema it fills): where the owner
+ * dragged an item and what is cut off it. `at` is the center of a prop / the feet of a character,
+ * as fractions of the frame width and height; `crop` the share cut from each side of its box
+ * (e.g. bottom 0.66 = a man sinking in water). Placed items move with the background picture.
+ */
+const Share = z.number().min(0).max(0.95).catch(0);
+export const PlacementSchema = z.object({
+  at: z.object({ x: z.number().min(-0.5).max(1.5), y: z.number().min(-0.5).max(1.5) }).optional().catch(undefined),
+  crop: z.object({ top: Share, right: Share, bottom: Share, left: Share }).optional().catch(undefined),
+});
+export type Placement = z.infer<typeof PlacementSchema>;
+
 /** What the AI writes. */
 export const AnalyzedStoryboardSchema = z.object({
   title: z.string(),
@@ -87,8 +100,15 @@ export const AnalyzedStoryboardSchema = z.object({
   notes: z.array(z.string()).describe("In Vietnamese: what was changed from the source and why."),
 });
 
-/** What Remotion renders: + video size, generated images, voice clips. */
+/** A shot as saved and rendered: its props and characters may carry a placement from the scene editor. */
+export const StoryboardShotSchema = ShotSchema.extend({
+  characters: z.array(ShotCharacterSchema.extend(PlacementSchema.shape)),
+  props: z.array(PropSchema.extend(PlacementSchema.shape)),
+});
+
+/** What Remotion renders: + video size, generated images, voice clips, the editor's placements. */
 export const StoryboardSchema = AnalyzedStoryboardSchema.extend({
+  shots: z.array(StoryboardShotSchema),
   kind: z.literal("fedtoon"),
   meta: MetaSchema,
   /** imageRef(kind, prompt) → path inside the render bundle's public folder. */
@@ -98,9 +118,9 @@ export const StoryboardSchema = AnalyzedStoryboardSchema.extend({
 });
 
 export type CastMember = z.infer<typeof CastMemberSchema>;
-export type ShotCharacter = z.infer<typeof ShotCharacterSchema>;
-export type Prop = z.infer<typeof PropSchema>;
-export type Shot = z.infer<typeof ShotSchema>;
+export type ShotCharacter = z.infer<typeof StoryboardShotSchema>["characters"][number];
+export type Prop = z.infer<typeof StoryboardShotSchema>["props"][number];
+export type Shot = z.infer<typeof StoryboardShotSchema>;
 export type AnalyzedStoryboard = z.infer<typeof AnalyzedStoryboardSchema>;
 export type Storyboard = z.infer<typeof StoryboardSchema>;
 
