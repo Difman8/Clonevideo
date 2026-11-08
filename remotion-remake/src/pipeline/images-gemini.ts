@@ -17,7 +17,9 @@ export class GeminiRefusal extends Error {}
 
 const REFUSALS = new Set(["SAFETY", "IMAGE_SAFETY", "PROHIBITED_CONTENT", "IMAGE_PROHIBITED_CONTENT", "BLOCKLIST", "RECITATION", "SPII", "MODEL_ARMOR"]);
 const mimeOf = (file: string) => (/\.png$/i.test(file) ? "image/png" : /\.webp$/i.test(file) ? "image/webp" : "image/jpeg");
-const imageConfig = (portrait: boolean) => ({ aspectRatio: portrait ? "9:16" : "16:9", imageSize: setting("GEMINI_IMAGE_SIZE") });
+/** Backgrounds in the video's shape at the chosen size; props square at 1K (shown at most ~450 px wide). */
+const imageConfig = (portrait: boolean, square = false) =>
+  square ? { aspectRatio: "1:1", imageSize: "1K" } : { aspectRatio: portrait ? "9:16" : "16:9", imageSize: setting("GEMINI_IMAGE_SIZE") };
 
 function imageFrom(response: GenerateContentResponse | undefined): Buffer {
   const data = response?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData?.data;
@@ -40,12 +42,12 @@ export function explainGemini(e: unknown): string {
 
 const inlineRef = (file: string): Part => ({ inlineData: { mimeType: mimeOf(file), data: fs.readFileSync(file).toString("base64") } });
 
-/** One background, drawn right away (standard price). */
-export async function drawGemini(text: string, refs: string[], portrait: boolean): Promise<Buffer> {
+/** One picture drawn right away (standard price): a background, or with `square` a prop. */
+export async function drawGemini(text: string, refs: string[], portrait: boolean, square = false): Promise<Buffer> {
   const response = await client().models.generateContent({
     model: setting("GEMINI_IMAGE_MODEL"),
     contents: [{ role: "user", parts: [{ text }, ...refs.map(inlineRef)] }],
-    config: { responseModalities: ["TEXT", "IMAGE"], imageConfig: imageConfig(portrait) },
+    config: { responseModalities: ["TEXT", "IMAGE"], imageConfig: imageConfig(portrait, square) },
   });
   return imageFrom(response);
 }

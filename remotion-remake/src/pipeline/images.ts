@@ -1,6 +1,6 @@
 // "Hoạt hình Fedtoon" pictures: backgrounds and props in the Fedtoon style, drawn by the
-// tool chosen in the settings (OpenAI, Google Nano Banana for backgrounds, Recraft for
-// props). Every image is cached by (style, prompt): a resumed job, a re-render or a later
+// tool chosen in the settings (OpenAI, Google Nano Banana, or Recraft for props, with
+// Google taking over when Recraft runs out of units). Every image is cached by (style, prompt): a resumed job, a re-render or a later
 // video reusing the same place never pays again.
 import fs from "node:fs";
 import os from "node:os";
@@ -13,6 +13,7 @@ import { GEMINI_FLAT_STYLE, GEMINI_STYLE_REFERENCE_NOTE, PALETTE, STYLE_REFERENC
 import { bgRef, imageFileKey, imageRef, type Shot, type Storyboard } from "../spec/storyboard";
 import { drawGemini, drawInBatch, explainGemini, GeminiRefusal, hasGeminiKey, hasSavedBatch, type GeminiRequest } from "./images-gemini";
 import { drawRecraft, hasRecraftKey, RecraftError } from "./images-recraft";
+import { cutOutGreenScreen, GREEN_SCREEN } from "./cutout";
 import { ffmpegPath, OUT_DIR, readJsonSafe, ROOT, run, writeFileAtomic, writeJsonAtomic } from "./tools";
 
 export const imageDir = (id: string) => path.join(OUT_DIR, id, "img");
@@ -20,10 +21,10 @@ export const imageDir = (id: string) => path.join(OUT_DIR, id, "img");
 type Kind = "bg" | "prop";
 export type ImageTool = "openai" | "gemini" | "recraft";
 
-/** The tool chosen in the settings: backgrounds can use Google, props Recraft. */
+/** The tool chosen in the settings: backgrounds can use Google, props Recraft or Google. */
 export function toolFor(kind: Kind): ImageTool {
   const tool = setting(kind === "bg" ? "IMAGE_BG_PROVIDER" : "IMAGE_PROP_PROVIDER");
-  if (kind === "bg" && tool === "gemini") return "gemini";
+  if (tool === "gemini") return "gemini";
   if (kind === "prop" && tool === "recraft") return "recraft";
   return "openai";
 }
@@ -82,7 +83,13 @@ export function imageSettingsText(meta: Storyboard["meta"]) {
     toolFor("bg") === "gemini"
       ? `Google ${setting("GEMINI_IMAGE_MODEL")} ${setting("GEMINI_IMAGE_SIZE")}, thu về ${meta.width}x${meta.height}${boolSetting("GEMINI_BATCH") ? ", vẽ theo lô (Batch)" : ""}`
       : `OpenAI ${openai} ${sizeFor(openai, "bg", meta)}, chất lượng ${setting("OPENAI_IMAGE_QUALITY")}`;
-  const prop = toolFor("prop") === "recraft" ? `Recraft ${setting("RECRAFT_MODEL")} + tách nền` : `OpenAI ${openai}, chất lượng ${setting("OPENAI_IMAGE_QUALITY")}`;
+  const google = `Google ${setting("GEMINI_IMAGE_MODEL")} 1K trên nền xanh, tách nền trên máy`;
+  const prop =
+    toolFor("prop") === "recraft"
+      ? `Recraft ${setting("RECRAFT_MODEL")} + tách nền${boolSetting("IMAGE_PROP_FALLBACK") && hasGeminiKey() ? " (hết API units thì vẽ bằng Google)" : ""}`
+      : toolFor("prop") === "gemini"
+        ? google
+        : `OpenAI ${openai}, chất lượng ${setting("OPENAI_IMAGE_QUALITY")}`;
   return `Ảnh vẽ mới: nền bằng ${bg}; đồ vật bằng ${prop}.`;
 }
 
@@ -101,9 +108,15 @@ const named = (names: readonly ColorName[]) => names.map((n) => `${n} (${PALETTE
  * What the image model is asked to draw. Backgrounds carry their colors and the colors to
  * avoid. A tool that cannot paint transparency gets a plain background that is cut out later.
  */
-function fullPrompt(kind: Kind, prompt: string, style: string, portrait: boolean, colors: ColorName[] = [], avoid: ColorName[] = [], transparent = true): string {
+const BACKDROPS = {
+  transparent: "a fully transparent background",
+  white: "a plain flat white background",
+  green: `a flat solid pure green (${GREEN_SCREEN}) background filling the whole frame, like a green screen (no part of the object in that bright pure green)`,
+};
+
+function fullPrompt(kind: Kind, prompt: string, style: string, portrait: boolean, colors: ColorName[] = [], avoid: ColorName[] = [], backdrop: keyof typeof BACKDROPS = "transparent"): string {
   if (kind === "prop")
-    return `${style}\n\nA single isolated object, centered and filling most of the frame, on ${transparent ? "a fully transparent background" : "a plain flat white background"}, with no ground, no shadow and no text. If it has a face, draw it in the same cute style as the characters' faces: ${prompt}`;
+    return `${style}\n\nA single isolated object, centered and filling most of the frame, on ${BACKDROPS[backdrop]}, with no ground, no shadow and no text. If it has a face, draw it in the same cute style as the characters' faces: ${prompt}`;
   return [
     style,
     "",
@@ -160,6 +173,15 @@ const withRefsNote = (text: string, refs: string[]) => (refs.length ? `${STYLE_R
 /** Text for Google: the flat look said first and plainly, then its own note about the references (see GEMINI_FLAT_STYLE). */
 export const geminiText = (text: string, refs: string[]) => [GEMINI_FLAT_STYLE, refs.length ? GEMINI_STYLE_REFERENCE_NOTE : "", text].filter(Boolean).join("\n\n");
 
+/** Until when Recraft is known to have no API units left (props then go straight to Google). */
+let recraftEmptyUntil = 0;
+
+/** A prop by Google: drawn on a green screen (it cannot paint transparency), then cut out on this computer. */
+async function drawGeminiProp(prompt: string, style: string, refs: string[]): Promise<Buffer> {
+  const text = geminiText(fullPrompt("prop", prompt, style, true, [], [], "green"), refs);
+  return cutOutGreenScreen(await drawGemini(text, refs, true, true));
+}
+
 export async function generateImage(
   kind: Kind,
   prompt: string,
@@ -171,11 +193,24 @@ export async function generateImage(
   const portrait = meta.height >= meta.width;
   const refs = styleRefs();
   const style = setting("FEDTOON_IMAGE_STYLE");
-  if (tool === "gemini") {
+  if (tool === "gemini" && kind === "bg") {
     const fitted = await fitToFrame(await drawGemini(geminiText(fullPrompt(kind, prompt, style, portrait, colors, avoid), refs), refs, portrait), meta.width, meta.height);
     return { data: fitted.data, ext: "jpg", note: fitted.note };
   }
-  if (tool === "recraft") return { data: await drawRecraft(fullPrompt(kind, prompt, style, portrait, colors, avoid, false), refs, styleSignature(kind)), ext: "png" };
+  if (tool === "gemini") return { data: await drawGeminiProp(prompt, style, refs), ext: "png" };
+  if (tool === "recraft") {
+    // Recraft out of API units: Google draws the prop instead (IMAGE_PROP_FALLBACK), without asking Recraft again for a while.
+    const fallback = boolSetting("IMAGE_PROP_FALLBACK") && hasGeminiKey();
+    const viaGoogle = async () => ({ data: await drawGeminiProp(prompt, style, refs), ext: "png" as const, note: " (Recraft hết API units: vẽ bằng Google)" });
+    if (fallback && Date.now() < recraftEmptyUntil) return viaGoogle();
+    try {
+      return { data: await drawRecraft(fullPrompt(kind, prompt, style, portrait, colors, avoid, "white"), refs, styleSignature(kind)), ext: "png" };
+    } catch (e) {
+      if (!(e instanceof RecraftError && e.noCredit && fallback)) throw e;
+      recraftEmptyUntil = Date.now() + 10 * 60_000;
+      return viaGoogle();
+    }
+  }
 
   const model = setting("OPENAI_IMAGE_MODEL");
   const text = fullPrompt(kind, prompt, style, portrait, colors, avoid);
@@ -217,6 +252,7 @@ function styleSignature(kind: Kind) {
   const base = refs.length ? `${setting("FEDTOON_IMAGE_STYLE")}\nrefs:${refsSignature(refs)}` : setting("FEDTOON_IMAGE_STYLE");
   const tool = toolFor(kind);
   // ":flat3": version of the wording for Google (GEMINI_FLAT_STYLE); pictures drawn with an older one are not reused.
+  if (tool === "gemini" && kind === "prop") return `gemini-prop:${setting("GEMINI_IMAGE_MODEL")}:1K:green1\n${base}`;
   if (tool === "gemini") return `gemini:${setting("GEMINI_IMAGE_MODEL")}:${setting("GEMINI_IMAGE_SIZE")}:flat3\n${base}`;
   if (tool === "recraft") return `recraft:${setting("RECRAFT_MODEL")}\n${base}`;
   return base;

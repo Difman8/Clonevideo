@@ -107,13 +107,22 @@ export const SETTINGS: Setting[] = [
     key: "IMAGE_PROP_PROVIDER",
     group: "images",
     label: "Công cụ vẽ đồ vật",
-    help: "Recraft vẽ đồ vật rồi tách nền thành ảnh trong suốt (2 lần gọi cho mỗi đồ vật). Cần khóa ở mục Recraft.",
+    help: "Recraft vẽ đồ vật rồi tách nền thành ảnh trong suốt (2 lần gọi cho mỗi đồ vật), cần khóa ở mục Recraft. Google Nano Banana vẽ đồ vật trên nền xanh rồi app tự tách nền ngay trên máy (1 lần gọi, ảnh 1K), cần khóa ở mục Google Gemini.",
     type: "select",
     default: "openai",
     options: [
       { value: "openai", label: "OpenAI (gpt-image)" },
       { value: "recraft", label: "Recraft" },
+      { value: "gemini", label: "Google Nano Banana (tách nền trên máy)" },
     ],
+  },
+  {
+    key: "IMAGE_PROP_FALLBACK",
+    group: "images",
+    label: "Recraft hết API units thì vẽ đồ vật bằng Google",
+    help: "Khi công cụ vẽ đồ vật là Recraft mà tài khoản Recraft hết API units, app tự vẽ đồ vật đó bằng Google Nano Banana (cần khóa Google Gemini) thay vì dừng lại. Nạp thêm units cho Recraft thì app tự dùng lại Recraft sau khoảng 10 phút.",
+    type: "boolean",
+    default: "true",
   },
   {
     key: "OPENAI_IMAGE_MODEL",
